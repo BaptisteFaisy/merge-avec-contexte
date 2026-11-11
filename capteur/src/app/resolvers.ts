@@ -10,8 +10,20 @@
  *
  * Tout passe par des ports injectés : la logique est testable hors plateforme.
  */
-import type { Evaluation, FallbackCause, IssueContext, RuleConfig } from '../shared';
-import { extractIssueKeys, fallbackEvaluation, isPairingCodeFormat } from '../shared';
+import type {
+  Evaluation,
+  FallbackCause,
+  IssueContext,
+  Level,
+  Reason,
+  RuleConfig,
+  RuleCode,
+  RuleMode,
+  Trigger,
+  Verdict,
+  Waiver,
+} from '../shared';
+import { extractIssueKeys, fallbackEvaluation, isPairingCodeFormat, isRuleCode } from '../shared';
 import { declencheurDepuisBitbucket, versPrContext } from '../bitbucket/pr';
 import type { LecturePr } from '../bitbucket/api';
 import type { PRCheckEvent } from '../bitbucket/types';
@@ -46,12 +58,62 @@ export interface ResolverDeps {
   nonceGenerator?: () => string;
 }
 
-/** Ce que la route `card` du pont renvoie en plus de l'évaluation. */
+/** Détail renvoyé par la route `card` du Cerveau (`cerveau/src/bridge/routes.ts`). */
 export interface CorpsCarte {
-  evaluation: Evaluation;
-  issues?: IssueContext[];
-  configs?: RuleConfig[];
-  historique?: Evaluation[];
+  verdict: Verdict;
+  message: string;
+  reasons: Reason[];
+  issueKeys: string[];
+  evaluatedAt: string;
+  durationMs: number;
+  observedOnly?: boolean;
+  service?: string;
+  siteUrl: string;
+  rules: Array<{ rule: string; level: string; mode: string }>;
+  waivers: Waiver[];
+}
+
+/** Reconstruit l'évaluation à partir du détail renvoyé par le pont. */
+export function evaluationDepuisCarte(detail: CorpsCarte, trigger: Trigger): Evaluation {
+  return {
+    verdict: detail.verdict,
+    reasons: detail.reasons,
+    issueKeys: detail.issueKeys,
+    trigger,
+    evaluatedAt: detail.evaluatedAt,
+    durationMs: detail.durationMs,
+    observedOnly: detail.observedOnly,
+  };
+}
+
+/** Tickets de la carte : le pont ne renvoie que les clés, l'URL est reconstruite. */
+export function issuesDepuisCarte(detail: CorpsCarte): IssueContext[] {
+  return detail.issueKeys.map((key) => ({
+    key,
+    id: key,
+    exists: true,
+    status: '',
+    criteria: [],
+    links: [],
+    fixVersions: [],
+    labels: [],
+    components: [],
+    incidentKeys: [],
+    url: detail.siteUrl ? `${detail.siteUrl.replace(/\/$/, '')}/browse/${key}` : undefined,
+  }));
+}
+
+/** Réglages des règles, tels que le pont les résume (portée et params absents). */
+export function configsDepuisCarte(detail: CorpsCarte): RuleConfig[] {
+  return detail.rules
+    .filter((regle) => isRuleCode(regle.rule))
+    .map((regle) => ({
+      rule: regle.rule as RuleCode,
+      level: regle.level as Level,
+      mode: regle.mode as RuleMode,
+      scope: {},
+      params: {},
+    }));
 }
 
 /** Identifiants de l'espace, du dépôt et de la PR, accolades retirées. */
@@ -150,11 +212,11 @@ async function chargerCarte(context: BitbucketUiContext, deps: ResolverDeps): Pr
     };
   }
   return {
-    evaluation: reponse.data.evaluation,
-    issues: reponse.data.issues ?? [],
-    configs: reponse.data.configs ?? [],
-    historique: reponse.data.historique ?? [],
-    jumelage,
+    evaluation: evaluationDepuisCarte(reponse.data, pr.trigger),
+    issues: issuesDepuisCarte(reponse.data),
+    configs: configsDepuisCarte(reponse.data),
+    historique: [],
+    jumelage: { ...jumelage, site: reponse.data.siteUrl || jumelage.site },
   };
 }
 

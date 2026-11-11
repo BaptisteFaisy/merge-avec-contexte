@@ -4,7 +4,6 @@ import type { BitbucketUiContext, ResolverDeps } from '../src/app/resolvers';
 import type { LecturePr } from '../src/bitbucket/api';
 import { MemoryPairingStore } from '../src/pairing/store';
 import { MemorySettingsStore } from '../src/policy/settings';
-import type { Evaluation } from '../src/shared';
 
 const WS = 'ws-uuid';
 const REPO = 'repo-uuid';
@@ -29,13 +28,17 @@ const lecture: LecturePr = {
   diffstat: [{ new: { path: 'src/limites.ts' } }],
 };
 
-const evaluationBloquee: Evaluation = {
+/** Détail renvoyé par la route `card` du Cerveau (forme réelle du pont). */
+const carteBloquee = {
   verdict: 'blocked',
+  message: 'Bloqué, 1 raison.',
   reasons: [{ rule: 'R-03', level: 'blocking', text: 'PAY-123 : 2 critères d’acceptation non cochés.' }],
   issueKeys: ['PAY-123'],
-  trigger: 'on-code-pushed',
   evaluatedAt: '2026-11-27T16:30:00Z',
   durationMs: 40,
+  siteUrl: 'https://demo.atlassian.net',
+  rules: [{ rule: 'R-03', level: 'blocking', mode: 'active' }],
+  waivers: [],
 };
 
 /** Dépôts en mémoire + pont factice ; `reponsePont` est ce que le pont renvoie. */
@@ -63,13 +66,14 @@ async function depsAvec(reponsePont: unknown, opts: { fetch?: ResolverDeps['fetc
 
 describe('capteur — resolvers d’interface (§12)', () => {
   it('construit la carte de PR depuis la réponse du pont', async () => {
-    const deps = await depsAvec({ evaluation: evaluationBloquee, issues: [] });
+    const deps = await depsAvec(carteBloquee);
     const vm = await handlePrCard(contextePr, {}, deps);
     expect(vm.verdict).toBe('bloque');
     expect(vm.raisons).toHaveLength(1);
     expect(vm.message).toContain('Bloqué, 1 raison.');
     expect(vm.jumelage.jumele).toBe(true);
     expect(vm.derogation.disponible).toBe(true);
+    expect(vm.ticket.liens[0]?.url).toBe('https://demo.atlassian.net/browse/PAY-123');
   });
 
   it('retombe sur la politique de repli quand le pont ne répond pas', async () => {
@@ -84,7 +88,7 @@ describe('capteur — resolvers d’interface (§12)', () => {
   });
 
   it('lit l’espace de travail même avec des accolades dans les UUID', async () => {
-    const deps = await depsAvec({ evaluation: evaluationBloquee });
+    const deps = await depsAvec(carteBloquee);
     const vm = await handleWorkspaceSettings({ workspace: { uuid: `{${WS}}` } }, undefined, deps);
     expect(vm.liaison.jumele).toBe(true);
     expect(vm.politique.valeur).toBe('open');
