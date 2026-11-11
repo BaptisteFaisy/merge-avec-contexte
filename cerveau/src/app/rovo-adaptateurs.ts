@@ -5,7 +5,7 @@
 import { isEffective } from '../shared';
 import type { ApproverDirectory, ContextRepository as RovoContext, EvaluationRepository as RovoEvaluations, RovoDeps, StoredEvaluation as RovoEvaluation } from '../rovo/deps';
 import type { Store } from '../storage/ports';
-import { serviceDuDepot } from './context-repo';
+import { reglesEffectives, serviceDuDepot } from './context-repo';
 import { createRovoWaivers } from './waivers';
 import { enHorlogeObjet, type HorlogeIso } from './horloge';
 import type { LoggerCommun } from './logger';
@@ -23,7 +23,7 @@ export function createRovoContext(store: Store, config: AppConfig, depsEval: Dep
       const [issues, incidents, configs] = await Promise.all([
         chargerTickets([issueKey], depsEval),
         chargerIncidents(service, depsEval),
-        store.ruleConfig.listByProject(config.projectId),
+        reglesEffectives(store, config.projectId),
       ]);
       return { issues, incidents, configs, service };
     },

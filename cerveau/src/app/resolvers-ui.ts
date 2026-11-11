@@ -15,7 +15,7 @@ import { vmEncart } from '../ui/view-model-encart';
 import { vmJournal, type EvaluationJournalisee } from '../ui/view-model-journal';
 import { vmReglages, type EtatJumelage } from '../ui/view-model-reglages';
 import type { EvaluateService } from '../bridge/deps';
-import { serviceDuDepot } from './context-repo';
+import { reglesEffectives, serviceDuDepot } from './context-repo';
 import { chargerTickets, type DepsEvaluate } from './evaluate';
 import { borneHeures, identifiant } from './waivers';
 import type { AppConfig } from './config';
@@ -123,7 +123,7 @@ export async function handleResolverReglages(payload: Record<string, unknown> | 
   await appliquerReglages(method, payload, deps, now);
   const jumelage = await deps.store.pairing.current();
   const [configs, correspondances, liste] = await Promise.all([
-    deps.store.ruleConfig.listByProject(deps.config.projectId),
+    reglesEffectives(deps.store, deps.config.projectId),
     jumelage ? deps.store.repoService.listByWorkspace(jumelage.workspaceUuid) : Promise.resolve([]),
     approbateurs(deps),
   ]);
@@ -172,7 +172,7 @@ export async function handleResolverEncart(payload: Record<string, unknown> | un
   const [derniere, waivers, configs] = await Promise.all([
     cle ? deps.store.evaluations.latestByIssue(cle) : Promise.resolve(undefined),
     cle ? deps.store.waivers.listByIssue(cle) : Promise.resolve([]),
-    deps.store.ruleConfig.listByProject(deps.config.projectId),
+    reglesEffectives(deps.store, deps.config.projectId),
   ]);
   const prs = derniere
     ? [{ prId: derniere.pullRequestId, depot: derniere.repositoryUuid, evaluation: derniere as Evaluation }]
@@ -190,7 +190,7 @@ async function simuler(payload: Record<string, unknown> | undefined, deps: UiDep
   const [freezes, waivers, configs, issues, politique] = await Promise.all([
     deps.store.freezes.list(),
     deps.store.waivers.listByIssue(ticket),
-    deps.store.ruleConfig.listByProject(deps.config.projectId),
+    reglesEffectives(deps.store, deps.config.projectId),
     chargerTickets([ticket], deps.depsEval),
     deps.store.pairing.fallbackPolicy(),
   ]);

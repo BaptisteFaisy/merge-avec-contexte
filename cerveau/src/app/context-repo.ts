@@ -6,8 +6,25 @@
  * implémentation de la correspondance (§8, « Relier un dépôt à un service »).
  */
 import type { ContextRepository } from '../bridge/deps';
+import { defaultRuleConfigs } from '../rules/defaults';
+import type { RuleConfig, RuleCode } from '../shared';
 import type { Store } from '../storage/ports';
 import type { AppConfig } from './config';
+
+/**
+ * Réglages effectifs d'un projet : le catalogue fournit le niveau par défaut de
+ * chaque règle, l'administrateur n'écrit que ce qu'il change (§8). Sans cette
+ * fusion, une installation neuve n'évaluerait aucune règle — tout passerait.
+ */
+export function reglesAvecDefauts(enregistrees: RuleConfig[]): RuleConfig[] {
+  const parRegle = new Map<RuleCode, RuleConfig>(enregistrees.map((config) => [config.rule, config]));
+  return defaultRuleConfigs().map((defaut) => parRegle.get(defaut.rule) ?? defaut);
+}
+
+/** Réglages effectifs lus en base, complétés par les valeurs du catalogue. */
+export async function reglesEffectives(store: Store, projectId: string): Promise<RuleConfig[]> {
+  return reglesAvecDefauts(await store.ruleConfig.listByProject(projectId));
+}
 
 /** Service alimenté par un dépôt, ou `undefined` si la correspondance manque. */
 export async function serviceDuDepot(store: Store, depot: string): Promise<string | undefined> {
@@ -24,7 +41,7 @@ export async function serviceDuDepot(store: Store, depot: string): Promise<strin
 export function createContextRepository(store: Store, config: AppConfig): ContextRepository {
   return {
     async rules() {
-      return store.ruleConfig.listByProject(config.projectId);
+      return reglesEffectives(store, config.projectId);
     },
     async serviceForRepository(_siteUrl, repositoryUuid) {
       return serviceDuDepot(store, repositoryUuid);
