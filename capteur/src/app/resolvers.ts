@@ -28,7 +28,7 @@ import { declencheurDepuisBitbucket, versPrContext } from '../bitbucket/pr';
 import type { LecturePr } from '../bitbucket/api';
 import type { PRCheckEvent } from '../bitbucket/types';
 import { unwrapUuid } from '../bitbucket/types';
-import { appelerPont, type BridgeErrorKind, type FetchPont } from '../bridge/client';
+import { appelerPont, sonderSantePont, type BridgeErrorKind, type FetchPont } from '../bridge/client';
 import type { PairingStore } from '../pairing/store';
 import type { SettingsStore } from '../policy/settings';
 import { DEFAUT_ENVOI_CHEMINS, DEFAUT_REPLI } from '../policy/settings';
@@ -56,6 +56,8 @@ export interface ResolverDeps {
   fetch?: FetchPont;
   now?: () => number;
   nonceGenerator?: () => string;
+  /** Délai des appels au pont (sonde `health` comprise) ; défaut : 4 s. */
+  timeoutMs?: number;
 }
 
 /** Détail renvoyé par la route `card` du Cerveau (`cerveau/src/bridge/routes.ts`). */
@@ -298,6 +300,18 @@ async function jumeler(
   );
 }
 
+/**
+ * Sonde la route publique `health` du pont (§17 cas 10 : pont coupé).
+ *
+ * Sans jumelage enregistré, il n'y a rien à sonder : l'écran affiche déjà
+ * « Non jumelé », le bandeau « pont coupé » serait trompeur.
+ */
+async function pontInjoignable(bridgeUrl: string | undefined, deps: ResolverDeps): Promise<boolean> {
+  if (!bridgeUrl) return false;
+  const sante = await sonderSantePont(bridgeUrl, { fetch: deps.fetch, timeoutMs: deps.timeoutMs });
+  return !sante.joignable;
+}
+
 /** `resolverWorkspaceSettings` : lecture et sauvegarde des réglages. */
 export async function handleWorkspaceSettings(
   context: BitbucketUiContext,
@@ -320,9 +334,11 @@ export async function handleWorkspaceSettings(
     fallbackPolicy: DEFAUT_REPLI,
     envoiDesChemins: DEFAUT_ENVOI_CHEMINS,
   }));
+  const coupe = await pontInjoignable(pairing?.bridgeUrl, deps);
   return vmReglagesEspace({
     jumelage: { jumele: Boolean(pairing), site: pairing?.siteUrl, depuis: pairing?.pairedAt },
     politique: settings.fallbackPolicy,
     envoyerChemins: settings.envoiDesChemins,
+    pontInjoignable: coupe,
   });
 }

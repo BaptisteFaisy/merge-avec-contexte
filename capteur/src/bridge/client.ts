@@ -123,6 +123,43 @@ function classifierErreur(err: unknown): BridgeClientError {
   return { kind: 'unreachable', message: err instanceof Error ? err.message : String(err) };
 }
 
+/** Sonde de la route publique `health` du pont : joignable ou non. */
+export interface SantePont {
+  joignable: boolean;
+  /** Statut HTTP, quand le pont a tout de même répondu. */
+  status?: number;
+}
+
+/**
+ * Sonde le pont via sa route publique `health` (§17 cas 10 : pont coupé).
+ *
+ * Aucune signature : `health` est une route ouverte du Cerveau
+ * (`cerveau/src/bridge/handler.ts`, ROUTES_PUBLIQUES). Ne lève jamais —
+ * un échec réseau, un délai dépassé ou un HTTP en erreur valent
+ * « injoignable », c'est à l'écran d'en faire un bandeau.
+ */
+export async function sonderSantePont(
+  bridgeUrl: string,
+  options: { fetch?: FetchPont; timeoutMs?: number } = {},
+): Promise<SantePont> {
+  try {
+    const reponse = await requeteAvecDelai(
+      options.fetch ?? fetchDefaut,
+      bridgeUrl,
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ route: 'health', payload: {} }),
+      },
+      options.timeoutMs ?? DEFAULT_BRIDGE_TIMEOUT_MS,
+    );
+    const sante: SantePont = { joignable: reponse.ok, status: reponse.status };
+    return sante;
+  } catch {
+    return { joignable: false };
+  }
+}
+
 /**
  * Appelle le pont signé du Cerveau avec l'enveloppe donnée.
  *

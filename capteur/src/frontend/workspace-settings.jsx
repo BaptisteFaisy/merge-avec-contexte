@@ -103,11 +103,20 @@ function BlocChemins({ vm }) {
   );
 }
 
+function BandeauPont({ bandeau }) {
+  return (
+    <SectionMessage appearance="warning" title={bandeau.titre}>
+      <Text>{bandeau.texte}</Text>
+    </SectionMessage>
+  );
+}
+
 function Reglages({ vm, retour, envoi, onEnregistrer }) {
   return (
     <Box padding="space.100">
       <Stack space="space.200">
         <Heading as="h3">Merge avec contexte</Heading>
+        {vm.pontInjoignable && vm.bandeauPont ? <BandeauPont bandeau={vm.bandeauPont} /> : null}
         <BlocLiaison liaison={vm.liaison} />
         <Form onSubmit={onEnregistrer}>
           <FormSection>
