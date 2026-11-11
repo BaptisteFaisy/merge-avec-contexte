@@ -132,9 +132,15 @@ describe('Cerveau — encart ticket (encart-ticket)', () => {
     fireEvent.click(screen.getByText('Envoyer la demande'));
     await act(async () => {});
     const appels = appelsInvoke();
-    expect(appels[appels.length - 1]).toEqual({
-      resolver: 'resolverEncart',
-      payload: { method: 'demanderDerogation', rule: VUE_ENCARTE.reglesDerogables[0].code, reason: 'gel urgent', hours: 2 },
+    const dernier = appels[appels.length - 1];
+    expect(dernier?.resolver).toBe('resolverEncart');
+    // `toMatchObject` : l'écran peut enrichir la charge utile (identité de
+    // l'utilisateur, projet…) sans que ce test cesse de vérifier l'essentiel.
+    expect(dernier?.payload).toMatchObject({
+      method: 'demanderDerogation',
+      rule: VUE_ENCARTE.reglesDerogables[0].code,
+      reason: 'gel urgent',
+      hours: 2,
     });
   });
 });
