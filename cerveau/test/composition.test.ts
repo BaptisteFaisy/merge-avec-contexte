@@ -155,3 +155,20 @@ describe('composition du Cerveau', () => {
     expect(liste).toHaveLength(1);
   });
 });
+
+describe('câblage de l’assemblage', () => {
+  it('expose les six actions Rovo, dont la lecture des approbateurs', async () => {
+    const cerveau = assemblerCerveau({
+      store: createMemoryStore(),
+      clock: horlogeFixe(NOW),
+      logger: loggerSilencieux(),
+      config: { approbateurs: ['tech-lead', 'astreinte'] },
+    });
+    const actions = actionsRovo(cerveau);
+    expect(Object.keys(actions).sort()).toEqual([
+      'evaluateMerge', 'explainBlock', 'listApprovers', 'listFreezes', 'listWaivers', 'requestWaiver',
+    ]);
+    const sortie = await actions.listApprovers({});
+    expect(JSON.stringify(sortie)).toContain('tech-lead');
+  });
+});

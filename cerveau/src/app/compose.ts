@@ -11,6 +11,7 @@ import { createJiraReader, type IssueReader } from '../jira/reader';
 import type { RovoDeps } from '../rovo/deps';
 import { runEvaluateMerge } from '../rovo/evaluate-merge';
 import { runExplainBlock } from '../rovo/explain-block';
+import { runListApprovers } from '../rovo/list-approvers';
 import { runListFreezes } from '../rovo/list-freezes';
 import { runListWaivers } from '../rovo/list-waivers';
 import { runRequestWaiver } from '../rovo/request-waiver';
@@ -19,6 +20,7 @@ import type { Store } from '../storage/ports';
 import { configParDefaut, type AppConfig } from './config';
 import { createContextRepository } from './context-repo';
 import { createEvaluateService, type DepsEvaluate } from './evaluate';
+import { creerLecteurFiable } from './fiabilite';
 import { horlogeReelle, type HorlogeIso } from './horloge';
 import { loggerConsole, type LoggerCommun } from './logger';
 import { createPairingRepository } from './pairing-repo';
@@ -153,6 +155,7 @@ export function actionsRovo(cerveau: Cerveau) {
     evaluateMerge: (payload: Record<string, unknown>) => runEvaluateMerge(deps, payload),
     explainBlock: (payload: Record<string, unknown>) => runExplainBlock(deps, payload),
     listFreezes: (payload: Record<string, unknown>) => runListFreezes(deps, payload),
+    listApprovers: (payload: Record<string, unknown>) => runListApprovers(deps, payload),
     listWaivers: (payload: Record<string, unknown>) => runListWaivers(deps, payload),
     requestWaiver: (payload: Record<string, unknown>) => runRequestWaiver(deps, payload),
   };
@@ -224,12 +227,16 @@ export async function cerveauProduction(): Promise<Cerveau> {
     // En mode démonstration, les tickets et les incidents du jeu d'exemple sont
     // servis localement : le site de démo ne contient ni le projet PAY ni de
     // JSM, et le cache à 60 s serait sinon écrasé par une lecture Jira vide.
-    let jira: IssueReader | undefined;
+    // Chaîne de lecture : Jira réel, jeu de démonstration par-dessus en mode
+    // démo, puis délai maximal, retentative bornée et disjoncteur (§13.4,
+    // §13.5). Sans le lecteur fiable, un Jira lent mange le budget de 5 s.
+    let jira: IssueReader = createJiraReader({ baseUrl: config.siteUrl });
     if (env.jeuDeDemo) {
       const { createDemoReader } = await import('./demo-reader');
-      jira = createDemoReader(createJiraReader({ baseUrl: config.siteUrl }), horloge());
+      jira = createDemoReader(jira, horloge());
       logger.info('mode démonstration actif : tickets et incidents servis depuis le jeu d’exemple');
     }
+    jira = creerLecteurFiable(jira);
     instance = assemblerCerveau({
       store,
       vault,

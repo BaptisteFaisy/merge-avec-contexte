@@ -13,8 +13,8 @@
  * d'erreur JSON, lisible et sans détail sensible.
  */
 import Resolver from '@forge/resolver';
+import { invaliderPourEvenement } from './app/cache-adaptateurs';
 import { actionsRovo, cerveauProduction, resolversUi, traiterPont } from './app/compose';
-import { runListApprovers } from './rovo/list-approvers';
 import type { BridgeEnvelope } from './shared';
 
 /** Requête reçue par un web trigger Forge. */
@@ -125,17 +125,10 @@ export async function listWaivers(payload: unknown): Promise<unknown> {
   return actionsRovo(cerveau).listWaivers((payload ?? {}) as Record<string, unknown>);
 }
 
-/**
- * Action `list-approvers` : qui peut accorder une dérogation (lecture seule).
- *
- * Appelée directement sur `rovoDeps` plutôt que par `actionsRovo` : l'assemblage
- * (`app/compose.ts`) n'expose que les cinq actions historiques et reste hors du
- * périmètre de ce lot. Le comportement est identique — mêmes ports, même
- * horloge injectée.
- */
+/** Action `list-approvers` : qui peut accorder une dérogation (lecture seule). */
 export async function listApprovers(payload: unknown): Promise<unknown> {
   const cerveau = await cerveauProduction();
-  return runListApprovers(cerveau.rovoDeps, (payload ?? {}) as Record<string, unknown>);
+  return actionsRovo(cerveau).listApprovers((payload ?? {}) as Record<string, unknown>);
 }
 
 /** Action `request-waiver` : demande de dérogation tracée. */
@@ -145,13 +138,19 @@ export async function requestWaiver(payload: unknown): Promise<unknown> {
 }
 
 /** Événement Jira : le cache du ticket est invalidé, la prochaine lecture lit Jira. */
+/**
+ * Événement Jira : invalide le cache du ticket **et** celui des incidents des
+ * services concernés (§13.4). Sans la seconde moitié, un incident clos ou ouvert
+ * restait invisible jusqu'à l'expiration du cache.
+ */
 export async function surTicketModifie(event: unknown): Promise<void> {
   const cerveau = await cerveauProduction();
-  const cle = (event as { issue?: { key?: string } } | undefined)?.issue?.key;
-  if (typeof cle === 'string' && cle.length > 0) {
-    await cerveau.store.issueCache.remove(cle);
-    cerveau.logger.info('cache invalidé', { issueKey: cle });
-  }
+  await invaliderPourEvenement(event, {
+    store: cerveau.store,
+    jira: cerveau.jira,
+    clock: cerveau.clock,
+    logger: cerveau.logger,
+  });
 }
 
 /** Migrations Forge SQL : idempotentes, rejouées chaque heure. */
