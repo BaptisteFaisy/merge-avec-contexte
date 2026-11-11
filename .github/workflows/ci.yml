@@ -86,8 +86,9 @@ jobs:
           import pathlib
           exts = {".md", ".mdx", ".txt"}
           vides, illisibles, total = [], [], 0
+          ignores = (".git/", "node_modules/", "dist/", "coverage/")
           for f in sorted(pathlib.Path(".").rglob("*")):
-              if ".git/" in f.as_posix() or f.suffix.lower() not in exts:
+              if any(m in f.as_posix() for m in ignores) or f.suffix.lower() not in exts:
                   continue
               total += 1
               try:
