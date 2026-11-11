@@ -169,6 +169,40 @@ const pay140: IssueContext = {
   url: 'https://demo.atlassian.net/browse/PAY-140',
 };
 
+/** Ticket PAY-132 : statut interdit, jamais autorisé à fusionner (R-02). */
+const pay132: IssueContext = {
+  key: 'PAY-132',
+  id: '10007',
+  exists: true,
+  status: 'Suspendu',
+  statusCategory: 'toDo',
+  summary: 'Retirer le paiement à la livraison',
+  criteria: [],
+  links: [],
+  fixVersions: [{ name: '2.6.0', released: false }],
+  labels: [],
+  components: ['paiement'],
+  incidentKeys: [],
+  url: 'https://demo.atlassian.net/browse/PAY-132',
+};
+
+/** Ticket PAY-133 : dépendance amont PAY-134 non livrée (R-13). */
+const pay133: IssueContext = {
+  key: 'PAY-133',
+  id: '10008',
+  exists: true,
+  status: 'En cours',
+  statusCategory: 'inProgress',
+  summary: 'Refondre le calcul des remises fidélité',
+  criteria: [],
+  links: [{ type: 'dépend de', direction: 'outward', targetKey: 'PAY-134', targetStatus: 'En cours' }],
+  fixVersions: [{ name: '2.6.0', released: false }],
+  labels: [],
+  components: ['catalogue'],
+  incidentKeys: [],
+  url: 'https://demo.atlassian.net/browse/PAY-133',
+};
+
 /** Gel ponctuel dans trois jours, 8 h → 10 h UTC, sur `main`. */
 const gelBlackFriday = (now: string): Freeze => ({
   id: 'freeze-black-friday',
@@ -194,6 +228,22 @@ const gelNuit = (now: string): Freeze => ({
   timezone: 'Europe/Paris',
   createdBy: 'release-manager',
 });
+
+/** Gel court réellement actif à `now` : deux heures centrées, branches `release/*`. */
+const gelRelease = (now: string): Freeze => {
+  const instant = Date.parse(now);
+  return {
+    id: 'freeze-release',
+    name: 'Fenêtre release',
+    startsAt: new Date(instant - 60 * 60_000).toISOString(),
+    endsAt: new Date(instant + 60 * 60_000).toISOString(),
+    branches: ['release/*'],
+    services: [],
+    recurrence: { kind: 'none' },
+    timezone: 'Europe/Paris',
+    createdBy: 'release-manager',
+  };
+};
 
 /** Incident ouvert sur `checkout-api` depuis huit heures. */
 const incidentCheckout = (now: string): Incident => ({
@@ -285,6 +335,8 @@ function configsDemo(): RuleConfig[] {
     { rule: 'R-05', level: 'blocking', mode: 'active', scope: {}, params: { jsmProjects: ['ITS'] } },
     { rule: 'R-06', level: 'blocking', mode: 'active', scope: {}, params: { linkTypes: ['bloque par'] } },
     { rule: 'R-07', level: 'warning', mode: 'active', scope: {}, params: {} },
+    { rule: 'R-09', level: 'blocking', mode: 'observe', scope: {}, params: {} },
+    { rule: 'R-13', level: 'blocking', mode: 'active', scope: {}, params: {} },
   ];
 }
 
@@ -293,8 +345,8 @@ export function createDemoDataset(now: string = DEMO_NOW): DemoDataset {
   return {
     workspace: { uuid: 'demo-workspace-uuid', name: 'Démo Codegeist', slug: 'demo' },
     now,
-    issues: [pay123, pay124, pay125, pay130, pay131, pay140],
-    freezes: [gelBlackFriday(now), gelNuit(now)],
+    issues: [pay123, pay124, pay125, pay130, pay131, pay140, pay132, pay133],
+    freezes: [gelBlackFriday(now), gelNuit(now), gelRelease(now)],
     incidents: [incidentCheckout(now)],
     waivers: [derogationAccordee(now), derogationExpiree(now)],
     repoServices: correspondances,

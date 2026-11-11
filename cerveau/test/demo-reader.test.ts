@@ -56,6 +56,8 @@ describe('lecteur de démonstration', () => {
 
   it('annonce les clés servies, pour les écrans et les tests', () => {
     expect(clesDeDemo(NOW)).toContain('PAY-123');
-    expect(clesDeDemo(NOW)).toHaveLength(6);
+    expect(clesDeDemo(NOW)).toContain('PAY-132');
+    expect(clesDeDemo(NOW)).toContain('PAY-133');
+    expect(clesDeDemo(NOW)).toHaveLength(8);
   });
 });
