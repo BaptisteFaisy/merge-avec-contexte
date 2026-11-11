@@ -29,7 +29,10 @@
     "@forge/resolver": "^2.0.2",
     "@forge/sql": "^4.0.10",
     "@forge/storage": "^2.0.3",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^22.10.2",
+    "jsdom": "^31.0.0",
+    "react-dom": "^18.3.1",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   },
