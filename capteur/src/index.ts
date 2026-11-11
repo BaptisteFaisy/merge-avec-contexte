@@ -5,9 +5,16 @@
  * `runCheck` (module `bitbucket:mergeCheck`) et les trois resolvers des écrans
  * (`resolverPrCard`, `resolverPrPanel`, `resolverWorkspaceSettings`).
  *
- * Les resolvers partagent un seul gestionnaire : `@forge/resolver` aiguille sur
- * la clé de fonction portée par la requête, ce qui évite trois câblages
- * identiques. La logique elle-même est dans `app/resolvers.ts` (pure, testée).
+ * Les trois resolvers partagent un seul gestionnaire, et c'est le comportement
+ * documenté du paquet `@forge/resolver` (vérifié dans `out/index.d.ts` et
+ * `out/index.js` du paquet installé) : `getDefinitions()` renvoie un unique
+ * `DefinitionsHandler` qui lit `call.functionKey` — la clé de fonction portée
+ * par chaque requête `invoke` — et aiguille via `getFunction(functionKey)`
+ * (exception si la clé n'a pas de `define`). L'aiguillage se fait donc sur la
+ * clé de la requête, jamais sur le nom de l'export : le README du paquet
+ * montre d'ailleurs plusieurs `define` pour un seul gestionnaire exporté.
+ * Exporter le même gestionnaire sous les trois clés du manifeste est bien le
+ * câblage attendu. La logique est dans `app/resolvers.ts` (pure, testée).
  */
 import Resolver from '@forge/resolver';
 import { lirePr } from './bitbucket/api';
@@ -54,7 +61,11 @@ resolver.define('resolverWorkspaceSettings', async (requete) => {
   return handleWorkspaceSettings(contexte, payload, deps);
 });
 
-/** Gestionnaire unique : le resolver aiguille sur la clé demandée par l'écran. */
+/**
+ * Gestionnaire unique exporté sous les trois clés du manifeste : Forge invoque
+ * la fonction déclarée par chaque module, et `@forge/resolver` aiguille sur le
+ * `call.functionKey` de la requête vers le bon `define` (voir l'en-tête).
+ */
 const definitions = resolver.getDefinitions();
 
 export const resolverPrCard = definitions;

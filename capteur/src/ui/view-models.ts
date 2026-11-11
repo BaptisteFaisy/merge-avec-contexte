@@ -10,6 +10,7 @@
  */
 import type {
   Evaluation,
+  FallbackCause,
   FallbackPolicy,
   IssueContext,
   Level,
@@ -148,12 +149,18 @@ export interface ReglagesVm {
   liaison: JumelageVm;
   politique: { valeur: FallbackPolicy; libelle: string; aide: string; options: OptionVm<FallbackPolicy>[] };
   envoyerChemins: { actif: boolean; libelle: string; aide: string };
+  /** §17 cas 10 : la sonde `health` du pont a échoué au chargement. */
+  pontInjoignable: boolean;
+  /** Bandeau d'alerte rendu seulement quand `pontInjoignable` est vrai. */
+  bandeauPont?: MarcheASuivreVm;
 }
 
 export interface ReglagesEntree {
   jumelage: JumelageEntree;
   politique: FallbackPolicy;
   envoyerChemins: boolean;
+  /** Résultat de la sonde du pont : vrai si le Cerveau ne répond pas. */
+  pontInjoignable?: boolean;
   locale?: Locale;
 }
 
@@ -190,6 +197,16 @@ const TEXTES: Record<string, { fr: string; en: string }> = {
   'panne.texte': {
     fr: 'Vérifiez le jumelage dans les réglages de l’espace de travail, puis relancez le contrôle.',
     en: 'Check the pairing in the workspace settings, then run the check again.',
+  },
+  'panne.nonJumele.titre': { fr: 'Espace non jumelé', en: 'Workspace not paired' },
+  'panne.nonJumele.texte': {
+    fr: 'Jumelez cet espace de travail à un site Jira dans les réglages, puis relancez le contrôle.',
+    en: 'Pair this workspace with a Jira site in the settings, then run the check again.',
+  },
+  'pont.bandeau.titre': { fr: 'Pont interrompu', en: 'Bridge down' },
+  'pont.bandeau.texte': {
+    fr: 'Le Cerveau Jira ne répond pas : les contrôles appliquent la politique de repli jusqu’au rétablissement du pont.',
+    en: 'The Jira brain is not responding: checks apply the fallback policy until the bridge is back up.',
   },
   'regles.titre': { fr: 'Règles évaluées', en: 'Evaluated rules' },
   'evalue.le': { fr: 'Évalué le {at}', en: 'Evaluated at {at}' },
@@ -274,12 +291,20 @@ export function jumelageVm(entree: JumelageEntree, locale: Locale = 'fr'): Jumel
 }
 
 /** Bouton de dérogation : offert seulement si le contrôle bloque et que le pont tient. */
-export function derogationVm(verdict: VerdictVm, jumele: boolean, locale: Locale = 'fr'): DerogationVm {
+export function derogationVm(
+  verdict: VerdictVm,
+  jumele: boolean,
+  locale: Locale = 'fr',
+  cause?: FallbackCause,
+): DerogationVm {
   const libelle = tx(locale, 'derogation.bouton');
   if (!jumele) return { libelle, disponible: false, motif: tx(locale, 'derogation.nonJumele') };
   if (verdict === 'autorise') return { libelle, disponible: false, motif: tx(locale, 'derogation.autorise') };
   if (verdict === 'nonConcluant') {
-    return { libelle, disponible: false, motif: tx(locale, 'derogation.injoignable') };
+    // Item 102 : un repli pour cause de jumelage absent ou perdu ne se dit pas
+    // « Cerveau injoignable » — les deux situations n'ont pas la même issue.
+    const cle = cause === 'unpaired' ? 'derogation.nonJumele' : 'derogation.injoignable';
+    return { libelle, disponible: false, motif: tx(locale, cle) };
   }
   return { libelle, disponible: true };
 }
@@ -288,8 +313,12 @@ export function derogationVm(verdict: VerdictVm, jumele: boolean, locale: Locale
 export function marcheASuivreVm(evaluation: Evaluation, locale: Locale = 'fr'): MarcheASuivreVm | undefined {
   if (evaluation.verdict !== 'inconclusive') return undefined;
   const cle = evaluation.fallback === 'closed' ? 'verdict.fallback.closed' : 'verdict.fallback.open';
-  const texte = [t(locale, 'verdict.inconclusive'), t(locale, cle), tx(locale, 'panne.texte')].join(' ');
-  return { titre: tx(locale, 'panne.titre'), texte };
+  // Item 102 : « non jumelé » est une cause distincte du pont injoignable.
+  const nonJumele = evaluation.cause === 'unpaired';
+  const titre = tx(locale, nonJumele ? 'panne.nonJumele.titre' : 'panne.titre');
+  const aide = tx(locale, nonJumele ? 'panne.nonJumele.texte' : 'panne.texte');
+  const texte = [t(locale, 'verdict.inconclusive'), t(locale, cle), aide].join(' ');
+  return { titre, texte };
 }
 
 /** Modèle de la carte de PR. */
@@ -303,7 +332,7 @@ export function vmCarte(entree: CarteEntree): CarteVm {
     ticket: ticketVm(entree.evaluation, entree.issues),
     raisons: raisonsVm(entree.evaluation),
     jumelage: jumelageVm(entree.jumelage, locale),
-    derogation: derogationVm(verdict, entree.jumelage.jumele, locale),
+    derogation: derogationVm(verdict, entree.jumelage.jumele, locale, entree.evaluation.cause),
   };
   const marche = marcheASuivreVm(entree.evaluation, locale);
   if (marche) vm.marcheASuivre = marche;
@@ -394,7 +423,7 @@ export function vmReglagesEspace(entree: ReglagesEntree): ReglagesVm {
   const locale = entree.locale ?? 'fr';
   const options = politiqueOptions(locale);
   const choisie = options.find((option) => option.value === entree.politique) ?? options[0];
-  return {
+  const vm: ReglagesVm = {
     codeJumelage: {
       libelle: tx(locale, 'reglages.code.libelle'),
       aide: tx(locale, 'reglages.code.aide'),
@@ -413,5 +442,10 @@ export function vmReglagesEspace(entree: ReglagesEntree): ReglagesVm {
       libelle: tx(locale, 'reglages.chemins.libelle'),
       aide: tx(locale, 'reglages.chemins.aide'),
     },
+    pontInjoignable: entree.pontInjoignable ?? false,
   };
+  if (vm.pontInjoignable) {
+    vm.bandeauPont = { titre: tx(locale, 'pont.bandeau.titre'), texte: tx(locale, 'pont.bandeau.texte') };
+  }
+  return vm;
 }
