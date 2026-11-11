@@ -10,6 +10,13 @@ import { computeSignature, HEADER_NAMES, MAX_SKEW_MS, SIGNATURE_VERSION, signatu
 export interface NonceStore {
   seen(nonce: string): Promise<boolean>;
   remember(nonce: string, expiresAt: string): Promise<void>;
+  /**
+   * Supprime les nonces dont la fenêtre est passée, et rend le nombre de
+   * lignes effacées. **Facultative** : une implémentation qui purge déjà en
+   * interne (mémoire bornée) n'a rien à ajouter, et un appelant qui ne la
+   * connaît pas continue de fonctionner.
+   */
+  purge?(now: string): Promise<number>;
 }
 
 export type VerifyFailure = 'missing-header' | 'bad-version' | 'stale-timestamp' | 'bad-signature' | 'replayed-nonce';
@@ -50,6 +57,16 @@ export function createMemoryNonceStore(clock: () => number = Date.now): NonceSto
     },
     async remember(nonce, expiresAt) {
       vus.set(nonce, Date.parse(expiresAt));
+    },
+    async purge(now) {
+      const limite = Date.parse(now);
+      let effaces = 0;
+      for (const [nonce, expiration] of vus) {
+        if (expiration > limite) continue;
+        vus.delete(nonce);
+        effaces += 1;
+      }
+      return effaces;
     },
     size() {
       purger();

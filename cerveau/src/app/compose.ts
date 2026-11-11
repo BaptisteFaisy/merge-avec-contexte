@@ -5,6 +5,8 @@
  */
 import type { BridgeDeps, EvaluateService } from '../bridge/deps';
 import { gererRequetePont, type BridgeRequest } from '../bridge/handler';
+import { creerLimiteurDebit, RATE_LIMIT_PAR_DEFAUT, type RateLimitConfig } from '../bridge/limite-debit';
+import { creerPurgeurNonces } from '../bridge/purge-nonces';
 import { createJiraReader, type IssueReader } from '../jira/reader';
 import type { RovoDeps } from '../rovo/deps';
 import { runEvaluateMerge } from '../rovo/evaluate-merge';
@@ -50,6 +52,42 @@ export interface OptionsAssemblage {
   clock?: HorlogeIso;
   logger?: LoggerCommun;
   jira?: IssueReader;
+  /** Bornes de la limite de débit du pont (item 10) ; défaut : `RATE_LIMIT_PAR_DEFAUT`. */
+  limiteDebit?: Partial<RateLimitConfig>;
+}
+
+/**
+ * Approbateurs habilités à décider d'une dérogation (item 48).
+ *
+ * La liste éditée depuis l'écran de réglages prime ; à défaut, celle de la
+ * configuration. Vide, le pont ne peut pas vérifier une identité : il la
+ * journalise comme déclarée.
+ */
+function lecteurApprobateurs(reglages: ReglagesStore, config: AppConfig): () => Promise<string[]> {
+  return async () => {
+    try {
+      const lus = await reglages.lire();
+      return lus.approbateurs.length > 0 ? lus.approbateurs : config.approbateurs;
+    } catch {
+      return config.approbateurs;
+    }
+  };
+}
+
+/**
+ * Purge les nonces expirés au démarrage (item 26).
+ *
+ * Un échec est journalisé, jamais propagé : une base injoignable au démarrage
+ * ne doit pas empêcher l'app de répondre — elle répondra une erreur lisible.
+ */
+async function purgerNoncesDemarrage(store: Store, now: string, logger: LoggerCommun): Promise<void> {
+  if (store.nonces.purge === undefined) return;
+  try {
+    const effaces = await store.nonces.purge(now);
+    if (effaces > 0) logger.info('nonces expirés purgés au démarrage', { effaces });
+  } catch (erreur) {
+    logger.warn('purge des nonces impossible au démarrage', { erreur: String(erreur) });
+  }
 }
 
 /** Assemble le Cerveau : dépendances fournies, ou valeurs par défaut. */
@@ -69,10 +107,16 @@ export function assemblerCerveau(options: OptionsAssemblage = {}): Cerveau {
     pairing: createPairingRepository(store, vault, config),
     context: createContextRepository(store, config),
     waivers: createWaiverService(store, clock),
+    // Le journal d'audit des dérogations est un port de stockage : les écrans
+    // le lisent par `store.waiverAudit` (item 50), le pont y écrit ici.
     nonces: store.nonces,
     evaluate,
     clock,
     logger,
+    limite: creerLimiteurDebit({ ...RATE_LIMIT_PAR_DEFAUT, ...options.limiteDebit }, () => Date.parse(clock())),
+    purgeNonces: creerPurgeurNonces(store.nonces),
+    audit: { record: (entree) => store.waiverAudit.record(entree) },
+    approbateurs: lecteurApprobateurs(reglages, config),
     config: {
       bridgeUrl: config.bridgeUrl,
       version: '1.0.0',
@@ -171,6 +215,7 @@ export async function cerveauProduction(): Promise<Cerveau> {
     const bridgeUrl = await urlDuPontEffective();
     const vault = createForgeSecretVault();
     const horloge = horlogeReelle();
+    await purgerNoncesDemarrage(store, horloge(), logger);
     const config = configParDefaut({
       bridgeUrl,
       siteUrl: env.siteUrl ?? configParDefaut().siteUrl,
