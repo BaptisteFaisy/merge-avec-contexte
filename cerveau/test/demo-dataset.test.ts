@@ -18,6 +18,28 @@ describe('jeu de données de démonstration (§20)', () => {
     expect(dataset.incidents.some((i) => i.service === 'checkout-api')).toBe(true);
   });
 
+  it('ajoute un gel court réellement actif, borné aux branches release', () => {
+    const gel = dataset.freezes.find((g) => g.name === 'Fenêtre release');
+    expect(gel).toBeDefined();
+    expect(gel?.branches).toEqual(['release/*']);
+    expect(Date.parse(gel!.startsAt)).toBeLessThan(Date.parse(dataset.now));
+    expect(Date.parse(gel!.endsAt)).toBeGreaterThan(Date.parse(dataset.now));
+  });
+
+  it('fournit un ticket en statut interdit et une dépendance amont non livrée', () => {
+    const pay132 = issueOf(dataset, 'PAY-132');
+    expect(pay132?.status).toBe('Suspendu');
+    const pay133 = issueOf(dataset, 'PAY-133');
+    expect(pay133?.links.some((l) => l.type === 'dépend de' && l.targetKey === 'PAY-134')).toBe(true);
+  });
+
+  it('règle R-09 en observation et R-13 bloquante pour la démo', () => {
+    const r09 = dataset.configs.find((c) => c.rule === 'R-09');
+    const r13 = dataset.configs.find((c) => c.rule === 'R-13');
+    expect(r09?.mode).toBe('observe');
+    expect(r13?.level).toBe('blocking');
+  });
+
   it('relie le dépôt checkout-api à son service', () => {
     expect(serviceOf(dataset, 'checkout-api')).toBe('checkout-api');
     expect(serviceOf(dataset, 'inconnu')).toBeUndefined();

@@ -7,18 +7,25 @@
  * évalue réellement les règles, lit ses données et répond. Il joue le parcours
  * du cahier des charges : PR bloquée avec le message imposé du §9, carte
  * détaillée, dérogation demandée puis accordée, incident ouvert avec voie
- * rapide pour le correctif lié, puis contrôle qu'une requête non signée est
- * refusée.
+ * rapide pour le correctif lié, gel de branche réellement actif (§18 sc. 2),
+ * mode observation (§7.3), R-06/R-07 (blocage par un autre ticket, version
+ * publiée), R-02 (statut interdit) et R-13 (dépendance amont non livrée),
+ * puis contrôle qu'une requête non signée est refusée.
  *
  * Usage :
  *   MAC_BRIDGE_URL=https://… MAC_SHARED_SECRET=… npm run demo
+ *   MAC_BRIDGE_URL=https://… MAC_SHARED_SECRET=… npm run demo -- --reset
+ *
  * Variables facultatives : MAC_WORKSPACE (défaut `ws-demo`), MAC_LOCALE (`fr`).
+ *
+ * `--reset` neutralise les dérogations encore en vigueur sur toutes les PR du
+ * jeu de démonstration, puis s'arrête : le pont signé est la seule voie
+ * d'écriture, aucune route réservée n'est ajoutée.
  *
  * Aucune dépendance : le contrat partagé fournit la signature et les types.
  */
 import { signRequest } from '../shared/src/bridge/sign';
 
-const REPO = 'checkout-api';
 const maintenant = () => new Date().toISOString();
 
 export interface Configuration {
@@ -64,20 +71,68 @@ export async function appeler(config: Configuration, route: string, payload: unk
   return { status: reponse.status, corps, ms: Date.now() - debut };
 }
 
-const pr = (id: number, cle: string, branche: string) => ({
-  workspaceUuid: '',
-  repositoryUuid: REPO,
-  repositorySlug: REPO,
-  pullRequestId: id,
-  trigger: 'on-code-pushed',
-  issueKeys: [cle],
-  sourceBranch: branche,
-  targetBranch: 'main',
-});
+/** Dépôt par défaut des scénarios qui ne visent pas un service en incident. */
+const DEPOT_DEFAUT = 'checkout-api';
 
-/** Payload d'évaluation pour une PR du jeu de démonstration. */
-export function payloadPr(config: Configuration, id: number, cle: string, branche: string, trigger = 'on-code-pushed') {
-  return { ...pr(id, cle, branche), workspaceUuid: config.workspace, trigger };
+/** Une PR du jeu de démonstration : tout ce que les scénarios demandent. */
+export interface PrDemo {
+  id: number;
+  cle: string;
+  source: string;
+  target: string;
+  depot: string;
+  trigger?: string;
+}
+
+/**
+ * PR du jeu de démonstration, par numéro. Les tickets PAY-125, PAY-130,
+ * PAY-131, PAY-132 et PAY-133 sont joués sur `pricing-api` (aucun incident) :
+ * le verdict rendu isole la règle visée au lieu d'ajouter le blocage R-05.
+ */
+export const PRS_DEMO: PrDemo[] = [
+  { id: 42, cle: 'PAY-123', source: 'feature/PAY-123-limite-tentatives', target: 'main', depot: 'checkout-api' },
+  { id: 43, cle: 'PAY-124', source: 'feature/PAY-124-journal-refus', target: 'main', depot: 'checkout-api' },
+  { id: 44, cle: 'PAY-140', source: 'hotfix/PAY-140-incident-52', target: 'main', depot: 'checkout-api', trigger: 'on-merge' },
+  { id: 45, cle: 'PAY-130', source: 'release/PAY-130-affichage-remises', target: 'release/1.4', depot: 'pricing-api' },
+  { id: 46, cle: 'PAY-131', source: 'feature/PAY-131-fournisseur-externe', target: 'main', depot: 'pricing-api' },
+  { id: 47, cle: 'PAY-125', source: 'feature/PAY-125-latence-panier', target: 'main', depot: 'pricing-api' },
+  { id: 48, cle: 'PAY-130', source: 'feature/PAY-130-affichage-remises', target: 'main', depot: 'pricing-api' },
+  { id: 49, cle: 'PAY-132', source: 'feature/PAY-132-paiement-livraison', target: 'main', depot: 'pricing-api' },
+  { id: 50, cle: 'PAY-133', source: 'feature/PAY-133-remises-fidelite', target: 'main', depot: 'pricing-api' },
+];
+
+/** Charge utile d'évaluation pour une PR du jeu de démonstration. */
+export function payloadPr(
+  config: Configuration,
+  id: number,
+  cle: string,
+  branche: string,
+  trigger = 'on-code-pushed',
+  depot = DEPOT_DEFAUT,
+  cible = 'main',
+) {
+  return {
+    workspaceUuid: config.workspace,
+    repositoryUuid: depot,
+    repositorySlug: depot,
+    pullRequestId: id,
+    trigger,
+    issueKeys: [cle],
+    sourceBranch: branche,
+    targetBranch: cible,
+  };
+}
+
+/** Charge utile d'une PR listée dans `PRS_DEMO`. */
+export function payloadDe(config: Configuration, pr: PrDemo, trigger?: string) {
+  return payloadPr(config, pr.id, pr.cle, pr.source, trigger ?? pr.trigger ?? 'on-code-pushed', pr.depot, pr.target);
+}
+
+/** PR du jeu de démonstration par numéro. */
+export function prParId(id: number): PrDemo {
+  const trouve = PRS_DEMO.find((pr) => pr.id === id);
+  if (!trouve) throw new Error(`PR #${id} absente du jeu de démonstration`);
+  return trouve;
 }
 
 const verdictDe = (corps: unknown): string => String((corps as { verdict?: string }).verdict ?? '?');
@@ -102,24 +157,118 @@ export function etape(nom: string, reussie: boolean, detail: string, ms = 0): vo
   console.log(`${reussi(reussie)} ${nom}${duree}${detail ? ` — ${detail}` : ''}`);
 }
 
+/** Vrai si le message contient chacun des mots demandés. */
+function contient(message: string, ...mots: string[]): boolean {
+  return mots.every((mot) => message.includes(mot));
+}
+
+type Verifier = (nom: string, condition: boolean, detail: string, ms?: number) => void;
+
 /**
- * Neutralise les dérogations encore en vigueur sur la PR de démonstration.
+ * Neutralise les dérogations encore en vigueur sur toutes les PR du jeu de
+ * démonstration.
  *
  * Une démonstration se rejoue : sans cette remise à zéro, les dérogations
  * accordées aux passages précédents continueraient de lever les règles, et la
  * PR #42 finirait par passer — ce qui ferait échouer la première étape.
- * La liste vient de la carte de PR, la neutralisation passe par la route
+ * La liste vient de la carte de chaque PR, la neutralisation passe par la route
  * publique des dérogations : aucune route réservée n'est ajoutée pour la démo.
  */
 export async function remettreAZero(config: Configuration): Promise<number> {
-  const carte = await appeler(config, 'card', payloadPr(config, 42, 'PAY-123', 'feature/PAY-123-limite-tentatives'));
-  const waivers = ((carte.corps as { waivers?: Array<{ id?: string }> })?.waivers ?? []);
-  for (const waiver of waivers) {
-    if (waiver.id) {
-      await appeler(config, 'waiver.decide', { waiverId: waiver.id, decision: 'refused', decidedBy: 'demo' });
+  let neutralisees = 0;
+  for (const pr of PRS_DEMO) {
+    const carte = await appeler(config, 'card', payloadDe(config, pr));
+    const waivers = ((carte.corps as { waivers?: Array<{ id?: string }> })?.waivers ?? []);
+    for (const waiver of waivers) {
+      if (waiver.id) {
+        await appeler(config, 'waiver.decide', { waiverId: waiver.id, decision: 'refused', decidedBy: 'demo' });
+        neutralisees += 1;
+      }
     }
   }
-  return waivers.length;
+  return neutralisees;
+}
+
+/** §18 scénario 2 : un gel court, actif à l'instant, bloque la branche release. */
+async function jouerGelActif(config: Configuration, verifier: Verifier): Promise<void> {
+  const rep = await appeler(config, 'evaluate', payloadDe(config, prParId(45)));
+  const message = messageDe(rep.corps);
+  verifier(
+    'PR #45 sur release/1.4 bloquée par le gel actif',
+    verdictDe(rep.corps) === 'blocked' && contient(message, 'Fenêtre release', 'release/1.4', 'jusqu’au'),
+    message.split('\n')[1] ?? '',
+    rep.ms,
+  );
+}
+
+/** §7.3 : une règle bloquante passée en observation n'affiche ni ne bloque plus. */
+async function jouerObservation(config: Configuration, verifier: Verifier): Promise<void> {
+  const pr = prParId(46);
+  const evaluation = await appeler(config, 'evaluate', payloadDe(config, pr));
+  const carte = await appeler(config, 'card', payloadDe(config, pr));
+  const raisons = ((carte.corps as { reasons?: Array<{ rule?: string; observed?: boolean; level?: string }> })?.reasons ?? []);
+  const observee = raisons.find((raison) => raison.rule === 'R-09');
+  const regle = ((carte.corps as { rules?: Array<{ rule: string; mode: string }> })?.rules ?? []).find((entree) => entree.rule === 'R-09');
+  verifier(
+    'Règle bloquante en observation ne bloque plus (PAY-131)',
+    verdictDe(evaluation.corps) === 'allowed' && !messageDe(evaluation.corps).includes('sécurité'),
+    `verdict ${verdictDe(evaluation.corps)}`,
+    evaluation.ms,
+  );
+  verifier(
+    'L’observation est journalisée, pas affichée',
+    observee?.observed === true && regle?.mode === 'observe',
+    `R-09 observée, ${raisons.length} raison(s) exposée(s)`,
+    carte.ms,
+  );
+}
+
+/** R-06 : PAY-125 est bloqué par PAY-126, qui n'est pas livré. */
+async function jouerR06(config: Configuration, verifier: Verifier): Promise<void> {
+  const rep = await appeler(config, 'evaluate', payloadDe(config, prParId(47)));
+  const message = messageDe(rep.corps);
+  verifier(
+    'R-06 bloque PAY-125 (PAY-126 non livré)',
+    verdictDe(rep.corps) === 'blocked' && contient(message, 'PAY-125', 'PAY-126'),
+    message.split('\n')[1] ?? '',
+    rep.ms,
+  );
+}
+
+/** R-07 : PAY-130 vise une version déjà publiée, la fusion resterait sans effet. */
+async function jouerR07(config: Configuration, verifier: Verifier): Promise<void> {
+  const rep = await appeler(config, 'evaluate', payloadDe(config, prParId(48)));
+  const message = messageDe(rep.corps);
+  verifier(
+    'R-07 avertit PAY-130 (version 2.3.0 déjà publiée)',
+    verdictDe(rep.corps) === 'allowed' && contient(message, '2.3.0'),
+    message.split('\n')[0],
+    rep.ms,
+  );
+}
+
+/** R-02 : PAY-132 est au statut « Suspendu », hors statuts autorisés. */
+async function jouerR02(config: Configuration, verifier: Verifier): Promise<void> {
+  const rep = await appeler(config, 'evaluate', payloadDe(config, prParId(49)));
+  const message = messageDe(rep.corps);
+  verifier(
+    'R-02 bloque PAY-132 (statut interdit)',
+    verdictDe(rep.corps) === 'blocked' && contient(message, 'PAY-132', 'Suspendu'),
+    message.split('\n')[1] ?? '',
+    rep.ms,
+  );
+}
+
+/** R-13 : PAY-133 a une dépendance amont PAY-134 qui n'est pas livrée. */
+async function jouerR13(config: Configuration, verifier: Verifier): Promise<void> {
+  const rep = await appeler(config, 'evaluate', payloadDe(config, prParId(50)));
+  const message = messageDe(rep.corps);
+  verifier(
+    'R-13 bloque PAY-133 (dépendance PAY-134 non livrée)',
+    verdictDe(rep.corps) === 'blocked' && contient(message, 'PAY-133', 'PAY-134'),
+    message.split('\n')[1] ?? '',
+    rep.ms,
+  );
 }
 
 /** Démonstration complète ; rend le nombre d'échecs. */
@@ -136,19 +285,19 @@ export async function demonstration(config: Configuration): Promise<number> {
   const sante = await appeler(config, 'health', {});
   verifier('Le pont répond', sante.status === 200, `stockage ${String((sante.corps as { stockage?: string })?.stockage ?? '?')}`, sante.ms);
 
-  const p42 = await appeler(config, 'evaluate', payloadPr(config, 42, 'PAY-123', 'feature/PAY-123-limite-tentatives'));
+  const p42 = await appeler(config, 'evaluate', payloadDe(config, prParId(42)));
   const bloque = verdictDe(p42.corps) === 'blocked';
   verifier('PR #42 bloquée', bloque, `verdict ${verdictDe(p42.corps)}`, p42.ms);
   if (bloque) afficherMessage(messageDe(p42.corps));
 
-  const carte = await appeler(config, 'card', payloadPr(config, 42, 'PAY-123', 'feature/PAY-123-limite-tentatives'));
+  const carte = await appeler(config, 'card', payloadDe(config, prParId(42)));
   const regles = ((carte.corps as { rules?: unknown[] })?.rules ?? []).length;
   verifier('Carte de PR détaillée', carte.status === 200 && regles > 0, `${regles} règle(s) exposée(s)`, carte.ms);
 
   // La règle visée est R-03 (critères d'acceptation) : PAY-123 en a deux non
   // cochés, quel que soit l'état laissé par une démonstration précédente.
   const demande = await appeler(config, 'waiver.request', {
-    prId: 42, repositoryUuid: REPO, rule: 'R-03', hours: 2,
+    prId: 42, repositoryUuid: DEPOT_DEFAUT, rule: 'R-03', hours: 2,
     reason: 'correctif de prix avant l’ouverture', requestedBy: 'lea', issueKey: 'PAY-123',
   });
   const waiverId = String((demande.corps as { id?: string })?.id ?? '');
@@ -157,7 +306,7 @@ export async function demonstration(config: Configuration): Promise<number> {
   const accord = await appeler(config, 'waiver.decide', { waiverId, decision: 'granted', decidedBy: 'tech-lead', hours: 2 });
   verifier('Dérogation accordée', accord.status === 200, 'par tech-lead, 2 h', accord.ms);
 
-  const apres = await appeler(config, 'evaluate', payloadPr(config, 42, 'PAY-123', 'feature/PAY-123-limite-tentatives', 'on-merge'));
+  const apres = await appeler(config, 'evaluate', payloadDe(config, prParId(42), 'on-merge'));
   const sansCritere = !messageDe(apres.corps).includes('critère');
   verifier(
     'La dérogation lève la règle visée',
@@ -167,7 +316,7 @@ export async function demonstration(config: Configuration): Promise<number> {
   );
 
   const remise = await appeler(config, 'waiver.decide', { waiverId, decision: 'refused', decidedBy: 'demo' });
-  const apresRemise = await appeler(config, 'evaluate', payloadPr(config, 42, 'PAY-123', 'feature/PAY-123-limite-tentatives'));
+  const apresRemise = await appeler(config, 'evaluate', payloadDe(config, prParId(42)));
   verifier(
     'Dérogation retirée, la règle rebloque',
     remise.status === 200 && verdictDe(apresRemise.corps) === 'blocked',
@@ -175,22 +324,40 @@ export async function demonstration(config: Configuration): Promise<number> {
     apresRemise.ms,
   );
 
-  const p43 = await appeler(config, 'evaluate', payloadPr(config, 43, 'PAY-124', 'feature/PAY-124-journal-refus'));
+  const p43 = await appeler(config, 'evaluate', payloadDe(config, prParId(43)));
   verifier('PR #43 bloquée par l’incident', verdictDe(p43.corps) === 'blocked', messageDe(p43.corps).split('\n')[1] ?? '', p43.ms);
 
-  const p44 = await appeler(config, 'evaluate', payloadPr(config, 44, 'PAY-140', 'hotfix/PAY-140-incident-52', 'on-merge'));
+  const p44 = await appeler(config, 'evaluate', payloadDe(config, prParId(44)));
   verifier('Correctif lié à l’incident autorisé', verdictDe(p44.corps) === 'allowed', messageDe(p44.corps).split('\n')[0], p44.ms);
 
-  const nue = await appeler(config, 'evaluate', payloadPr(config, 42, 'PAY-123', 'x'), false);
+  await jouerGelActif(config, verifier);
+  await jouerObservation(config, verifier);
+  await jouerR06(config, verifier);
+  await jouerR07(config, verifier);
+  await jouerR02(config, verifier);
+  await jouerR13(config, verifier);
+
+  const nue = await appeler(config, 'evaluate', payloadDe(config, prParId(42)), false);
   verifier('Requête non signée refusée', nue.status === 401, `HTTP ${nue.status}`, nue.ms);
 
   return echecs;
 }
 
-/** Point d'entrée : configuration, démonstration, code de sortie. */
+/** Remise à zéro seule : neutralise puis s'arrête, sans jouer les scénarios. */
+async function reinitialiser(config: Configuration): Promise<void> {
+  console.log('Remise à zéro du jeu de démonstration (via le pont signé)…');
+  const neutralisees = await remettreAZero(config);
+  console.log(`${neutralisees} dérogation(s) neutralisée(s).`);
+}
+
+/** Point d'entrée : configuration, remise à zéro ou démonstration, code de sortie. */
 async function main(): Promise<void> {
   const config = lireConfiguration(process.env);
   if (!config) process.exit(2);
+  if (process.argv.includes('--reset')) {
+    await reinitialiser(config);
+    process.exit(0);
+  }
   console.log(`\nDémonstration « Merge avec contexte » — ${maintenant()}\n`);
   const echecs = await demonstration(config);
   console.log(`\n${echecs === 0 ? 'Démonstration réussie' : `${echecs} étape(s) en échec`}\n`);
@@ -204,8 +371,6 @@ async function main(): Promise<void> {
  * script : on compare donc le module à lui-même par son URL.
  */
 export function estExecute(): boolean {
-  // Sous vitest le module est importé, pas exécuté : sans cette garde, les
-  // tests déclencheraient de vraies requêtes HTTP vers le pont.
   if (process.env.VITEST) return false;
   return process.argv[1]?.endsWith('demo-e2e.ts') === true
     || import.meta.url.endsWith('/scripts/demo-e2e.ts');

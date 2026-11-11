@@ -1,8 +1,9 @@
 # Démonstration de bout en bout, gratuite
 
 Objectif : montrer le produit en fonctionnement réel — règles évaluées, message
-imposé, dérogation, incident — **sans navigateur, sans espace de travail
-Bitbucket et sans rien payer**. Une commande, dix vérifications.
+imposé, dérogation, incident, gel de branche actif, mode observation, lien
+bloquant et dépendance amont — **sans navigateur, sans espace de travail
+Bitbucket et sans rien payer**. Une commande, dix-sept vérifications.
 
 ## Ce qu'il faut (et ce qu'il ne faut pas)
 
@@ -27,9 +28,15 @@ forge deploy -e production
 
 Au premier appel, le Cerveau applique son schéma, enregistre le jumelage (le
 secret va dans le coffre Forge, la base ne garde qu'une référence) et charge le
-jeu de démonstration : six tickets `PAY-*`, deux gels, l'incident `INC-52`,
-la correspondance dépôt → service et les réglages des règles. Rien de tout cela
-ne dépend du contenu du site.
+jeu de démonstration : huit tickets `PAY-*`, trois gels (dont un **gel court
+réellement actif**, borné aux branches `release/*`), l'incident `INC-52`, la
+correspondance dépôt → service et les réglages des règles (dont R-09 en
+observation et R-13 bloquante). Rien de tout cela ne dépend du contenu du site.
+
+> Si le site a déjà été amorcé avant cette version, rechargez le jeu depuis
+> l'écran de réglages (« Charger le jeu de démonstration ») : le chargement est
+> idempotent et installe les nouvelles entrées (gel actif, R-09, R-13, tickets
+> PAY-132 et PAY-133).
 
 ## La démonstration
 
@@ -39,27 +46,51 @@ MAC_BRIDGE_URL=<adresse du pont> \
 MAC_SHARED_SECRET=<secret> npm run demo
 ```
 
-Sortie réelle du 2026-11-11 (app déployée en production) :
+**Sortie attendue** (non rejouée ici : le rédacteur n'a pas eu accès au pont
+déployé ; le script reste rejouable à l'identique et sort `0` si conforme) :
 
 ```
-OK   Dérogations précédentes neutralisées — 6 dérogation(s)
-OK   Le pont répond (474 ms) — stockage ok
-OK   PR #42 bloquée (666 ms) — verdict blocked
+Démonstration « Merge avec contexte » — <horodatage>
+
+OK   Le pont répond (<durée>) — stockage ok
+OK   PR #42 bloquée — verdict blocked
         │ Bloqué, 2 raisons.
         │ 1) PAY-123 : 2 critère(s) d’acceptation non coché(s).
         │ 2) Incident INC-52 ouvert sur checkout-api.
         │ Détail et dérogation : carte « Merge avec contexte » à droite.
-OK   Carte de PR détaillée (496 ms) — 13 règle(s) exposée(s)
-OK   Dérogation demandée (278 ms) — dérogation w-42-R-03-…
-OK   Dérogation accordée (372 ms) — par tech-lead, 2 h
-OK   La dérogation lève la règle visée (478 ms) — 1 blocage(s) restant(s)
-OK   Dérogation retirée, la règle rebloque (440 ms) — verdict blocked
-OK   PR #43 bloquée par l’incident (618 ms) — 1) Incident INC-52 ouvert sur checkout-api.
-OK   Correctif lié à l’incident autorisé (516 ms) — Autorisé, 1 avertissement :
-     Correctif d’incident INC-52 : la fusion reste autorisée.
-OK   Requête non signée refusée (484 ms) — HTTP 401
+OK   Carte de PR détaillée — 13 règle(s) exposée(s)
+OK   Dérogation demandée — dérogation w-42-R-03-…
+OK   Dérogation accordée — par tech-lead, 2 h
+OK   La dérogation lève la règle visée — 1 blocage(s) restant(s)
+OK   Dérogation retirée, la règle rebloque — verdict blocked
+OK   PR #43 bloquée par l’incident — 1) Incident INC-52 ouvert sur checkout-api.
+OK   Correctif lié à l’incident autorisé — Correctif d’incident INC-52…
+OK   PR #45 sur release/1.4 bloquée par le gel actif — 1) Gel « Fenêtre release » sur release/1.4 jusqu’au <fin>.
+OK   Règle bloquante en observation ne bloque plus (PAY-131) — verdict allowed
+OK   L’observation est journalisée, pas affichée — R-09 observée, 1 raison(s) exposée(s)
+OK   R-06 bloque PAY-125 (PAY-126 non livré) — 1) PAY-125 est bloqué par PAY-126 (En cours).
+OK   R-07 avertit PAY-130 (version 2.3.0 déjà publiée) — Autorisé, 1 avertissement.
+OK   R-02 bloque PAY-132 (statut interdit) — 1) PAY-132 est au statut « Suspendu », attendu : …
+OK   R-13 bloque PAY-133 (dépendance PAY-134 non livrée) — 1) Dépendance amont non livrée : PAY-134.
+OK   Requête non signée refusée — HTTP 401
 Démonstration réussie
 ```
+
+## Remise à zéro
+
+La démo laisse de l'état accumulé (dérogations demandées ou accordées au fil
+des passages). Pour repartir d'un jeu propre :
+
+```bash
+npm run demo -- --reset
+```
+
+Cette option neutralise (statut `refused`) toutes les dérogations encore en
+vigueur sur les neuf PR du jeu, en passant **exclusivement par le pont signé**
+(`card` puis `waiver.decide`) : aucune route réservée n'est ajoutée, aucun
+affaiblissement de la sécurité. Le *journal* des évaluations, lui, est un
+registre d'audit annexe (§14, §10) volontairement non effacé : le « ce qui
+aurait été bloqué » de l'observation ne prend son sens que sur l'historique.
 
 ## Ce que chaque étape prouve
 
@@ -73,11 +104,14 @@ Démonstration réussie
 | Dérogation retirée, la règle rebloque | §17 : une dérogation expirée ou retirée ne protège plus |
 | PR #43 bloquée par l'incident | §7.2 : rien ne part sur un service en incident |
 | Correctif lié à l'incident autorisé | MC-12 : voie rapide des correctifs, avec trace |
+| PR #45 bloquée par le gel actif | §18 sc. 2 : gel réellement actif, nom et fin affichés |
+| Règle en observation ne bloque plus | §7.3 : une règle bloquante en observation n'arrête rien |
+| L'observation est journalisée, pas affichée | §7.3 : la raison reste visible sur la carte, absente du message |
+| R-06 (PAY-125 bloqué par PAY-126) | §8 : un ticket non livré bloque la fusion |
+| R-07 (version 2.3.0 de PAY-130 publiée) | §8 : une fusion sans effet est signalée |
+| R-02 (PAY-132 au statut interdit) | §8 : un statut hors liste bloque la fusion |
+| R-13 (PAY-133 dépend de PAY-134) | §8 : une dépendance amont non livrée bloque la fusion |
 | Requête non signée refusée | §13.3 : un web trigger n'a aucune authentification par défaut |
-
-Latence mesurée sur l'app déployée, sur trente appels : médiane **0,5 s**,
-P95 **0,8 s**, et un maximum de 2,6 s (appel à froid, juste après un
-déploiement). L'objectif MC-11 de 5 s est tenu avec de la marge.
 
 ## Honnêteté sur les limites
 
@@ -91,9 +125,14 @@ déploiement). L'objectif MC-11 de 5 s est tenu avec de la marge.
   documentation Atlassian : l'application du caractère obligatoire, au niveau
   espace de travail, projet ou dépôt, est réservée aux offres payantes). Le
   message et le verdict sont identiques ; seule la contrainte de fusion change.
+- **Le « ce qui aurait été bloqué » agrégé** (rapport d'observation) est exposé
+  par la console de test (écran 7, §10), pas par une route du pont ; la démo le
+  montre autrement, via la carte (raison journalisée en observation) et
+  l'absence de blocage.
 - **Le jeu de démonstration est daté relativement à l'instant du chargement** :
-  le gel est dans trois jours, l'incident ouvert depuis huit heures, la
-  dérogation valable quatre-vingt-dix minutes. La démonstration reste donc
-  vraie en décembre, quand les juges l'essaieront.
-- Ces trois points sont écrits tels quels dans `docs/ETAT.md` (section « Ce qui
+  le gel long est dans trois jours, le **gel court est centré sur l'instant**,
+  l'incident ouvert depuis huit heures, la dérogation valable
+  quatre-vingt-dix minutes. La démonstration reste donc vraie en décembre,
+  quand les juges l'essaieront.
+- Ces points sont écrits tels quels dans `docs/ETAT.md` (section « Ce qui
   bloque encore ») : rien n'est masqué.
