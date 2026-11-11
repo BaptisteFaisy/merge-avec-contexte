@@ -5,6 +5,7 @@
  * chemins de fichiers. Le resolver `resolverWorkspaceSettings` renvoie un
  * `ReglagesVm` déjà calculé et enregistre les changements (`action: 'save'`).
  */
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { invoke } from '@forge/bridge';
 import {

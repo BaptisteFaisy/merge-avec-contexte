@@ -6,6 +6,7 @@
  * (ouvert / fermé). Les actions remontent au parent : `onGenererCode` et
  * `onRepli(politique)`.
  */
+import React from 'react';
 import { Box, Button, Heading, Link, Select, Text } from '@forge/react';
 import { texte } from './commun';
 

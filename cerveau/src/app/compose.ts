@@ -125,6 +125,33 @@ export function resolversUi(cerveau: Cerveau) {
 }
 
 let instance: Cerveau | undefined;
+let migrationsTentees: Promise<void> | undefined;
+
+/**
+ * Applique le schéma au premier appel, une seule fois par conteneur.
+ *
+ * Le déclencheur horaire reste le chemin nominal, mais sans ce rattrapage une
+ * installation neuve répond `ForgeSQLError` sur toutes les routes jusqu'au
+ * premier tick — constaté en vrai sur le site de démonstration. Les DDL sont
+ * idempotents (`CREATE TABLE IF NOT EXISTS`) et l'échec est journalisé, jamais
+ * propagé : une base absente doit produire une erreur lisible, pas un crash.
+ */
+function assurerMigrations(logger: LoggerCommun): Promise<void> {
+  migrationsTentees ??= (async () => {
+    try {
+      const { runMigrations } = await import('../storage/migrate');
+      const rapport = await runMigrations();
+      logger.info('migrations au démarrage', {
+        mode: rapport.mode,
+        appliquees: rapport.applied.length,
+        echec: rapport.failure ?? '',
+      });
+    } catch (erreur) {
+      logger.warn('migrations impossibles au démarrage', { erreur: String(erreur) });
+    }
+  })();
+  return migrationsTentees;
+}
 
 /** Assemblage de production, créé une seule fois par conteneur Forge. */
 export async function cerveauProduction(): Promise<Cerveau> {
@@ -135,7 +162,20 @@ export async function cerveauProduction(): Promise<Cerveau> {
       import('./secrets'),
       import('./reglages'),
     ]);
-    instance = assemblerCerveau({ store, vault: createForgeSecretVault(), reglages: createForgeReglagesStore(), logger });
+    await assurerMigrations(logger);
+    const { urlDuPontEffective } = await import('./pont-url');
+    const bridgeUrl = await urlDuPontEffective();
+    instance = assemblerCerveau({
+      store,
+      vault: createForgeSecretVault(),
+      reglages: createForgeReglagesStore(),
+      logger,
+      config: {
+        bridgeUrl,
+        siteUrl: process.env.MAC_SITE_URL ?? configParDefaut().siteUrl,
+      },
+    });
+    if (bridgeUrl === '') logger.warn('adresse du pont indisponible : le jumelage ne pourra pas aboutir');
   }
   return instance;
 }

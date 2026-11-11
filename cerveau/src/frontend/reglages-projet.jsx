@@ -8,6 +8,7 @@
  * `invoke('resolverReglages', …)` et remonte les actions. En cas d'échec du
  * resolver, un `SectionMessage` d'avertissement s'affiche — jamais d'écran blanc.
  */
+import React from 'react';
 import { useEffect, useState } from '@forge/react';
 import { Badge, Box, Button, Heading, Stack, Text, TextField } from '@forge/react';
 import { EtatEcran, langueDe, texte, useResolver } from './composants/commun';

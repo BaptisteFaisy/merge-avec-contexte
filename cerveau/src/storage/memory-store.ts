@@ -319,12 +319,12 @@ function creerIncidentStore(map: Map<string, Incident>): IncidentRepository {
 }
 
 /** Mémoire des nonces : même contrat que `createMemoryNonceStore` du contrat partagé. */
-function creerNonceStore(map: Map<string, number>): NonceStore {
+function creerNonceStore(map: Map<string, number>, clock: () => number = Date.now): NonceStore {
   return {
     async seen(nonce) {
       const expiration = map.get(nonce);
       if (expiration === undefined) return false;
-      return expiration > Date.now();
+      return expiration > clock();
     },
     async remember(nonce, expiresAt) {
       map.set(nonce, Date.parse(expiresAt));
@@ -332,8 +332,15 @@ function creerNonceStore(map: Map<string, number>): NonceStore {
   };
 }
 
+/** Options du store mémoire : l'horloge sert aux nonces (anti-rejeu). */
+export interface MemoryStoreOptions {
+  /** Horloge injectée en millisecondes ; défaut : l'heure réelle. */
+  clock?: () => number;
+}
+
 /** Tout le stockage en mémoire, assemblé. */
-export function createMemoryStore(): Store {
+export function createMemoryStore(options: MemoryStoreOptions = {}): Store {
+  const clock = options.clock ?? Date.now;
   return {
     pairing: creerPairingStore({ repli: 'open' }),
     ruleConfig: creerRuleConfigStore(new Map<string, RuleConfig>()),
@@ -343,6 +350,6 @@ export function createMemoryStore(): Store {
     repoService: creerRepoServiceStore(new Map<string, RepoServiceMapping>()),
     issueCache: creerIssueCacheStore(new Map<string, IssueCacheEntry>()),
     incidents: creerIncidentStore(new Map<string, Incident>()),
-    nonces: creerNonceStore(new Map<string, number>()),
+    nonces: creerNonceStore(new Map<string, number>(), clock),
   };
 }

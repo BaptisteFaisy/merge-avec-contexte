@@ -5,6 +5,7 @@
  * évaluées (niveau, mode, résultat) et l'historique de l'évaluation.
  * Le resolver `resolverPrPanel` renvoie un `PanneauVm` déjà calculé.
  */
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { invoke } from '@forge/bridge';
 import { Badge, Box, Button, Heading, Link, SectionMessage, Spinner, Stack, Text } from '@forge/react';

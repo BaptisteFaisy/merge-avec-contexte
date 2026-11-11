@@ -44,11 +44,23 @@ function exiger(valeur: unknown, garde: (v: unknown) => boolean, message: string
 }
 
 /** Route `health` : le pont est-il debout, et quelle version ? */
+/** La base répond-elle ? Un `health` qui ne dit rien ne distingue pas une
+ * app saine d'une app sans schéma (§16, disponibilité). */
+async function etatStockage(deps: BridgeDeps): Promise<'ok' | 'indisponible'> {
+  try {
+    await deps.pairing.pairings();
+    return 'ok';
+  } catch {
+    return 'indisponible';
+  }
+}
+
 export const routeHealth: RouteHandler = async (_payload, deps) => {
   return reponseJson(200, {
     status: 'ok',
     version: deps.config.version,
     date: deps.clock(),
+    stockage: await etatStockage(deps),
   });
 };
 

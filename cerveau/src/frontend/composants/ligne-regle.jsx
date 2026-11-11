@@ -6,6 +6,7 @@
  * portée et paramètres. Composant d'affichage : chaque changement remonte
  * par `onChangement(code, champ, valeur)` ; rien n'est écrit ici.
  */
+import React from 'react';
 import { Box, Select, Text } from '@forge/react';
 import { texte } from './commun';
 

@@ -89,7 +89,7 @@ function deps(evaluate: BridgeDeps['evaluate'] = async () => evaluationFactice):
       decider: async () => { throw new Error('inutilisé'); },
       lister: async () => [],
     },
-    nonces: createMemoryNonceStore(),
+    nonces: createMemoryNonceStore(() => Date.parse(MAINTENANT)),
     evaluate,
     clock: () => MAINTENANT,
     logger,

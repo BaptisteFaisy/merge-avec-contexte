@@ -7,6 +7,7 @@
  * (évaluations, statistiques, rapport d'observation). Erreur → `SectionMessage`
  * d'avertissement, jamais d'écran blanc.
  */
+import React from 'react';
 import { useEffect, useState } from '@forge/react';
 import { Box, Stack } from '@forge/react';
 import { EtatEcran, langueDe, useResolver } from './composants/commun';

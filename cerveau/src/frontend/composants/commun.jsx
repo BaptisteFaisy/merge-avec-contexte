@@ -11,6 +11,7 @@
  * `{ locale, ... }` où les vues sont celles produites par `vmReglages`,
  * `vmEncart`, `vmConsole` et `vmJournal`.
  */
+import React from 'react';
 import { useCallback, useState } from '@forge/react';
 import { Box, SectionMessage, Spinner, Text } from '@forge/react';
 import { invoke } from '@forge/bridge';

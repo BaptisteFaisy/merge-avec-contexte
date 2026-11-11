@@ -5,6 +5,7 @@
  * (`capteur/src/ui/view-models.ts`) ; cet écran ne décide de rien, il affiche.
  * Trois états, jamais d'écran blanc : chargement, erreur, contenu.
  */
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { invoke } from '@forge/bridge';
 import { Badge, Box, Button, Heading, Link, SectionMessage, Spinner, Stack, Text } from '@forge/react';

@@ -5,6 +5,7 @@
  * verdict, durée moyenne, évaluations horodatées et rapport d'observation
  * « ce qui aurait été bloqué » (MC-13).
  */
+import React from 'react';
 import { Box, Heading, Stack, Text } from '@forge/react';
 import { texte } from './commun';
 
