@@ -461,6 +461,11 @@ jobs:
           GH_ECRITURE: ${{ secrets.AUTOMERGE_PAT }}
           FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
           FIREWORKS_MODEL: ${{ vars.FIREWORKS_MODEL }}
+          # Le fournisseur de l'agent de conflit est configurable : la clé
+          # `FIREWORKS_API_KEY` peut viser n'importe quelle API compatible
+          # OpenAI (constat du 2026-11-11 : compte Fireworks suspendu, donc
+          # repli sur un autre fournisseur sans redéploiement du workflow).
+          FIREWORKS_BASE_URL: ${{ vars.FIREWORKS_BASE_URL }}
           FIREWORKS_AGENT_RESOLVE: ${{ vars.FIREWORKS_AGENT_RESOLVE }}
           FIREWORKS_AGENT_SCOPE: ${{ vars.FIREWORKS_AGENT_SCOPE }}
           # v22 — agent de réparation des tests (zeroclaw `fw`) : `0` coupe.
