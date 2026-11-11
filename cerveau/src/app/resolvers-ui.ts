@@ -34,6 +34,17 @@ export interface UiDeps {
   logger: LoggerCommun;
 }
 
+/**
+ * Projet concerné par l'appel.
+ *
+ * Les écrans Jira sont ouverts dans un projet : c'est son identifiant qui
+ * range les réglages, pas la valeur par défaut de la configuration. Sans cela,
+ * tous les projets d'un site partageraient le même jeu de règles.
+ */
+export function projetEffectif(deps: UiDeps, projet?: string): string {
+  return projet && projet.trim() !== '' ? projet.trim() : deps.config.projectId;
+}
+
 /** Champ texte d'une charge utile, ou `undefined`. */
 function texte(payload: Record<string, unknown> | undefined, champ: string): string | undefined {
   const valeur = payload?.[champ];
@@ -47,7 +58,7 @@ async function approbateurs(deps: UiDeps): Promise<string[]> {
 }
 
 /** Applique une action de la page de réglages ; `charger` ne change rien. */
-async function appliquerReglages(method: string, payload: Record<string, unknown> | undefined, deps: UiDeps, now: string): Promise<void> {
+async function appliquerReglages(method: string, payload: Record<string, unknown> | undefined, deps: UiDeps, now: string, projet: string): Promise<void> {
   if (method === 'genererCode') {
     const offre = createPairingOffer({ siteUrl: deps.config.siteUrl, createdBy: deps.config.adminAccountId, now });
     await deps.store.pairing.saveOffer(offre);
@@ -59,7 +70,7 @@ async function appliquerReglages(method: string, payload: Record<string, unknown
     return;
   }
   if (method === 'chargerDemo') await chargerDemo(payload, deps, now);
-  if (method === 'enregistrerRegles') await enregistrerRegles(payload, deps, now);
+  if (method === 'enregistrerRegles') await enregistrerRegles(payload, deps, now, projet);
   if (method === 'ajouterCorrespondance') await ajouterCorrespondance(payload, deps, now);
   if (method === 'ajouterApprobateur') await ajouterApprobateur(texte(payload, 'approbateur'), deps);
 }
@@ -75,7 +86,7 @@ async function chargerDemo(payload: Record<string, unknown> | undefined, deps: U
 }
 
 /** Écrit les réglages de règles envoyés par l'écran. */
-async function enregistrerRegles(payload: Record<string, unknown> | undefined, deps: UiDeps, now: string): Promise<void> {
+async function enregistrerRegles(payload: Record<string, unknown> | undefined, deps: UiDeps, now: string, projet: string): Promise<void> {
   const regles = payload?.regles;
   if (!regles || typeof regles !== 'object') return;
   for (const [code, brut] of Object.entries(regles as Record<string, Record<string, unknown>>)) {
@@ -87,7 +98,7 @@ async function enregistrerRegles(payload: Record<string, unknown> | undefined, d
       scope: (brut.portee as RuleConfig['scope']) ?? {},
       params: (brut.params as Record<string, unknown>) ?? {},
     };
-    await deps.store.ruleConfig.upsert(deps.config.projectId, config, now);
+    await deps.store.ruleConfig.upsert(projet, config, now);
   }
 }
 
@@ -131,13 +142,14 @@ async function etatJumelage(deps: UiDeps, now: string) {
 }
 
 /** `resolverReglages` : lecture et actions de la page de réglages du projet. */
-export async function handleResolverReglages(payload: Record<string, unknown> | undefined, deps: UiDeps) {
+export async function handleResolverReglages(payload: Record<string, unknown> | undefined, deps: UiDeps, projetCtx?: string) {
   const now = deps.clock();
+  const projet = projetEffectif(deps, projetCtx);
   const method = texte(payload, 'method') ?? 'charger';
-  await appliquerReglages(method, payload, deps, now);
+  await appliquerReglages(method, payload, deps, now, projet);
   const jumelage = await deps.store.pairing.current();
   const [configs, correspondances, liste] = await Promise.all([
-    reglesEffectives(deps.store, deps.config.projectId),
+    reglesEffectives(deps.store, projet),
     jumelage ? deps.store.repoService.listByWorkspace(jumelage.workspaceUuid) : Promise.resolve([]),
     approbateurs(deps),
   ]);
@@ -177,7 +189,7 @@ async function demanderDerogationEncart(payload: Record<string, unknown> | undef
 }
 
 /** `resolverEncart` : état du ticket vis-à-vis des règles (§12, écran 5). */
-export async function handleResolverEncart(payload: Record<string, unknown> | undefined, issueKey: string | undefined, deps: UiDeps) {
+export async function handleResolverEncart(payload: Record<string, unknown> | undefined, issueKey: string | undefined, deps: UiDeps, projetCtx?: string) {
   const now = deps.clock();
   const cle = (texte(payload, 'issueKey') ?? issueKey ?? '').toUpperCase();
   if (texte(payload, 'method') === 'demanderDerogation') {
@@ -186,7 +198,7 @@ export async function handleResolverEncart(payload: Record<string, unknown> | un
   const [derniere, waivers, configs] = await Promise.all([
     cle ? deps.store.evaluations.latestByIssue(cle) : Promise.resolve(undefined),
     cle ? deps.store.waivers.listByIssue(cle) : Promise.resolve([]),
-    reglesEffectives(deps.store, deps.config.projectId),
+    reglesEffectives(deps.store, projetEffectif(deps, projetCtx)),
   ]);
   const prs = derniere
     ? [{ prId: derniere.pullRequestId, depot: derniere.repositoryUuid, evaluation: derniere as Evaluation }]
@@ -195,7 +207,7 @@ export async function handleResolverEncart(payload: Record<string, unknown> | un
 }
 
 /** Évaluation à blanc demandée par la console de test (§12, écran 6). */
-async function simuler(payload: Record<string, unknown> | undefined, deps: UiDeps, now: string): Promise<Evaluation | undefined> {
+async function simuler(payload: Record<string, unknown> | undefined, deps: UiDeps, now: string, projet: string): Promise<Evaluation | undefined> {
   const ticket = (texte(payload, 'ticket') ?? '').toUpperCase();
   if (!ticket) return undefined;
   const depot = texte(payload, 'depot') ?? '';
@@ -204,7 +216,7 @@ async function simuler(payload: Record<string, unknown> | undefined, deps: UiDep
   const [freezes, waivers, configs, issues, politique] = await Promise.all([
     deps.store.freezes.list(),
     deps.store.waivers.listByIssue(ticket),
-    reglesEffectives(deps.store, deps.config.projectId),
+    reglesEffectives(deps.store, projet),
     chargerTickets([ticket], deps.depsEval),
     deps.store.pairing.fallbackPolicy(),
   ]);
@@ -260,10 +272,10 @@ async function journal(deps: UiDeps, now: string) {
 }
 
 /** `resolverConsole` : console de test et journal (§12, écrans 6 et 7). */
-export async function handleResolverConsole(payload: Record<string, unknown> | undefined, deps: UiDeps) {
+export async function handleResolverConsole(payload: Record<string, unknown> | undefined, deps: UiDeps, projetCtx?: string) {
   const now = deps.clock();
   const method = texte(payload, 'method') ?? 'charger';
-  const evaluation = method === 'simuler' ? await simuler(payload, deps, now) : undefined;
+  const evaluation = method === 'simuler' ? await simuler(payload, deps, now, projetEffectif(deps, projetCtx)) : undefined;
   const [vueJournal, depots] = await Promise.all([journal(deps, now), listeDepots(deps)]);
   const vue = vmConsole({
     locale: deps.config.locale,

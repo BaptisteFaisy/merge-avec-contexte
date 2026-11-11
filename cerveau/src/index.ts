@@ -60,6 +60,11 @@ export async function gererPont(request: WebTriggerRequest): Promise<WebTriggerR
   return { statusCode: reponse.statusCode, headers, body: reponse.body };
 }
 
+/** Projet porté par le contexte d'extension Jira (page ou encart de projet). */
+export function projetDuContexte(contexte: JiraExtensionContext | undefined): string | undefined {
+  return contexte?.project?.key ?? contexte?.extension?.project?.key ?? contexte?.project?.id ?? contexte?.extension?.project?.id;
+}
+
 /** Clé du ticket portée par le contexte d'extension Jira. */
 export function cleTicketDuContexte(contexte: JiraExtensionContext | undefined): string | undefined {
   return contexte?.issue?.key ?? contexte?.extension?.issue?.key;
@@ -70,20 +75,22 @@ const resolver = new Resolver();
 resolver.define('resolverReglages', async (requete) => {
   const cerveau = await cerveauProduction();
   const payload = (requete.payload ?? {}) as Record<string, unknown>;
-  return resolversUi(cerveau).reglages(payload);
+  const projet = projetDuContexte(requete.context as JiraExtensionContext | undefined);
+  return resolversUi(cerveau).reglages(payload, projet);
 });
 
 resolver.define('resolverEncart', async (requete) => {
   const cerveau = await cerveauProduction();
   const payload = (requete.payload ?? {}) as Record<string, unknown>;
   const contexte = requete.context as JiraExtensionContext | undefined;
-  return resolversUi(cerveau).encart(payload, cleTicketDuContexte(contexte));
+  return resolversUi(cerveau).encart(payload, cleTicketDuContexte(contexte), projetDuContexte(contexte));
 });
 
 resolver.define('resolverConsole', async (requete) => {
   const cerveau = await cerveauProduction();
   const payload = (requete.payload ?? {}) as Record<string, unknown>;
-  return resolversUi(cerveau).console(payload);
+  const projet = projetDuContexte(requete.context as JiraExtensionContext | undefined);
+  return resolversUi(cerveau).console(payload, projet);
 });
 
 /** Gestionnaire unique : le resolver aiguille sur la clé demandée par l'écran. */
