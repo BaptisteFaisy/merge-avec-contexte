@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEvaluation, compareReasons, visibleReasons } from '../src/message/format';
+import { formatEvaluation, compareReasons, visibleReasons, MESSAGE_MAX_CHARS } from '../src/message/format';
 import { toMergeCheckResponse, isMergeAllowed } from '../src/check/response';
 import { fallbackEvaluation } from '../src/policy/fallback';
 import type { Evaluation, Reason } from '../src/types';
@@ -114,5 +114,34 @@ describe('repli et réponse Bitbucket', () => {
     const b: Reason = { rule: 'R-02', level: 'warning', text: 'b' };
     const c: Reason = { rule: 'R-04', level: 'blocking', text: 'c' };
     expect([a, b, c].sort(compareReasons).map((r) => r.rule)).toEqual(['R-04', 'R-02', 'R-07']);
+  });
+});
+
+describe('formatEvaluation — borne du message Bitbucket (§15 V3)', () => {
+  /** Dix raisons bloquantes, chacune assez longue pour déborder la borne. */
+  function dixRaisons(): Reason[] {
+    return Array.from({ length: 10 }, (_, index) => ({
+      rule: `R-${String(index + 1).padStart(2, '0')}` as Reason['rule'],
+      level: 'blocking' as const,
+      text: `Raison ${index + 1} : ${'texte long, ajouté pour déborder la borne du message. '.repeat(2)}`,
+    }));
+  }
+
+  it('ne dépasse jamais la borne exportée, même avec dix raisons', () => {
+    const message = formatEvaluation(evaluation('blocked', dixRaisons()));
+    expect(MESSAGE_MAX_CHARS).toBeGreaterThan(0);
+    expect(message.length).toBeLessThanOrEqual(MESSAGE_MAX_CHARS);
+    expect(message.split('\n')[0]).toBe('Bloqué, 10 raisons.');
+    expect(message).toContain(carte);
+  });
+
+  it('réduit le nombre de raisons listées et renvoie vers la carte', () => {
+    const message = formatEvaluation(evaluation('blocked', dixRaisons()), { maxChars: 300 });
+    expect(message.length).toBeLessThanOrEqual(300);
+    const listees = message.split('\n').filter((ligne) => /^\d+\)/.test(ligne));
+    expect(listees.length).toBeLessThan(10);
+    expect(listees.length).toBeGreaterThan(0);
+    expect(message).toContain(`…et ${10 - listees.length} autre(s) raison(s) : voir la carte.`);
+    expect(message).toContain(carte);
   });
 });

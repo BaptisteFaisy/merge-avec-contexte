@@ -166,7 +166,9 @@ export type WaiverStatus = 'requested' | 'granted' | 'refused' | 'expired';
 /** Une dérogation : exception tracée, bornée dans le temps. */
 export interface Waiver {
   id: string;
+  /** PR visée ; 0 si la demande vient d'un ticket, sans PR connue. */
   prId: number;
+  /** Dépôt visé ; vide si la demande vient d'un ticket, sans PR connue. */
   repositoryUuid: string;
   rule: RuleCode;
   requestedBy: string;
@@ -175,6 +177,38 @@ export interface Waiver {
   requestedAt: string;
   expiresAt?: string;
   status: WaiverStatus;
+  /**
+   * Tickets rattachés (§7.1) : la dérogation lève le blocage de n'importe
+   * quelle PR qui cite l'un d'eux, pendant sa durée. Vide ou absent =
+   * dérogation valable pour la PR visée seule.
+   */
+  issueKeys?: string[];
+}
+
+/** Une dérogation telle que le journal l'affiche (§12, écran 7). */
+export interface JournalWaiver {
+  id: string;
+  rule: RuleCode;
+  status: WaiverStatus;
+  /** PR visée ; 0 pour une dérogation rattachée à des tickets seuls. */
+  prId: number;
+  /** Dépôt visé ; vide pour une dérogation rattachée à des tickets seuls. */
+  repositoryUuid: string;
+  /** Tickets rattachés ; vide pour une dérogation par PR seule. */
+  issueKeys: string[];
+  requestedBy: string;
+  grantedBy?: string;
+  reason: string;
+  requestedAt: string;
+  expiresAt?: string;
+  /** Phrase déjà rédigée : qui a accordé jusqu'à quand et pourquoi, ou l'expiration. */
+  text: string;
+}
+
+/** Les dérogations d'une entrée du journal : l'écran affiche sans recomposer. */
+export interface JournalWaivers {
+  evaluationId: string;
+  waivers: JournalWaiver[];
 }
 
 /** Entrée complète d'une règle : tout est déjà chargé, rien n'est lu. */

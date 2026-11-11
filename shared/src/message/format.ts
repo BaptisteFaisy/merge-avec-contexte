@@ -19,7 +19,15 @@ export interface FormatOptions {
 
 const GRAVITE: Record<Level, number> = { blocking: 0, warning: 1, information: 2 };
 const MAX_RAISONS_DEFAUT = 4;
-const MAX_CHARS_DEFAUT = 900;
+
+/**
+ * Borne maximale du message Bitbucket, en caractères (§15 V3). La plateforme
+ * ne publie pas la longueur exacte acceptée par un merge check : cette valeur
+ * défensive est la borne par défaut de `formatEvaluation`, qui ne la dépasse
+ * jamais — au-delà, il réduit le nombre de raisons listées et renvoie vers la
+ * carte.
+ */
+export const MESSAGE_MAX_CHARS = 900;
 
 /** Ordre du catalogue, pour départager deux raisons de même gravité. */
 function rangRegle(code: RuleCode): number {
@@ -89,20 +97,25 @@ function repli(locale: Locale, evaluation: Evaluation): string {
   return [t(locale, 'verdict.inconclusive'), t(locale, politique), t(locale, 'verdict.card')].join('\n');
 }
 
-/** Rend le message d'une évaluation, en respectant la longueur cible. */
+/** Ultime recours : tronque pour ne jamais dépasser la borne. */
+function borner(message: string, maxChars: number): string {
+  return message.length <= maxChars ? message : `${message.slice(0, maxChars - 1)}…`;
+}
+
+/** Rend le message d'une évaluation, sans jamais dépasser la borne. */
 export function formatEvaluation(evaluation: Evaluation, options: FormatOptions = {}): string {
   const locale = options.locale ?? 'fr';
   const includeActions = options.includeActions ?? false;
-  const maxChars = options.maxChars ?? MAX_CHARS_DEFAUT;
+  const maxChars = options.maxChars ?? MESSAGE_MAX_CHARS;
   if (evaluation.verdict === 'inconclusive') return repli(locale, evaluation);
   const raisons = evaluation.verdict === 'blocked'
     ? blockingReasons(evaluation)
     : visibleReasons(evaluation).filter((raison) => raison.level !== 'blocking');
   let affichees = Math.min(options.maxReasons ?? MAX_RAISONS_DEFAUT, Math.max(raisons.length, 1));
   let message = composer(locale, evaluation, raisons, affichees, includeActions);
-  while (message.length > maxChars && affichees > 1) {
+  while (message.length > maxChars && affichees > 0) {
     affichees -= 1;
     message = composer(locale, evaluation, raisons, affichees, includeActions);
   }
-  return message;
+  return borner(message, maxChars);
 }

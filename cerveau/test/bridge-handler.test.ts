@@ -5,7 +5,7 @@
  * d'erreur rendu, jamais une exception.
  */
 import { describe, expect, it } from 'vitest';
-import { createMemoryNonceStore, signRequest, type PairingOffer } from '../src/shared';
+import { createMemoryNonceStore, signRequest, type PairingOffer, type Waiver } from '../src/shared';
 import { gererRequetePont, type BridgeRequest } from '../src/bridge/handler';
 import type {
   BridgeDeps,
@@ -263,5 +263,71 @@ describe('handler du pont', () => {
     expect(recu?.issueKeys).toEqual(['PROJ-1']);
     expect(recu?.siteUrl).toBe('https://jira.exemple.test');
     expect(recu?.pr.pullRequestId).toBe(42);
+  });
+});
+
+/** Dérogation rattachée à un ticket, comme enregistrée depuis Jira ou Rovo. */
+const derogationParTicket: Waiver = {
+  id: 'w-ticket',
+  prId: 0,
+  repositoryUuid: '',
+  rule: 'R-04',
+  requestedBy: 'lea',
+  grantedBy: 'tech-lead',
+  reason: 'correctif urgent pendant le gel',
+  requestedAt: '2026-11-11T09:00:00Z',
+  expiresAt: '2026-11-11T12:00:00Z',
+  status: 'granted',
+  issueKeys: ['PROJ-1'],
+};
+
+/** Double du port qui rend `parTicket` sur un listage sans filtre. */
+function listeurAvec(parPr: Waiver[] = []): BridgeDeps['waivers']['lister'] {
+  return async (filtre) => {
+    if (filtre.prId === undefined || filtre.repositoryUuid === undefined) return [derogationParTicket];
+    return filtre.prId === 42 && filtre.repositoryUuid === 'repo-1' ? parPr : [];
+  };
+}
+
+describe('chargement des dérogations par PR et par ticket', () => {
+  it('rattache à la PR une dérogation demandée depuis son ticket', async () => {
+    let recu: EvaluationInput | undefined;
+    const base = await depsJumele(async (input) => {
+      recu = input;
+      return evaluationFactice;
+    });
+    base.waivers.lister = listeurAvec();
+    const reponse = await gererRequetePont(signer(corpsEvaluation), base);
+    expect(reponse.statusCode).toBe(200);
+    expect(recu?.waivers).toHaveLength(1);
+    expect(recu?.waivers[0]?.id).toBe('w-ticket');
+    expect(recu?.waivers[0]?.prId).toBe(42);
+    expect(recu?.waivers[0]?.repositoryUuid).toBe('repo-1');
+    expect(recu?.waivers[0]?.issueKeys).toEqual(['PROJ-1']);
+  });
+
+  it('continue de charger les dérogations enregistrées pour la PR', async () => {
+    let recu: EvaluationInput | undefined;
+    const base = await depsJumele(async (input) => {
+      recu = input;
+      return evaluationFactice;
+    });
+    const parPr: Waiver = { ...derogationParTicket, id: 'w-pr', prId: 42, repositoryUuid: 'repo-1', issueKeys: [] };
+    base.waivers.lister = listeurAvec([parPr]);
+    await gererRequetePont(signer(corpsEvaluation), base);
+    expect(recu?.waivers.map((waiver) => waiver.id)).toEqual(['w-ticket', 'w-pr']);
+    expect(recu?.waivers[1]).toEqual(parPr);
+  });
+
+  it('ignore une dérogation rattachée à un autre ticket', async () => {
+    let recu: EvaluationInput | undefined;
+    const base = await depsJumele(async (input) => {
+      recu = input;
+      return evaluationFactice;
+    });
+    base.waivers.lister = async (filtre) =>
+      (filtre.prId === undefined ? [{ ...derogationParTicket, issueKeys: ['AUTRE-9'] }] : []);
+    await gererRequetePont(signer(corpsEvaluation), base);
+    expect(recu?.waivers).toEqual([]);
   });
 });

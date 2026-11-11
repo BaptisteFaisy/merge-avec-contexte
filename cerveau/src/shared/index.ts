@@ -16,4 +16,5 @@ export * from './bridge/pairing';
 export * from './bridge/payload';
 export * from './freezes/match';
 export * from './waivers/resolve';
+export * from './waivers/journal';
 export * from './policy/fallback';
