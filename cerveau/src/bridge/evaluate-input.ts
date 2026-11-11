@@ -10,6 +10,7 @@
 import {
   activeFreezes,
   extractIssueKeys,
+  waiversForPr,
   type EvaluatePayload,
   type Freeze,
   type Reviewer,
@@ -54,11 +55,25 @@ async function gelesUtiles(
   return activeFreezes(gels, { targetBranch: payload.targetBranch, service, now: deps.clock() });
 }
 
-/** Dérogations utiles : celles qui portent sur cette PR. */
-async function derogationsUtiles(deps: BridgeDeps, payload: EvaluatePayload): Promise<Waiver[]> {
-  return deps.waivers.lister({
+/**
+ * Dérogations utiles : celles qui portent sur cette PR, et celles rattachées
+ * aux tickets qu'elle cite (demandées depuis Jira ou Rovo sans PR connue,
+ * enregistrées avec `prId: 0` et `repositoryUuid: ''`). Les secondes sont
+ * rattachées à la PR par `waiversForPr` : le moteur filtre sur la PR.
+ */
+async function derogationsUtiles(
+  deps: BridgeDeps,
+  payload: EvaluatePayload,
+  issueKeys: string[],
+): Promise<Waiver[]> {
+  const [parPr, toutes] = await Promise.all([
+    deps.waivers.lister({ prId: payload.pullRequestId, repositoryUuid: payload.repositoryUuid }),
+    deps.waivers.lister({}),
+  ]);
+  return waiversForPr([...toutes, ...parPr], {
     prId: payload.pullRequestId,
     repositoryUuid: payload.repositoryUuid,
+    issueKeys,
   });
 }
 
@@ -78,16 +93,17 @@ export async function versEvaluationInput(
     throw erreurPont('unpaired', "Cet espace de travail n'est pas jumelé.");
   }
   const now = deps.clock();
+  const issueKeys = clesTickets(payload);
   const service = await deps.context.serviceForRepository(jumelage.siteUrl, payload.repositoryUuid);
   const [configs, freezes, waivers] = await Promise.all([
     deps.context.rules(jumelage.siteUrl),
     gelesUtiles(deps, jumelage.siteUrl, payload, service),
-    derogationsUtiles(deps, payload),
+    derogationsUtiles(deps, payload, issueKeys),
   ]);
   const fallbackPolicy = await deps.pairing.fallbackPolicy(payload.workspaceUuid);
   return {
     pr: contextePr(payload),
-    issueKeys: clesTickets(payload),
+    issueKeys,
     siteUrl: jumelage.siteUrl,
     freezes,
     waivers,
