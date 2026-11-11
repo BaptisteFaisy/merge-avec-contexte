@@ -45,6 +45,19 @@ export interface DemoDataset {
 
 const critere = (text: string, done: boolean): AcceptanceCriterion => ({ text, done });
 
+/** Instant décalé de `minutes`, pour que le jeu reste vrai quelle que soit la date. */
+function decaler(now: string, minutes: number): string {
+  return new Date(Date.parse(now) + minutes * 60_000).toISOString();
+}
+
+/** Jour de `now` décalé de `jours`, à l'heure donnée en UTC. */
+function aHeure(now: string, jours: number, heure: number, minute = 0): string {
+  const date = new Date(Date.parse(now));
+  date.setUTCDate(date.getUTCDate() + jours);
+  date.setUTCHours(heure, minute, 0, 0);
+  return date.toISOString();
+}
+
 /** Ticket PAY-123 : deux critères d'acceptation ne sont pas cochés. */
 const pay123: IssueContext = {
   key: 'PAY-123',
@@ -156,41 +169,41 @@ const pay140: IssueContext = {
   url: 'https://demo.atlassian.net/browse/PAY-140',
 };
 
-/** Gel ponctuel du 30 novembre, 8 h → 10 h UTC, sur `main`. */
-const gelBlackFriday: Freeze = {
+/** Gel ponctuel dans trois jours, 8 h → 10 h UTC, sur `main`. */
+const gelBlackFriday = (now: string): Freeze => ({
   id: 'freeze-black-friday',
   name: 'Black Friday',
-  startsAt: '2026-11-30T08:00:00Z',
-  endsAt: '2026-11-30T10:00:00Z',
+  startsAt: aHeure(now, 3, 8),
+  endsAt: aHeure(now, 3, 10),
   branches: ['main'],
   services: [],
   recurrence: { kind: 'none' },
   timezone: 'Europe/Paris',
   createdBy: 'release-manager',
-};
+});
 
 /** Gel récurrent quotidien, 22 h → 23 h UTC, sur le service `checkout-api`. */
-const gelNuit: Freeze = {
+const gelNuit = (now: string): Freeze => ({
   id: 'freeze-nuit',
   name: 'Fenêtre nocturne',
-  startsAt: '2026-11-01T22:00:00Z',
-  endsAt: '2026-12-31T23:00:00Z',
+  startsAt: aHeure(now, -30, 22),
+  endsAt: aHeure(now, 34, 23),
   branches: ['main', 'release/*'],
   services: ['checkout-api'],
   recurrence: { kind: 'daily' },
   timezone: 'Europe/Paris',
   createdBy: 'release-manager',
-};
+});
 
-/** Incident ouvert sur `checkout-api` depuis le matin. */
-const incidentCheckout: Incident = {
+/** Incident ouvert sur `checkout-api` depuis huit heures. */
+const incidentCheckout = (now: string): Incident => ({
   service: 'checkout-api',
   incidentKey: 'INC-52',
-  openedAt: '2026-11-27T08:00:00Z',
-};
+  openedAt: decaler(now, -8 * 60),
+});
 
-/** Dérogation accordée pour deux heures sur le gel. */
-const derogationAccordee: Waiver = {
+/** Dérogation accordée, encore valable une heure et demie sur le gel. */
+const derogationAccordee = (now: string): Waiver => ({
   id: 'waiver-1',
   prId: 42,
   repositoryUuid: 'demo-repo-uuid',
@@ -198,13 +211,13 @@ const derogationAccordee: Waiver = {
   requestedBy: 'lea',
   grantedBy: 'tech-lead',
   reason: 'correctif de prix avant l’ouverture',
-  requestedAt: '2026-11-27T16:00:00Z',
-  expiresAt: '2026-11-27T18:00:00Z',
+  requestedAt: decaler(now, -30),
+  expiresAt: decaler(now, 90),
   status: 'granted',
-};
+});
 
-/** Dérogation expirée : elle ne protège plus rien. */
-const derogationExpiree: Waiver = {
+/** Dérogation expirée il y a trois heures : elle ne protège plus rien. */
+const derogationExpiree = (now: string): Waiver => ({
   id: 'waiver-2',
   prId: 42,
   repositoryUuid: 'demo-repo-uuid',
@@ -212,10 +225,10 @@ const derogationExpiree: Waiver = {
   requestedBy: 'lea',
   grantedBy: 'tech-lead',
   reason: 'critères cochés après la fusion',
-  requestedAt: '2026-11-27T10:00:00Z',
-  expiresAt: '2026-11-27T12:00:00Z',
+  requestedAt: decaler(now, -5 * 60),
+  expiresAt: decaler(now, -3 * 60),
   status: 'expired',
-};
+});
 
 const relecteurs = (etat: Reviewer['state'][]): Reviewer[] =>
   etat.map((state, index) => ({ accountId: `account-${index + 1}`, displayName: `Relecteur ${index + 1}`, state }));
@@ -281,9 +294,9 @@ export function createDemoDataset(now: string = DEMO_NOW): DemoDataset {
     workspace: { uuid: 'demo-workspace-uuid', name: 'Démo Codegeist', slug: 'demo' },
     now,
     issues: [pay123, pay124, pay125, pay130, pay131, pay140],
-    freezes: [gelBlackFriday, gelNuit],
-    incidents: [incidentCheckout],
-    waivers: [derogationAccordee, derogationExpiree],
+    freezes: [gelBlackFriday(now), gelNuit(now)],
+    incidents: [incidentCheckout(now)],
+    waivers: [derogationAccordee(now), derogationExpiree(now)],
     repoServices: correspondances,
     prs: [pr42, pr43, pr44],
     configs: configsDemo(),

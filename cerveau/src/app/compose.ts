@@ -170,24 +170,29 @@ export async function cerveauProduction(): Promise<Cerveau> {
     const { urlDuPontEffective } = await import('./pont-url');
     const bridgeUrl = await urlDuPontEffective();
     const vault = createForgeSecretVault();
+    const horloge = horlogeReelle();
     const config = configParDefaut({
       bridgeUrl,
       siteUrl: env.siteUrl ?? configParDefaut().siteUrl,
     });
-    await amorcerInstallation({
-      store,
-      vault,
-      config,
-      clock: horlogeReelle(),
-      logger,
-      env,
-    });
+    await amorcerInstallation({ store, vault, config, clock: horloge, logger, env });
+    // En mode démonstration, les tickets et les incidents du jeu d'exemple sont
+    // servis localement : le site de démo ne contient ni le projet PAY ni de
+    // JSM, et le cache à 60 s serait sinon écrasé par une lecture Jira vide.
+    let jira: IssueReader | undefined;
+    if (env.jeuDeDemo) {
+      const { createDemoReader } = await import('./demo-reader');
+      jira = createDemoReader(createJiraReader({ baseUrl: config.siteUrl }), horloge());
+      logger.info('mode démonstration actif : tickets et incidents servis depuis le jeu d’exemple');
+    }
     instance = assemblerCerveau({
       store,
       vault,
       reglages: createForgeReglagesStore(),
       logger,
       config,
+      clock: horloge,
+      jira,
     });
     if (bridgeUrl === '') logger.warn('adresse du pont indisponible : le jumelage ne pourra pas aboutir');
   }
