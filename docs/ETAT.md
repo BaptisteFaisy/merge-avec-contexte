@@ -16,12 +16,12 @@ Relevé du 2026-11-11 (nuit du 10 au 11). Tout ce qui est décrit ici est sur
 | Écrans Jira | réglages du projet, encart sur le ticket, console de test et journal (UI Kit 2) | `cerveau/src/frontend/`, `cerveau/src/ui/` |
 | Capteur | lecture de la PR (métadonnées seulement), client du pont avec délai de 4 s, politique de repli, carte de PR, panneau, réglages de l'espace de travail | `capteur/src/` |
 | Assemblage | racine de composition : les onze handlers du manifeste Jira et les quatre du manifeste Bitbucket branchés sur les modules | `cerveau/src/app/`, `capteur/src/app/`, `*/src/index.ts` |
-| Démonstration | jeu de données complet (tickets, gels, incident, dérogations, PR) et les neuf scénarios de recette du §18 en tests | `cerveau/src/seed/`, `cerveau/test/recette*.ts` |
+| Démonstration | jeu de données complet (tickets, gels, incident, dérogations, PR), son chargeur depuis la page de réglages, et les neuf scénarios de recette du §18 en tests | `cerveau/src/seed/`, `cerveau/test/recette*.ts`, `cerveau/test/seed-loader.test.ts` |
 | Documentation | cahier des charges, architecture, conventions, référence des modules Forge, instructions aux juges (EN), scénario vidéo (EN), plan des six validations, recette | `docs/` |
 
-Chiffres : **352 tests** en 26 fichiers (vitest, logique pure, aucun réseau),
-**11 183 lignes** de TypeScript/JSX hors copies générées du contrat, 29 commits,
-**22 PR mergées par la file Mergify** — aucune intervention humaine sur un merge.
+Chiffres : **361 tests** en 28 fichiers (vitest, logique pure, aucun réseau),
+**11 434 lignes** de TypeScript/JSX hors copies générées du contrat, 35 commits,
+**27 PR mergées par la file Mergify** — aucune intervention humaine sur un merge.
 
 Gardes en CI : `ci` (typecheck strict, tests, sanity docs), `ci-budget` (aucun
 job au-delà de 5 min), `couche0` (périmètre déclaré, motifs interdits), plus
@@ -80,7 +80,7 @@ Le dépôt tourne sur cinq runners auto-hébergés du r630
 `merge-avec-contexte-worker`. Le r630 étant saturé par d'autres travaux au
 moment de la construction, les deux runners locaux ont évité que la CI n'attende.
 
-La file Mergify a mergé les 22 PR sans intervention humaine. La résolution
+La file Mergify a mergé les 27 PR sans intervention humaine. La résolution
 automatique de conflit a été exercée pour de vrai : deux PR modifiaient la même
 section du `README.md` (PR #21 et #22). La première mergée, la seconde est passée
 `DIRTY` ; l'agent de conflit l'a reconciliée en gardant les deux intentions, a
