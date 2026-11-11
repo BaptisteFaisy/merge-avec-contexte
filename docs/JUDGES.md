@@ -19,6 +19,43 @@ Level B exercises the real Bitbucket merge check end to end.
 
 ---
 
+## Already deployed — you can skip the build
+
+Both apps are registered, deployed and the Brain is installed on a demo site:
+
+| | Cerveau (Brain, Jira) | Capteur (Sensor, Bitbucket) |
+|---|---|---|
+| App ID | `ari:cloud:ecosystem::app/8361630d-9d57-4099-9c2b-5201bb00648d` | `ari:cloud:ecosystem::app/0777c25e-2be7-44fc-aa99-6d82fd3789c1` |
+| Environments | `development` 2.2.0, `production` 2.0.0 | `development` 2.1.0, `production` 2.0.0 |
+| Installed on | `one-atlas-cndz.atlassian.net` (Jira) | not installed — no Bitbucket workspace yet |
+
+Installation links (Developer Console → *Distribution*) let any site admin install
+either app without touching the CLI.
+
+The signed bridge is live and can be smoke-tested without any UI — replace
+`<bridge-url>` with the web trigger URL of your own installation
+(`forge webtrigger create -f pont-bitbucket -e production -s <site> -p jira`):
+
+```bash
+curl -X POST '<bridge-url>' -H 'content-type: application/json' -d '{"route":"health"}'
+# {"status":"ok","version":"1.0.0","date":"…","stockage":"ok"}   → HTTP 200
+
+curl -X POST '<bridge-url>' -H 'content-type: application/json' \
+     -d '{"route":"evaluate","payload":{"workspaceUuid":"ws"}}'
+# {"error":"unauthorized","message":"Signature absente, invalide, périmée ou déjà vue."} → HTTP 401
+
+curl -X POST '<bridge-url>' -H 'content-type: application/json' -d 'not-json'
+# {"error":"bad-payload","message":"Corps illisible : JSON attendu."} → HTTP 400
+```
+
+Measured on the deployed production app (10 consecutive warm calls): median
+**0.57 s**, p95 **0.83 s**, worst 1.10 s; first call after a deploy (cold start
+plus the eight SQL migrations) 6.4 s. The 5 s budget of MC-11 is met with room
+left for the evaluation itself. Forge SQL migrations report
+`{"mode":"runner","appliquees":8}`: the eight tables of §14 exist.
+
+---
+
 ## Prerequisites
 
 - Node.js 18+ and the Forge CLI: `npm install -g @forge/cli`

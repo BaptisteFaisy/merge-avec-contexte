@@ -91,3 +91,63 @@ Le fournisseur de cet agent était hors service (compte suspendu, HTTP 412) : il
 été rebranché sur une API compatible OpenAI via les variables de dépôt
 `FIREWORKS_BASE_URL` et `FIREWORKS_MODEL` — d'où la transmission de
 `FIREWORKS_BASE_URL` au balayeur, qui manquait.
+
+## Déploiement réel (2026-11-11)
+
+Les deux apps sont enregistrées dans la Developer Console, déployées, et le
+Cerveau est installé sur le site de démonstration.
+
+| | Cerveau (Jira) | Capteur (Bitbucket) |
+|---|---|---|
+| Nom | Merge avec contexte Cerveau | Merge avec contexte Capteur |
+| App ID | `ari:cloud:ecosystem::app/8361630d-9d57-4099-9c2b-5201bb00648d` | `ari:cloud:ecosystem::app/0777c25e-2be7-44fc-aa99-6d82fd3789c1` |
+| Developer Space | laddition | laddition |
+| `development` | 2.2.0 déployé | 2.1.0 déployé |
+| `production` | 2.0.0 déployé | 2.0.0 déployé |
+| Installé | oui, sur `one-atlas-cndz.atlassian.net` (Jira, dev et prod) | **non** — aucun espace de travail Bitbucket disponible |
+| Console | `developer.atlassian.com/console/myapps/8361630d-9d57-4099-9c2b-5201bb00648d` | `developer.atlassian.com/console/myapps/0777c25e-2be7-44fc-aa99-6d82fd3789c1` |
+
+Site de démonstration : **`one-atlas-cndz.atlassian.net`**, actif jusqu'au
+2027-02-09, fourni par `forge site provision` (Jira, Confluence, JSM, Rovo,
+Studio — **pas de Bitbucket**).
+
+### Vérifié en direct sur l'app déployée
+
+Le pont (web trigger `pont-bitbucket`, environnement production) répond :
+
+| Appel | Attendu | Observé |
+|---|---|---|
+| `{"route":"health"}` | 200 | `{"status":"ok","version":"1.0.0","stockage":"ok"}` |
+| `{"route":"evaluate",…}` sans signature | 401 | `{"error":"unauthorized","message":"Signature absente, invalide, périmée ou déjà vue."}` |
+| `{"route":"pair",…}` code inconnu | 401 | `{"error":"unauthorized","message":"Code de jumelage inconnu."}` |
+| corps non JSON | 400 | `{"error":"bad-payload","message":"Corps illisible : JSON attendu."}` |
+
+**Latence du pont** (production, 10 appels successifs à chaud) : minimum 0,44 s,
+médiane 0,57 s, **p95 0,83 s**, maximum 1,10 s. Premier appel après déploiement
+(à froid, migrations comprises) : 6,4 s. L'objectif de 5 s (MC-11) est tenu avec
+de la marge pour l'évaluation elle-même.
+
+**Migrations Forge SQL** : `{"mode":"runner","appliquees":8}` — les huit tables
+du §14 sont créées, en production comme en development. Un rattrapage au premier
+appel a été ajouté après constat : sans lui, une installation neuve répond
+`ForgeSQLError` sur toutes les routes jusqu'au premier tick du déclencheur
+horaire.
+
+L'adresse du pont n'est **pas versionnée** (elle vaut secret) : elle se régénère
+avec `forge webtrigger create -f pont-bitbucket -e production -s <site> -p jira`,
+et le Cerveau la lit lui-même à l'exécution (`webTrigger.getUrl`) pour la rendre
+au Capteur au moment du jumelage.
+
+### Ce qui bloque encore
+
+1. **Le Capteur n'est installé nulle part.** `forge site provision` ne fournit
+   pas Bitbucket et `forge install -p bitbucket` demande l'URL d'un espace de
+   travail (`bitbucket.org/<espace>`). Sans espace de travail, le merge check ne
+   peut pas s'exécuter en conditions réelles — et un contrôle **obligatoire**
+   exige en plus l'offre Premium (§15).
+2. **Les écrans ne sont pas vérifiés visuellement** : les modèles de vue sont
+   testés, mais le rendu UI Kit demande un navigateur sur le site de démo
+   (page de réglages du projet, encart de ticket, console et journal).
+3. **Le jumelage complet n'a pas été joué** : il passe par la page de réglages
+   Jira (générer un code) puis la page de réglages Bitbucket (le saisir). La
+   route `pair` est validée côté serveur (code inconnu refusé en 401).
