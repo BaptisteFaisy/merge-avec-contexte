@@ -1,0 +1,77 @@
+# Capteur — app Forge Bitbucket.
+#
+# Clés de modules vérifiées dans la référence Forge (voir docs/FORGE-API-NOTES.md) :
+#   bitbucket:mergeCheck, bitbucket:repoPullRequestCard,
+#   bitbucket:repoPullRequestOverviewPanel, bitbucket:workspaceSettingsMenuPage.
+#
+# L'app ne stocke aucune donnée durable du produit : seulement le jumelage
+# (secret partagé, adresse du pont) et la politique de repli.
+app:
+  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  runtime:
+    name: nodejs22.x
+
+modules:
+  bitbucket:mergeCheck:
+    - key: merge-avec-contexte-check
+      name: Merge avec contexte
+      description: Vérifie le ticket lié, les gels et les incidents avant la fusion.
+      function: merge-check
+      triggers:
+        - on-code-pushed
+        - on-reviewer-status-changed
+        - on-merge
+
+  bitbucket:repoPullRequestCard:
+    - key: pr-context-card
+      title: Merge avec contexte
+      resource: pr-card
+      render: native
+      resolver:
+        function: resolver-pr-card
+
+  bitbucket:repoPullRequestOverviewPanel:
+    - key: pr-context-panel
+      title: Merge avec contexte
+      resource: pr-panel
+      render: native
+      resolver:
+        function: resolver-pr-panel
+
+  bitbucket:workspaceSettingsMenuPage:
+    - key: workspace-settings
+      title: Merge avec contexte
+      resource: workspace-settings
+      render: native
+      resolver:
+        function: resolver-workspace-settings
+
+resources:
+  - key: pr-card
+    path: src/frontend/pr-card.jsx
+  - key: pr-panel
+    path: src/frontend/pr-panel.jsx
+  - key: workspace-settings
+    path: src/frontend/workspace-settings.jsx
+
+function:
+  - key: merge-check
+    handler: index.runCheck
+  - key: resolver-pr-card
+    handler: index.resolverPrCard
+  - key: resolver-pr-panel
+    handler: index.resolverPrPanel
+  - key: resolver-workspace-settings
+    handler: index.resolverWorkspaceSettings
+
+permissions:
+  scopes:
+    - read:pullrequest:bitbucket
+    - read:repository:bitbucket
+    - storage:app
+  external:
+    fetch:
+      backend:
+        # Le pont est un web trigger Forge du Cerveau : l'app Bitbucket doit
+        # pouvoir l'appeler (§13.1, « external fetch »).
+        - '*.webtrigger.atlassian.app'
