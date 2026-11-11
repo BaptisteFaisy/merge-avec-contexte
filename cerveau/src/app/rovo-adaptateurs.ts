@@ -1,10 +1,15 @@
 /**
  * Adaptateur : le stockage du Cerveau (`storage/ports.ts`) vu comme les ports
- * attendus par les cinq actions Rovo/MCP (`rovo/deps.ts`).
+ * attendus par les actions Rovo/MCP (`rovo/deps.ts`).
+ *
+ * Le contexte d'une évaluation à blanc passe par les deux sources du §8 pour la
+ * correspondance dépôt → service, et complète l'équipe de R-10 avec le Teamwork
+ * Graph quand les réglages n'en portent pas (`app/context-repo.ts`).
  */
 import { isEffective } from '../shared';
 import type { ApproverDirectory, ContextRepository as RovoContext, EvaluationRepository as RovoEvaluations, RovoDeps, StoredEvaluation as RovoEvaluation } from '../rovo/deps';
 import type { Store } from '../storage/ports';
+import type { TeamworkGraphReader } from '../teamwork';
 import { reglesEffectives, serviceDuDepot } from './context-repo';
 import { createRovoWaivers } from './waivers';
 import { enHorlogeObjet, type HorlogeIso } from './horloge';
@@ -16,14 +21,19 @@ import type { EvaluateService } from '../bridge/deps';
 import type { ReglagesStore } from './reglages';
 
 /** Charge le contexte nécessaire à l'évaluation à blanc d'un ticket. */
-export function createRovoContext(store: Store, config: AppConfig, depsEval: DepsEvaluate): RovoContext {
+export function createRovoContext(
+  store: Store,
+  config: AppConfig,
+  depsEval: DepsEvaluate,
+  teamwork?: TeamworkGraphReader,
+): RovoContext {
   return {
     async load(issueKey, repository) {
-      const service = repository ? await serviceDuDepot(store, repository) : undefined;
+      const service = repository ? await serviceDuDepot(store, repository, teamwork) : undefined;
       const [issues, incidents, configs] = await Promise.all([
         chargerTickets([issueKey], depsEval),
         chargerIncidents(service, depsEval),
-        reglesEffectives(store, config.projectId),
+        reglesEffectives(store, config.projectId, { depot: repository, service, teamwork }),
       ]);
       return { issues, incidents, configs, service };
     },
@@ -71,6 +81,7 @@ export function createRovoDeps(
   logger: LoggerCommun,
   evaluate: EvaluateService,
   depsEval: DepsEvaluate,
+  teamwork?: TeamworkGraphReader,
 ): RovoDeps {
   return {
     evaluation: async (input) => {
@@ -89,7 +100,7 @@ export function createRovoDeps(
         fallbackPolicy: await store.pairing.fallbackPolicy(),
       });
     },
-    context: createRovoContext(store, config, depsEval),
+    context: createRovoContext(store, config, depsEval, teamwork),
     freezes: {
       active: async () => store.freezes.listActive(clock()),
       upcoming: async () => store.freezes.listUpcoming(clock()),

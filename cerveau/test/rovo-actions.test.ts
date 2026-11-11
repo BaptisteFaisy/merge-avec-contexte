@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
 import type { Evaluation, Freeze, IssueContext, Reason, RuleConfig, Waiver } from '../src/shared';
 import { formatEvaluation } from '../src/shared';
@@ -5,101 +7,59 @@ import type { Approver, EvaluationInput, RovoDeps, StoredEvaluation } from '../s
 import { runEvaluateMerge } from '../src/rovo/evaluate-merge';
 import { runExplainBlock } from '../src/rovo/explain-block';
 import { horizon, runListFreezes } from '../src/rovo/list-freezes';
+import { runListApprovers } from '../src/rovo/list-approvers';
 import { runListWaivers } from '../src/rovo/list-waivers';
 import { echeance, runRequestWaiver } from '../src/rovo/request-waiver';
-import { amorcesConversation, catalogueOutils, descriptionOutil, promptAgent } from '../src/rovo/agent-prompt';
+import { CLES_OUTILS, amorcesConversation, catalogueOutils, descriptionOutil, promptAgent } from '../src/rovo/agent-prompt';
+import type { EvaluateMergeOutput } from '../src/rovo/evaluate-merge';
 
 const NOW = '2026-11-11T10:00:00Z';
 
 const ticket: IssueContext = {
-  key: 'PAY-123',
-  id: '10001',
-  exists: true,
-  status: 'In Progress',
-  statusCategory: 'inProgress',
+  key: 'PAY-123', id: '10001', exists: true, status: 'In Progress', statusCategory: 'inProgress',
   summary: 'Paiement en trois fois',
   criteria: [
     { text: 'Le paiement passe', done: true },
     { text: 'Les tests couvrent le remboursement', done: false },
     { text: 'La doc est à jour', done: false },
   ],
-  links: [],
-  fixVersions: [],
-  labels: [],
-  components: ['paiement'],
-  incidentKeys: [],
+  links: [], fixVersions: [], labels: [], components: ['paiement'], incidentKeys: [],
 };
 
 const gel: Freeze = {
-  id: 'f1',
-  name: 'Black Friday',
-  startsAt: '2026-11-11T08:00:00Z',
-  endsAt: '2026-11-30T08:00:00Z',
-  branches: ['main'],
-  services: [],
-  recurrence: { kind: 'none' },
-  timezone: 'Europe/Paris',
+  id: 'f1', name: 'Black Friday', startsAt: '2026-11-11T08:00:00Z', endsAt: '2026-11-30T08:00:00Z',
+  branches: ['main'], services: [], recurrence: { kind: 'none' }, timezone: 'Europe/Paris',
 };
 
 const gelFutur: Freeze = {
-  id: 'f2',
-  name: 'Fin d’année',
-  startsAt: '2026-11-14T00:00:00Z',
-  endsAt: '2026-12-31T00:00:00Z',
-  branches: ['release/*'],
-  services: ['paiement'],
-  recurrence: { kind: 'weekly', daysOfWeek: [5] },
+  id: 'f2', name: 'Fin d’année', startsAt: '2026-11-14T00:00:00Z', endsAt: '2026-12-31T00:00:00Z',
+  branches: ['release/*'], services: ['paiement'], recurrence: { kind: 'weekly', daysOfWeek: [5] },
   timezone: 'UTC',
 };
 
-const configR03: RuleConfig = {
-  rule: 'R-03',
-  level: 'blocking',
-  mode: 'active',
-  scope: {},
-  params: {},
-};
+const configR03: RuleConfig = { rule: 'R-03', level: 'blocking', mode: 'active', scope: {}, params: {} };
 
 const raisonR03: Reason = {
-  rule: 'R-03',
-  level: 'blocking',
-  text: 'PAY-123 : 2 critères d’acceptation non cochés.',
+  rule: 'R-03', level: 'blocking', text: 'PAY-123 : 2 critères d’acceptation non cochés.',
   action: 'Cochez dans le ticket les critères vraiment validés.',
 };
 
 const evaluationBloquee: Evaluation = {
-  verdict: 'blocked',
-  reasons: [raisonR03],
-  issueKeys: ['PAY-123'],
-  trigger: 'on-merge',
-  evaluatedAt: NOW,
-  durationMs: 12,
+  verdict: 'blocked', reasons: [raisonR03], issueKeys: ['PAY-123'], trigger: 'on-merge',
+  evaluatedAt: NOW, durationMs: 12,
 };
 
 const derogation: Waiver = {
-  id: 'w1',
-  prId: 42,
-  repositoryUuid: 'repo',
-  rule: 'R-03',
-  requestedBy: 'lea',
-  grantedBy: 'sam',
-  reason: 'Correctif attendu par le client',
-  requestedAt: '2026-11-11T08:00:00Z',
-  expiresAt: '2026-11-11T12:00:00Z',
-  status: 'granted',
+  id: 'w1', prId: 42, repositoryUuid: 'repo', rule: 'R-03', requestedBy: 'lea', grantedBy: 'sam',
+  reason: 'Correctif attendu par le client', requestedAt: '2026-11-11T08:00:00Z',
+  expiresAt: '2026-11-11T12:00:00Z', status: 'granted',
 };
 
 const approbateurs: Approver[] = [{ accountId: 'acc-1', displayName: 'Sam Martin' }];
 
 const journal: StoredEvaluation = {
-  prId: 42,
-  repository: 'paiement-api',
-  verdict: 'blocked',
-  reasons: [raisonR03],
-  issueKeys: ['PAY-123'],
-  trigger: 'on-merge',
-  evaluatedAt: NOW,
-  durationMs: 12,
+  prId: 42, repository: 'paiement-api', verdict: 'blocked', reasons: [raisonR03],
+  issueKeys: ['PAY-123'], trigger: 'on-merge', evaluatedAt: NOW, durationMs: 12,
 };
 
 /** Ports mémoire complets : aucun test ne touche Forge, Jira ni l'heure réelle. */
@@ -333,13 +293,59 @@ describe('request-waiver', () => {
   });
 });
 
+/** Suivi d'écriture : une action en lecture seule ne crée jamais de dérogation. */
+function depsSansEcriture(suivi: () => void): RovoDeps {
+  return depsFixes({
+    waivers: { listByIssue: async () => [], createRequest: async () => { suivi(); return derogation; } },
+  });
+}
+
+describe('list-approvers', () => {
+  it('nomme les approbateurs d’un ticket sans rien enregistrer', async () => {
+    let ecrit = false;
+    const sortie = await runListApprovers(depsSansEcriture(() => { ecrit = true; }), { issueKey: 'pay-123' });
+    expect(sortie).toEqual({
+      issueKey: 'PAY-123',
+      approvers: [{ accountId: 'acc-1', displayName: 'Sam Martin' }],
+      summary: expect.stringContaining('Sam Martin'),
+    });
+    expect(sortie.summary).toContain('PAY-123');
+    expect(ecrit).toBe(false);
+  });
+
+  it('répond à l’amorce « qui peut m’accorder une dérogation ? » sans clé', async () => {
+    const sortie = await runListApprovers(depsFixes(), {});
+    expect(sortie).toEqual({
+      issueKey: null,
+      approvers: [{ accountId: 'acc-1', displayName: 'Sam Martin' }],
+      summary: expect.stringContaining('peut accorder une dérogation'),
+    });
+    expect(JSON.parse(JSON.stringify(sortie))).toEqual(sortie);
+  });
+
+  it('dit qu’aucun approbateur n’est configuré, et où le régler', async () => {
+    const sortie = await runListApprovers(depsFixes({ approvers: { list: async () => [] } }), { issueKey: 'PAY-123' });
+    expect(sortie.approvers).toEqual([]);
+    expect(sortie.summary).toContain('Aucun approbateur');
+    expect(sortie.summary).toContain('réglages du projet');
+  });
+
+  it('rend la synthèse dans la langue de l’espace de travail', async () => {
+    const sortie = await runListApprovers(depsFixes({ locale: 'en' }), { issueKey: 'PAY-123' });
+    expect(sortie.summary).toContain('can grant a waiver for PAY-123');
+  });
+});
+
 describe('agent-prompt', () => {
-  it('nomme les cinq actions dans le prompt et dans le catalogue', () => {
+  it('nomme les six actions dans le prompt et dans le catalogue', () => {
     const prompt = promptAgent('fr');
-    for (const cle of ['evaluate-merge', 'explain-block', 'list-freezes', 'list-waivers', 'request-waiver']) {
+    for (const cle of CLES_OUTILS) {
       expect(prompt).toContain(cle);
+      expect(promptAgent('en')).toContain(cle);
+      expect(descriptionOutil(cle, 'en')).not.toBe('');
     }
-    expect(catalogueOutils('fr')).toHaveLength(5);
+    expect(catalogueOutils('fr')).toHaveLength(6);
+    expect(CLES_OUTILS).toContain('list-approvers');
   });
 
   it('rend une description par outil, en français et en anglais', () => {
@@ -352,5 +358,130 @@ describe('agent-prompt', () => {
     expect(amorcesConversation('fr')[0]).toContain('PAY-123');
     expect(amorcesConversation('en')[0]).toContain('blocked');
     expect(amorcesConversation('en')).toHaveLength(4);
+  });
+});
+
+/** §7.4 : deux raisons bloquantes, comme dans le parcours « agent de code ». */
+const raisonGel: Reason = {
+  rule: 'R-04', level: 'blocking',
+  text: 'Gel « Black Friday » sur main jusqu’au 30 novembre.',
+  action: 'Attendez la fin du gel, ou demandez une dérogation.',
+};
+
+const evaluationBloquante: Evaluation = {
+  verdict: 'blocked', reasons: [raisonR03, raisonGel], issueKeys: ['PAY-123'],
+  trigger: 'on-merge', evaluatedAt: NOW, durationMs: 8,
+};
+
+/** La décision du §7.4 : l'agent fusionne seulement si l'évaluation l'y autorise. */
+function decisionAgent(sortie: EvaluateMergeOutput): 'fusion' | 'arret' {
+  return sortie.allowed ? 'fusion' : 'arret';
+}
+
+describe('parcours agent de code (§7.4)', () => {
+  it('appelle evaluate-merge, reçoit les deux raisons et s’arrête', async () => {
+    let derogationEcrite = false;
+    const deps: RovoDeps = {
+      ...depsSansEcriture(() => { derogationEcrite = true; }),
+      evaluation: async () => evaluationBloquante,
+    };
+    const appel = { issueKey: 'PAY-123', targetBranch: 'main', repository: 'paiement-api' };
+    // Ce que transporte MCP : un aller-retour JSON, sans `undefined`.
+    const recu = JSON.parse(JSON.stringify(await runEvaluateMerge(deps, appel))) as EvaluateMergeOutput;
+    expect(decisionAgent(recu)).toBe('arret');
+    expect(recu.verdict).toBe('blocked');
+    expect(recu.allowed).toBe(false);
+    expect(recu.reasons.map((raison) => raison.rule).sort()).toEqual(['R-03', 'R-04']);
+    expect(recu.reasons.every((raison) => raison.action !== undefined)).toBe(true);
+    expect(recu.message).toContain('2 raisons');
+    expect(derogationEcrite).toBe(false);
+  });
+
+  it('fusionne quand l’évaluation passe, sans raison visible', async () => {
+    const deps = depsFixes({ evaluation: async () => ({ ...evaluationBloquante, verdict: 'allowed', reasons: [] }) });
+    const sortie = await runEvaluateMerge(deps, { issueKey: 'PAY-123' });
+    expect(decisionAgent(sortie)).toBe('fusion');
+    expect(sortie.reasons).toEqual([]);
+  });
+
+  it('s’arrête aussi sur une entrée refusée : jamais de fusion dans le doute', async () => {
+    const sortie = await runEvaluateMerge(depsFixes(), {});
+    expect(decisionAgent(sortie)).toBe('arret');
+    expect(sortie.verdict).toBe('inconclusive');
+  });
+});
+
+/** Le manifeste est une donnée versionnée du dépôt : sa lecture est déterministe. */
+interface ModulesManifeste {
+  action: { key: string; name: string; function: string; actionVerb: string }[];
+  'rovo:agent': { prompt: string; conversationStarters: string[]; actions: string[] }[];
+  'rovo:mcp': { tools: string[] }[];
+  function: { key: string; handler: string }[];
+}
+
+const brut = readFileSync(new URL('../manifest.yml', import.meta.url), 'utf8');
+const modules = (parse(brut) as { modules: ModulesManifeste }).modules;
+const agent = modules['rovo:agent'][0]!;
+const mcp = modules['rovo:mcp'][0]!;
+const actions = modules.action;
+
+/** Apostrophes unifiées : le YAML du manifeste et le code n'emploient pas le même signe. */
+function unifier(texte: string): string {
+  return texte.replace(/'/g, '’');
+}
+
+/** Les actions en lecture seule qui répondent à chaque amorce (§11). */
+const AMORCES: Record<string, string[]> = {
+  'Pourquoi la PR de PAY-123 est-elle bloquée ?': ['explain-block', 'evaluate-merge'],
+  'Puis-je fusionner PAY-123 maintenant ?': ['evaluate-merge'],
+  'Quels gels sont prévus cette semaine ?': ['list-freezes'],
+  'Qui peut m’accorder une dérogation ?': ['list-approvers', 'list-waivers'],
+  'Why is the PAY-123 pull request blocked?': ['explain-block', 'evaluate-merge'],
+  'Can I merge PAY-123 right now?': ['evaluate-merge'],
+  'Which freezes are planned this week?': ['list-freezes'],
+  'Who can grant me a waiver?': ['list-approvers', 'list-waivers'],
+};
+
+describe('cohérence du manifeste Rovo/MCP (item 45)', () => {
+  it('expose en MCP exactement les actions déclarées, sous les 50 outils', () => {
+    expect(mcp.tools.slice().sort()).toEqual(actions.map((action) => action.key).sort());
+    expect(agent.actions.slice().sort()).toEqual(mcp.tools.slice().sort());
+    expect(mcp.tools.slice().sort()).toEqual(CLES_OUTILS.slice().sort());
+    expect(mcp.tools.length).toBeLessThanOrEqual(50);
+    for (const cle of mcp.tools) expect(cle.length).toBeLessThan(64);
+  });
+
+  it('déclare pour chaque action une fonction courte, exportée par src/index.ts', async () => {
+    const index = (await import('../src/index')) as unknown as Record<string, unknown>;
+    for (const action of actions) {
+      const entree = modules.function.find((fonction) => fonction.key === action.function);
+      expect(entree, `fonction absente du manifeste pour ${action.key}`).toBeDefined();
+      expect(action.function.length, `clé trop longue : ${action.function}`).toBeLessThanOrEqual(23);
+      expect(action.name.length, `name trop long : ${action.name}`).toBeLessThanOrEqual(30);
+      expect(entree?.handler).toBe(`index.${action.function}`);
+      expect(typeof index[action.function], `${action.function} non exportée`).toBe('function');
+    }
+  });
+
+  it('cite les six outils dans le prompt du manifeste et dans celui du code', () => {
+    for (const cle of CLES_OUTILS) {
+      expect(agent.prompt, `prompt du manifeste muet sur ${cle}`).toContain(cle);
+      expect(promptAgent('fr')).toContain(cle);
+      expect(promptAgent('en')).toContain(cle);
+    }
+  });
+
+  it('donne une action exposée à chaque amorce de conversation', () => {
+    expect(agent.conversationStarters.map(unifier)).toEqual(amorcesConversation('fr').map(unifier));
+    const amorces = [...amorcesConversation('fr'), ...amorcesConversation('en')];
+    expect(amorces).toHaveLength(Object.keys(AMORCES).length);
+    for (const amorce of amorces) {
+      const reponses = AMORCES[unifier(amorce)];
+      expect(reponses, `amorce sans action : ${amorce}`).toBeDefined();
+      for (const cle of reponses ?? []) {
+        expect(mcp.tools, `${cle} non exposé en MCP`).toContain(cle);
+        expect(agent.actions, `${cle} absent de l'agent`).toContain(cle);
+      }
+    }
   });
 });
