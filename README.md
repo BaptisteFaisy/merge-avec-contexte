@@ -64,9 +64,33 @@ saisit dans les réglages de l'espace de travail, et l'état de la liaison
 s'affiche des deux côtés.
 
 Les conventions de contribution (architecture testable, horloges injectées, messages
-bilingues, règles de PR) sont dans [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
+bilingues, règles de PR) sont dans [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md) ;
+le guide pas à pas pour contribuer (installation, tests, flux de PR, déploiement)
+dans [`CONTRIBUTING.md`](CONTRIBUTING.md). L'historique des changements est dans
+[`CHANGELOG.md`](CHANGELOG.md), la licence dans [`LICENSE`](LICENSE) (Apache-2.0).
 L'état d'avancement et ce qu'il reste à faire sur une vraie instance Atlassian sont
-dans [`docs/ETAT.md`](docs/ETAT.md).
+dans [`docs/ETAT.md`](docs/ETAT.md) ; le dépannage (pont en 500, jumelage, écrans
+vides, réinstallation) dans [`docs/DEPANNAGE.md`](docs/DEPANNAGE.md).
+
+## Limite à connaître : le blocage exige Bitbucket Premium
+
+Un merge check **bloquant** (qui empêche réellement la fusion) exige l'offre
+**Premium** de Bitbucket Cloud. Sur une offre gratuite, le contrôle s'exécute,
+affiche son verdict et son message au format imposé, mais **informe sans
+empêcher** la fusion. Le produit reste pleinement utile en avertissement ;
+cette limite de la plateforme doit figurer dans la fiche de soumission
+(`docs/ETAT.md`, `docs/DEPANNAGE.md` §7).
+
+## Topics GitHub proposés
+
+Les topics se posent sur la page du dépôt (About → ⚙ → Topics), par le
+propriétaire uniquement. Liste proposée :
+
+```
+atlassian  atlassian-forge  forge  bitbucket  jira  jira-service-management
+merge-check  pull-request  code-review  devops  rovo  mcp
+model-context-protocol  typescript  vitest  codegeist  codegeist-2026  hackathon
+```
 
 ## Pipeline
 
