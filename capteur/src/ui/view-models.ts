@@ -12,6 +12,7 @@ import type {
   Evaluation,
   FallbackCause,
   FallbackPolicy,
+  Incident,
   IssueContext,
   Level,
   Locale,
@@ -91,12 +92,16 @@ export interface CarteVm {
   derogation: DerogationVm;
   /** Renseigné quand le Cerveau est injoignable. */
   marcheASuivre?: MarcheASuivreVm;
+  /** §17 cas 6 : un incident a bougé après l'évaluation, elle est périmée. */
+  perime?: MarcheASuivreVm;
 }
 
 export interface CarteEntree {
   evaluation: Evaluation;
   jumelage: JumelageEntree;
   issues?: IssueContext[];
+  /** Incidents du service touché, pour détecter une évaluation périmée. */
+  incidents?: Incident[];
   locale?: Locale;
 }
 
@@ -204,6 +209,11 @@ const TEXTES: Record<string, { fr: string; en: string }> = {
     en: 'Pair this workspace with a Jira site in the settings, then run the check again.',
   },
   'pont.bandeau.titre': { fr: 'Pont interrompu', en: 'Bridge down' },
+  'perime.titre': { fr: 'Évaluation périmée', en: 'Stale evaluation' },
+  'perime.texte': {
+    fr: 'Un incident du service a été ouvert ou clos depuis ce contrôle : relancez le contrôle.',
+    en: 'A service incident was opened or closed since this check: run the check again.',
+  },
   'pont.bandeau.texte': {
     fr: 'Le Cerveau Jira ne répond pas : les contrôles appliquent la politique de repli jusqu’au rétablissement du pont.',
     en: 'The Jira brain is not responding: checks apply the fallback policy until the bridge is back up.',
@@ -321,6 +331,37 @@ export function marcheASuivreVm(evaluation: Evaluation, locale: Locale = 'fr'): 
   return { titre, texte };
 }
 
+/**
+ * §17 cas 6 : un incident ouvert ou clos *après* l'évaluation la rend périmée —
+ * le contrôle ne le rattrape qu'à une relance. Renvoie l'instant ISO du dernier
+ * mouvement postérieur, ou `undefined`. Horloge injectée : `evaluatedAt` est
+ * comparé aux horodatages des incidents, jamais à l'heure réelle.
+ */
+export function activiteApresEvaluation(evaluation: Evaluation, incidents: readonly Incident[] = []): string | undefined {
+  const evalue = Date.parse(evaluation.evaluatedAt);
+  if (Number.isNaN(evalue)) return undefined;
+  let dernier: { instant: number; iso: string } | undefined;
+  const mouvements = incidents.flatMap((incident) => [incident.openedAt, incident.resolvedAt]);
+  for (const iso of mouvements) {
+    if (typeof iso !== 'string') continue;
+    const instant = Date.parse(iso);
+    if (Number.isNaN(instant) || instant <= evalue) continue;
+    if (!dernier || instant > dernier.instant) dernier = { instant, iso };
+  }
+  return dernier?.iso;
+}
+
+/** Vrai si l'évaluation est périmée au regard des incidents du service. */
+export function evaluationPerimee(evaluation: Evaluation, incidents: readonly Incident[] = []): boolean {
+  return activiteApresEvaluation(evaluation, incidents) !== undefined;
+}
+
+/** Bandeau « évaluation périmée, relancez le contrôle », ou `undefined`. */
+export function perimeVm(evaluation: Evaluation, incidents: readonly Incident[] = [], locale: Locale = 'fr'): MarcheASuivreVm | undefined {
+  if (!evaluationPerimee(evaluation, incidents)) return undefined;
+  return { titre: tx(locale, 'perime.titre'), texte: tx(locale, 'perime.texte') };
+}
+
 /** Modèle de la carte de PR. */
 export function vmCarte(entree: CarteEntree): CarteVm {
   const locale = entree.locale ?? 'fr';
@@ -336,6 +377,8 @@ export function vmCarte(entree: CarteEntree): CarteVm {
   };
   const marche = marcheASuivreVm(entree.evaluation, locale);
   if (marche) vm.marcheASuivre = marche;
+  const perime = perimeVm(entree.evaluation, entree.incidents, locale);
+  if (perime) vm.perime = perime;
   return vm;
 }
 
