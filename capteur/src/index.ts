@@ -1,60 +1,62 @@
 /**
  * Point d'entrée de l'app Forge Bitbucket « Capteur ».
  *
- * Le module `bitbucket:mergeCheck` appelle `runCheck` à chacun des trois
- * déclencheurs (push, changement d'avis de relecteur, tentative de fusion).
- * La carte de PR, le panneau et la page de réglages de l'espace de travail
- * passent par les resolvers ci-dessous.
+ * Branche les quatre fonctions déclarées dans `capteur/manifest.yml` :
+ * `runCheck` (module `bitbucket:mergeCheck`) et les trois resolvers des écrans
+ * (`resolverPrCard`, `resolverPrPanel`, `resolverWorkspaceSettings`).
  *
- * Ces fonctions sont des adaptateurs : elles lisent Bitbucket, appellent le
- * pont signé du Cerveau et rendent le message. Toute la décision se prend
- * côté `shared/` et `cerveau/`.
+ * Les resolvers partagent un seul gestionnaire : `@forge/resolver` aiguille sur
+ * la clé de fonction portée par la requête, ce qui évite trois câblages
+ * identiques. La logique elle-même est dans `app/resolvers.ts` (pure, testée).
  */
+import Resolver from '@forge/resolver';
+import { lirePr } from './bitbucket/api';
+import { executerControle } from './check/run';
+import type { PRCheckEvent } from './bitbucket/types';
+import { defaultForgeStorage, ForgePairingStore } from './pairing/store';
+import { ForgeSettingsStore } from './policy/settings';
+import {
+  handlePrCard,
+  handlePrPanel,
+  handleWorkspaceSettings,
+  type BitbucketUiContext,
+} from './app/resolvers';
 import type { MergeCheckResponse } from './shared';
 
-/** Payload d'invocation du merge check (§1 de docs/FORGE-API-NOTES.md). */
-export interface PullRequestCheckEvent {
-  workspace: { uuid: string };
-  repository: { uuid: string };
-  pullrequest: { id: number };
-  trigger: { type: string };
-  mergeProperties?: {
-    commitMessage: string;
-    commitMessageTruncated: boolean;
-    mergeStrategy: string;
-    closeSourceBranch: boolean;
-  };
+export type PullRequestCheckEvent = PRCheckEvent;
+export type BitbucketExtensionContext = BitbucketUiContext;
+
+const pairingStore = new ForgePairingStore();
+const settingsStore = new ForgeSettingsStore(defaultForgeStorage());
+const deps = { pairingStore, settingsStore, lirePr };
+
+/** Contrôle de fusion : `executerControle` applique lui-même la politique de repli. */
+export async function runCheck(event: PullRequestCheckEvent): Promise<MergeCheckResponse> {
+  return executerControle(event, deps);
 }
 
-/** Contexte d'extension reçu par les modules d'interface. */
-export interface BitbucketExtensionContext {
-  type: string;
-  location: string;
-  workspace?: { uuid: string };
-  repository?: { uuid: string };
-  pullRequest?: { id: number };
-}
+const resolver = new Resolver();
 
-function nonImplemente(nom: string): never {
-  throw new Error(`${nom} : implémenté par le lot correspondant (voir docs/CONVENTIONS.md)`);
-}
+resolver.define('resolverPrCard', async (requete) => {
+  const payload = (requete.payload ?? {}) as Record<string, unknown>;
+  const contexte = (requete.context ?? {}) as BitbucketUiContext;
+  return handlePrCard(contexte, payload, deps);
+});
 
-/** Contrôle de fusion : renvoie toujours un résultat, jamais d'exception. */
-export async function runCheck(_event: PullRequestCheckEvent): Promise<MergeCheckResponse> {
-  return nonImplemente('runCheck');
-}
+resolver.define('resolverPrPanel', async (requete) => {
+  const contexte = (requete.context ?? {}) as BitbucketUiContext;
+  return handlePrPanel(contexte, deps);
+});
 
-/** Carte de PR : ticket reconnu, règles évaluées, raisons, dérogation. */
-export async function resolverPrCard(_context: BitbucketExtensionContext): Promise<unknown> {
-  return nonImplemente('resolverPrCard');
-}
+resolver.define('resolverWorkspaceSettings', async (requete) => {
+  const payload = (requete.payload ?? {}) as Record<string, unknown>;
+  const contexte = (requete.context ?? {}) as BitbucketUiContext;
+  return handleWorkspaceSettings(contexte, payload, deps);
+});
 
-/** Panneau de l'onglet Overview : même détail, en plus large. */
-export async function resolverPrPanel(_context: BitbucketExtensionContext): Promise<unknown> {
-  return nonImplemente('resolverPrPanel');
-}
+/** Gestionnaire unique : le resolver aiguille sur la clé demandée par l'écran. */
+const definitions = resolver.getDefinitions();
 
-/** Réglages de l'espace de travail : code de jumelage, état, politique de repli. */
-export async function resolverWorkspaceSettings(_context: BitbucketExtensionContext): Promise<unknown> {
-  return nonImplemente('resolverWorkspaceSettings');
-}
+export const resolverPrCard = definitions;
+export const resolverPrPanel = definitions;
+export const resolverWorkspaceSettings = definitions;
