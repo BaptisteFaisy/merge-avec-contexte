@@ -1,0 +1,19 @@
+{
+  "name": "cerveau",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App Forge Jira : pont signé, moteur de règles, pages, agent Rovo, MCP.",
+  "main": "src/index.ts",
+  "scripts": {
+    "lint": "forge lint",
+    "deploy": "forge deploy",
+    "install:app": "forge install"
+  },
+  "dependencies": {
+    "@forge/api": "^8.5.0",
+    "@forge/react": "^12.5.0",
+    "@forge/resolver": "^2.0.2",
+    "@forge/sql": "^4.0.10",
+    "@forge/storage": "^2.0.3"
+  }
+}

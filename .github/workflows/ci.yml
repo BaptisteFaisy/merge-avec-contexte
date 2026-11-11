@@ -1,9 +1,13 @@
 name: CI
 
-# CI générique pour un dépôt de thèses/docs : contrôles rapides, stdlib
-# uniquement, verdict en quelques secondes. Le check publié s'appelle `ci`
-# (c'est le nom du job qui nomme le check) : il est exigé par le ruleset de
-# `main` et par la file Mergify, comme `ci-budget` et `couche0`.
+# CI du dépôt « Merge avec contexte » : typecheck, tests de la logique pure,
+# gardes de qualité (taille des fichiers et des fonctions, manifestes Forge,
+# synchronisation du contrat partagé), puis les contrôles hérités du socle
+# (sanity docs, tests des gardes CI). Verdict en quelques dizaines de
+# secondes sur un runner auto-hébergé ; budget dur de 5 minutes.
+#
+# Le check publié s'appelle `ci` (c'est le nom du job) : il est exigé par le
+# ruleset de `main` et par la file Mergify, comme `ci-budget` et `couche0`.
 on:
   pull_request:
   # File de merge : même contrôle sur le commit temporaire du groupe.
@@ -30,44 +34,81 @@ jobs:
           clean: false
 
       # Runners self-hosted persistants : un sous-dossier parasite d'un run
-      # précédent peut survivre et fausser le sanity docs (flaky constaté sur
-      # les dépôts frères). Nettoyage complet du workspace — pas de sorties
-      # de build à préserver sur ce dépôt docs ; si un jour il y a des
-      # builds, exclure leurs dossiers ici comme vision (`-e`).
+      # précédent peut survivre et fausser les contrôles. Nettoyage complet.
       - name: Nettoyage du workspace
         shell: bash
         run: git clean -ffdx
 
-      - name: Sanity docs (UTF-8, non vides)
+      # Node n'est pas dans le PATH d'un shell non connecté sur le worker :
+      # `~/bin` porte `node`, `npm` et `gh` (posés avec le runner).
+      - name: Outillage Node
+        shell: bash
         run: |
-          python3 - <<'EOF'
+          set -euo pipefail
+          export PATH="$HOME/bin:/usr/local/bin:/usr/bin:$PATH"
+          echo "$HOME/bin" >> "$GITHUB_PATH"
+          node --version
+          npm --version
+
+      - name: Dépendances
+        shell: bash
+        run: npm ci --prefer-offline --no-audit --no-fund
+
+      # Le contrat vit dans `shared/src/` : les copies des deux apps doivent
+      # être identiques au fichier près (app Forge = dossier autonome).
+      - name: Contrat partagé synchronisé
+        shell: bash
+        run: npm run shared:check
+
+      - name: Typecheck
+        shell: bash
+        run: npm run typecheck
+
+      - name: Tests (logique pure, aucun réseau)
+        shell: bash
+        run: npm test
+
+      # Règle utilisateur : < 500 lignes par fichier, < 50 lignes par fonction.
+      - name: Gardes de taille
+        shell: bash
+        run: npm run limits
+
+      # Ce que la CLI Forge vérifierait : fonctions référencées, handlers
+      # exportés, ressources présentes. La CLI n'est pas installée ici.
+      - name: Manifestes Forge
+        shell: bash
+        run: node tools/check-manifests.mjs
+
+      - name: Sanity docs (UTF-8, non vides)
+        shell: bash
+        run: |
+          python3 - <<'PY'
           import pathlib
-          racines = [pathlib.Path(".")]
           exts = {".md", ".mdx", ".txt"}
           vides, illisibles, total = [], [], 0
-          for racine in racines:
-              for f in sorted(racine.rglob("*")):
-                  if ".git/" in f.as_posix() or f.suffix.lower() not in exts:
-                      continue
-                  total += 1
-                  try:
-                      contenu = f.read_text(encoding="utf-8")
-                  except (OSError, UnicodeError):
-                      illisibles.append(f.as_posix())
-                      continue
-                  if not contenu.strip():
-                      vides.append(f.as_posix())
+          for f in sorted(pathlib.Path(".").rglob("*")):
+              if ".git/" in f.as_posix() or f.suffix.lower() not in exts:
+                  continue
+              total += 1
+              try:
+                  contenu = f.read_text(encoding="utf-8")
+              except (OSError, UnicodeError):
+                  illisibles.append(f.as_posix())
+                  continue
+              if not contenu.strip():
+                  vides.append(f.as_posix())
           print("%d doc(s) contrôlé(s)" % total)
           for f in illisibles:
               print("::error::illisible en UTF-8 : %s" % f)
           for f in vides:
               print("::error::document vide : %s" % f)
           raise SystemExit(1 if (illisibles or vides) else 0)
-          EOF
+          PY
 
-      # Les gardes de la CI se testent elles-mêmes : couche0 + agents
-      # fireworks — stdlib, quelques secondes, aucun réseau.
+      # Les gardes de la CI se testent elles-mêmes : couche0 + agents de la
+      # file (résolution de conflit, réparation de test, périmètre).
       - name: Tests des gardes CI (couche0, fireworks)
+        shell: bash
         run: |
           python3 .github/couche0/test_check_couche0.py
           python3 .github/fireworks/test_conflict_agent.py
