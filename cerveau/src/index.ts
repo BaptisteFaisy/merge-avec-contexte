@@ -1,11 +1,19 @@
 /**
  * Point d'entrée de l'app Forge Jira « Cerveau ».
  *
- * Porte d'entrée unique du Capteur : le web trigger `pont-bitbucket`, signé
- * (HMAC-SHA256, horodatage, nonce). Autour de lui : les pages Jira, les cinq
- * actions (aussi exposées en MCP via `rovo:mcp`), le déclencheur d'événements
- * qui tient le cache à jour, et les migrations de schéma.
+ * Branche les onze fonctions déclarées dans `cerveau/manifest.yml` sur
+ * l'assemblage (`app/compose.ts`) :
+ * - `gererPont` : le web trigger signé, seule porte d'entrée du Capteur ;
+ * - trois resolvers d'écran (réglages, encart ticket, console et journal) ;
+ * - cinq actions, aussi exposées en MCP par `rovo:mcp` (§11) ;
+ * - `surTicketModifie` : événement Jira, invalide le cache du ticket ;
+ * - `migrerSchema` : déclencheur horaire, migrations Forge SQL idempotentes.
+ *
+ * Aucun handler ne lève vers Forge : une exception devient une réponse
+ * d'erreur JSON, lisible et sans détail sensible.
  */
+import Resolver from '@forge/resolver';
+import { actionsRovo, cerveauProduction, resolversUi, traiterPont } from './app/compose';
 import type { BridgeEnvelope } from './shared';
 
 /** Requête reçue par un web trigger Forge. */
@@ -28,67 +36,109 @@ export interface JiraExtensionContext {
   location: string;
   project?: { id: string; key: string };
   issue?: { id: string; key: string };
-  extension?: { project?: { id: string; key: string } };
+  extension?: { project?: { id: string; key: string }; issue?: { id: string; key: string } };
 }
 
-function nonImplemente(nom: string): never {
-  throw new Error(`${nom} : implémenté par le lot correspondant (voir docs/CONVENTIONS.md)`);
+/** Aplatit les en-têtes `string[]` du web trigger en `string` simples. */
+export function aplatirHeaders(headers: Record<string, string[]> | undefined): Record<string, string | undefined> {
+  const plat: Record<string, string | undefined> = {};
+  for (const [cle, valeurs] of Object.entries(headers ?? {})) {
+    plat[cle.toLowerCase()] = Array.isArray(valeurs) ? valeurs[0] : String(valeurs);
+  }
+  return plat;
 }
 
-/** Pont signé : vérifie la signature, route, évalue, répond. */
-export async function gererPont(_request: WebTriggerRequest): Promise<WebTriggerResponse> {
-  return nonImplemente('gererPont');
+/** Pont signé : vérification, routage, évaluation, réponse JSON. */
+export async function gererPont(request: WebTriggerRequest): Promise<WebTriggerResponse> {
+  const cerveau = await cerveauProduction();
+  const reponse = await traiterPont(cerveau, {
+    body: request.body ?? '',
+    headers: aplatirHeaders(request.headers),
+  });
+  const headers: Record<string, string[]> = {};
+  for (const [cle, valeur] of Object.entries(reponse.headers)) headers[cle] = [valeur];
+  return { statusCode: reponse.statusCode, headers, body: reponse.body };
 }
 
-/** Réglages du projet : règles, gels, correspondance dépôt → service, jumelage. */
-export async function resolverReglages(_context: JiraExtensionContext): Promise<unknown> {
-  return nonImplemente('resolverReglages');
+/** Clé du ticket portée par le contexte d'extension Jira. */
+export function cleTicketDuContexte(contexte: JiraExtensionContext | undefined): string | undefined {
+  return contexte?.issue?.key ?? contexte?.extension?.issue?.key;
 }
 
-/** Encart sur le ticket : PR connues, dernière évaluation, dérogations. */
-export async function resolverEncart(_context: JiraExtensionContext): Promise<unknown> {
-  return nonImplemente('resolverEncart');
-}
+const resolver = new Resolver();
 
-/** Console de test et journal : simuler une PR, lire les évaluations. */
-export async function resolverConsole(_context: JiraExtensionContext): Promise<unknown> {
-  return nonImplemente('resolverConsole');
-}
+resolver.define('resolverReglages', async (requete) => {
+  const cerveau = await cerveauProduction();
+  const payload = (requete.payload ?? {}) as Record<string, unknown>;
+  return resolversUi(cerveau).reglages(payload);
+});
 
-/** Action `evaluate-merge` : évaluation à blanc pour un ticket. */
-export async function evaluateMerge(_payload: unknown): Promise<unknown> {
-  return nonImplemente('evaluateMerge');
+resolver.define('resolverEncart', async (requete) => {
+  const cerveau = await cerveauProduction();
+  const payload = (requete.payload ?? {}) as Record<string, unknown>;
+  const contexte = requete.context as JiraExtensionContext | undefined;
+  return resolversUi(cerveau).encart(payload, cleTicketDuContexte(contexte));
+});
+
+resolver.define('resolverConsole', async (requete) => {
+  const cerveau = await cerveauProduction();
+  const payload = (requete.payload ?? {}) as Record<string, unknown>;
+  return resolversUi(cerveau).console(payload);
+});
+
+/** Gestionnaire unique : le resolver aiguille sur la clé demandée par l'écran. */
+const definitions = resolver.getDefinitions();
+
+export const resolverReglages = definitions;
+export const resolverEncart = definitions;
+export const resolverConsole = definitions;
+
+/** Action `evaluate-merge` : évaluation à blanc, sans fusion réelle. */
+export async function evaluateMerge(payload: unknown): Promise<unknown> {
+  const cerveau = await cerveauProduction();
+  return actionsRovo(cerveau).evaluateMerge((payload ?? {}) as Record<string, unknown>);
 }
 
 /** Action `explain-block` : dernière évaluation réelle des PR du ticket. */
-export async function explainBlock(_payload: unknown): Promise<unknown> {
-  return nonImplemente('explainBlock');
+export async function explainBlock(payload: unknown): Promise<unknown> {
+  const cerveau = await cerveauProduction();
+  return actionsRovo(cerveau).explainBlock((payload ?? {}) as Record<string, unknown>);
 }
 
 /** Action `list-freezes` : gels en cours et à venir. */
-export async function listFreezes(_payload: unknown): Promise<unknown> {
-  return nonImplemente('listFreezes');
+export async function listFreezes(payload: unknown): Promise<unknown> {
+  const cerveau = await cerveauProduction();
+  return actionsRovo(cerveau).listFreezes((payload ?? {}) as Record<string, unknown>);
 }
 
 /** Action `list-waivers` : dérogations en cours d'un ticket. */
-export async function listWaivers(_payload: unknown): Promise<unknown> {
-  return nonImplemente('listWaivers');
+export async function listWaivers(payload: unknown): Promise<unknown> {
+  const cerveau = await cerveauProduction();
+  return actionsRovo(cerveau).listWaivers((payload ?? {}) as Record<string, unknown>);
 }
 
 /** Action `request-waiver` : demande de dérogation tracée. */
-export async function requestWaiver(_payload: unknown): Promise<unknown> {
-  return nonImplemente('requestWaiver');
+export async function requestWaiver(payload: unknown): Promise<unknown> {
+  const cerveau = await cerveauProduction();
+  return actionsRovo(cerveau).requestWaiver((payload ?? {}) as Record<string, unknown>);
 }
 
-/** Événement Jira : invalide ou rafraîchit l'entrée de cache du ticket. */
-export async function surTicketModifie(_event: unknown): Promise<void> {
-  nonImplemente('surTicketModifie');
+/** Événement Jira : le cache du ticket est invalidé, la prochaine lecture lit Jira. */
+export async function surTicketModifie(event: unknown): Promise<void> {
+  const cerveau = await cerveauProduction();
+  const cle = (event as { issue?: { key?: string } } | undefined)?.issue?.key;
+  if (typeof cle === 'string' && cle.length > 0) {
+    await cerveau.store.issueCache.remove(cle);
+    cerveau.logger.info('cache invalidé', { issueKey: cle });
+  }
 }
 
-/** Migrations de schéma (Forge SQL) : idempotentes, rejouées chaque heure. */
+/** Migrations Forge SQL : idempotentes, rejouées chaque heure. */
 export async function migrerSchema(): Promise<void> {
-  nonImplemente('migrerSchema');
+  const { runMigrations } = await import('./storage/migrate');
+  const rapport = await runMigrations();
+  const cerveau = await cerveauProduction();
+  cerveau.logger.info('migrations', { mode: rapport.mode, appliquees: rapport.applied.length, echec: rapport.failure ?? '' });
 }
 
-/** Type exporté pour les tests de forme du pont. */
 export type { BridgeEnvelope };
