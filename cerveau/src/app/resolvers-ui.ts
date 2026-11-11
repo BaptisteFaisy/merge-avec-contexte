@@ -14,12 +14,14 @@ import { vmConsole } from '../ui/view-model-console';
 import { vmEncart } from '../ui/view-model-encart';
 import { vmJournal, type EvaluationJournalisee } from '../ui/view-model-journal';
 import { vmReglages, type EtatJumelage } from '../ui/view-model-reglages';
+import { chargerJeuDeDemo } from '../seed/loader';
 import type { EvaluateService } from '../bridge/deps';
 import { reglesEffectives, serviceDuDepot } from './context-repo';
 import { chargerTickets, type DepsEvaluate } from './evaluate';
 import { borneHeures, identifiant } from './waivers';
 import type { AppConfig } from './config';
 import type { HorlogeIso } from './horloge';
+import type { LoggerCommun } from './logger';
 import type { ReglagesStore } from './reglages';
 
 export interface UiDeps {
@@ -29,6 +31,7 @@ export interface UiDeps {
   clock: HorlogeIso;
   evaluate: EvaluateService;
   depsEval: DepsEvaluate;
+  logger: LoggerCommun;
 }
 
 /** Champ texte d'une charge utile, ou `undefined`. */
@@ -55,9 +58,20 @@ async function appliquerReglages(method: string, payload: Record<string, unknown
     await deps.store.pairing.setFallbackPolicy(politique, now);
     return;
   }
+  if (method === 'chargerDemo') await chargerDemo(payload, deps, now);
   if (method === 'enregistrerRegles') await enregistrerRegles(payload, deps, now);
   if (method === 'ajouterCorrespondance') await ajouterCorrespondance(payload, deps, now);
   if (method === 'ajouterApprobateur') await ajouterApprobateur(texte(payload, 'approbateur'), deps);
+}
+
+/** Charge le jeu de démonstration dans le stockage (§20). */
+async function chargerDemo(payload: Record<string, unknown> | undefined, deps: UiDeps, now: string): Promise<void> {
+  await chargerJeuDeDemo(deps.store, {
+    projectId: deps.config.projectId,
+    now,
+    workspaceUuid: typeof payload?.workspaceUuid === 'string' ? payload.workspaceUuid : undefined,
+  });
+  deps.logger.info('jeu de démonstration chargé', { projet: deps.config.projectId });
 }
 
 /** Écrit les réglages de règles envoyés par l'écran. */
