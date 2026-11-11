@@ -104,6 +104,19 @@ modules:
           description: Clé du ticket Jira concerné, par exemple PAY-123.
           type: string
           required: true
+    - key: list-approvers
+      name: Lister les approbateurs
+      function: listApprovers
+      actionVerb: GET
+      description: Personnes habilitées à accorder une dérogation. Lecture seule,
+        aucune demande n'est enregistrée.
+      inputs:
+        issueKey:
+          title: Clé du ticket
+          description: Clé du ticket Jira concerné, par exemple PAY-123. Sans elle,
+            l'annuaire de l'installation est rendu.
+          type: string
+          required: false
     - key: request-waiver
       name: Demander une dérogation
       function: requestWaiver
@@ -138,9 +151,11 @@ modules:
         Tu réponds aux questions sur les fusions de pull requests et leur contexte :
         ticket Jira lié, critères d'acceptation, gels de déploiement, incidents en cours,
         dépendances et versions. Tu t'appuies toujours sur les actions fournies
-        (evaluate-merge, explain-block, list-freezes, list-waivers, request-waiver) et
-        jamais sur une supposition. Tu expliques chaque blocage avec l'action attendue,
-        dans la langue de l'utilisateur.
+        (evaluate-merge, explain-block, list-freezes, list-waivers, list-approvers,
+        request-waiver) et jamais sur une supposition. Tu expliques chaque blocage avec
+        l'action attendue, dans la langue de l'utilisateur. Tu ne promets pas une
+        dérogation : list-approvers nomme qui peut l'accorder, request-waiver enregistre
+        la demande.
       conversationStarters:
         - Pourquoi la PR de PAY-123 est-elle bloquée ?
         - Puis-je fusionner PAY-123 maintenant ?
@@ -151,6 +166,7 @@ modules:
         - explain-block
         - list-freezes
         - list-waivers
+        - list-approvers
         - request-waiver
 
   rovo:mcp:
@@ -161,6 +177,7 @@ modules:
         - explain-block
         - list-freezes
         - list-waivers
+        - list-approvers
         - request-waiver
 
   # Événements Jira : tiennent le cache à jour (§13.4).
@@ -202,6 +219,8 @@ modules:
       handler: index.listFreezes
     - key: listWaivers
       handler: index.listWaivers
+    - key: listApprovers
+      handler: index.listApprovers
     - key: requestWaiver
       handler: index.requestWaiver
     - key: surTicketModifie

@@ -98,12 +98,14 @@ export function echeance(now: string, heures: number): string {
   return new Date(Date.parse(now) + heures * 3_600_000).toISOString();
 }
 
+/** Approbateur mis à plat pour la sortie JSON : jamais d'`undefined`. */
+export function approbateurSortie(approbateur: Approver): ApprobateurSortie {
+  return { accountId: approbateur.accountId, displayName: approbateur.displayName };
+}
+
 /** Approbateurs du ticket, prêts pour la sortie. */
 function approbateurs(liste: Approver[]): ApprobateurSortie[] {
-  return liste.map((approbateur) => ({
-    accountId: approbateur.accountId,
-    displayName: approbateur.displayName,
-  }));
+  return liste.map(approbateurSortie);
 }
 
 /** Enregistre la demande validée et rend la réponse d'acceptation. */

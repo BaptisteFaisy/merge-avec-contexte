@@ -1,11 +1,11 @@
 /**
  * Point d'entrée de l'app Forge Jira « Cerveau ».
  *
- * Branche les onze fonctions déclarées dans `cerveau/manifest.yml` sur
+ * Branche les douze fonctions déclarées dans `cerveau/manifest.yml` sur
  * l'assemblage (`app/compose.ts`) :
  * - `gererPont` : le web trigger signé, seule porte d'entrée du Capteur ;
  * - trois resolvers d'écran (réglages, encart ticket, console et journal) ;
- * - cinq actions, aussi exposées en MCP par `rovo:mcp` (§11) ;
+ * - six actions, aussi exposées en MCP par `rovo:mcp` (§11) ;
  * - `surTicketModifie` : événement Jira, invalide le cache du ticket ;
  * - `migrerSchema` : déclencheur horaire, migrations Forge SQL idempotentes.
  *
@@ -14,6 +14,7 @@
  */
 import Resolver from '@forge/resolver';
 import { actionsRovo, cerveauProduction, resolversUi, traiterPont } from './app/compose';
+import { runListApprovers } from './rovo/list-approvers';
 import type { BridgeEnvelope } from './shared';
 
 /** Requête reçue par un web trigger Forge. */
@@ -122,6 +123,19 @@ export async function listFreezes(payload: unknown): Promise<unknown> {
 export async function listWaivers(payload: unknown): Promise<unknown> {
   const cerveau = await cerveauProduction();
   return actionsRovo(cerveau).listWaivers((payload ?? {}) as Record<string, unknown>);
+}
+
+/**
+ * Action `list-approvers` : qui peut accorder une dérogation (lecture seule).
+ *
+ * Appelée directement sur `rovoDeps` plutôt que par `actionsRovo` : l'assemblage
+ * (`app/compose.ts`) n'expose que les cinq actions historiques et reste hors du
+ * périmètre de ce lot. Le comportement est identique — mêmes ports, même
+ * horloge injectée.
+ */
+export async function listApprovers(payload: unknown): Promise<unknown> {
+  const cerveau = await cerveauProduction();
+  return runListApprovers(cerveau.rovoDeps, (payload ?? {}) as Record<string, unknown>);
 }
 
 /** Action `request-waiver` : demande de dérogation tracée. */
