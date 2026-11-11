@@ -32,6 +32,21 @@ export async function chargerTickets(cles: string[], deps: DepsEvaluate): Promis
   return lus.filter((ticket): ticket is IssueContext => ticket !== undefined);
 }
 
+/**
+ * Sonde Jira quand aucun ticket n'a pu être chargé alors que la PR en citait.
+ *
+ * Le cache ne lève jamais : une panne de Jira y ressemble à une clé inconnue.
+ * Sans cette sonde, un site Jira injoignable ferait passer tous les contrôles
+ * en silence — contraire au §16 (« aucune fusion n'est bloquée par une panne »
+ * suppose que la panne se voie). Ici on laisse l'erreur remonter : le repli de
+ * l'évaluation la transforme en verdict non concluant, que le Capteur traite
+ * selon sa politique (§13.5).
+ */
+async function sonderJiraSiVide(cles: string[], issues: IssueContext[], deps: DepsEvaluate): Promise<void> {
+  if (issues.length > 0 || cles.length === 0) return;
+  await deps.jira.lire(cles[0]);
+}
+
 /** Incidents ouverts du service, lus par le cache ; vide si service inconnu. */
 export async function chargerIncidents(service: string | undefined, deps: DepsEvaluate) {
   if (!service) return [];
@@ -61,6 +76,7 @@ export function createEvaluateService(deps: DepsEvaluate): EvaluateService {
   return async (entree) => {
     try {
       const issues = await chargerTickets(entree.issueKeys, deps);
+      await sonderJiraSiVide(entree.issueKeys, issues, deps);
       const incidents = await chargerIncidents(entree.service, deps);
       const moteur: EntreeMoteur = {
         pr: entree.pr,
