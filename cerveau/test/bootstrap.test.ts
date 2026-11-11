@@ -53,7 +53,7 @@ describe('amorçage d’une installation', () => {
     const { deps: d, store } = deps({ workspaceUuid: 'ws-demo', secret: SECRET, jeuDeDemo: true });
     const resume = await amorcerInstallation(d);
     expect(resume.demo).toBe('charge');
-    expect(resume.demoResume).toEqual({ tickets: 6, gels: 2, incidents: 1, regles: 7 });
+    expect(resume.demoResume).toEqual({ tickets: 8, gels: 3, incidents: 1, regles: 9 });
     expect(await store.issueCache.read('PAY-123')).toBeDefined();
     expect(await store.incidents.listOpen('checkout-api')).toHaveLength(1);
   });

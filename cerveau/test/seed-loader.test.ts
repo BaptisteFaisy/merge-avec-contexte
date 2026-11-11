@@ -17,20 +17,22 @@ describe('chargeur du jeu de démonstration', () => {
   it('écrit les six familles de données et rend leur compte', async () => {
     const store = createMemoryStore();
     const resume = await chargerJeuDeDemo(store, { projectId: PROJET, now: NOW });
-    expect(resume).toEqual({ tickets: 6, gels: 2, incidents: 1, correspondances: 2, derogations: 2, regles: 7 });
+    expect(resume).toEqual({ tickets: 8, gels: 3, incidents: 1, correspondances: 2, derogations: 2, regles: 9 });
 
     expect(await store.issueCache.read('PAY-123')).toBeDefined();
+    expect(await store.issueCache.read('PAY-132')).toBeDefined();
     expect((await store.freezes.list()).map((g) => g.name)).toContain('Black Friday');
+    expect((await store.freezes.list()).map((g) => g.name)).toContain('Fenêtre release');
     expect(await store.incidents.listOpen('checkout-api')).toHaveLength(1);
-    expect(await store.ruleConfig.listByProject(PROJET)).toHaveLength(7);
+    expect(await store.ruleConfig.listByProject(PROJET)).toHaveLength(9);
   });
 
   it('est idempotent : deux chargements ne dupliquent rien', async () => {
     const store = createMemoryStore();
     await chargerJeuDeDemo(store, { projectId: PROJET, now: NOW });
     await chargerJeuDeDemo(store, { projectId: PROJET, now: NOW });
-    expect(await store.freezes.list()).toHaveLength(2);
-    expect(await store.ruleConfig.listByProject(PROJET)).toHaveLength(7);
+    expect(await store.freezes.list()).toHaveLength(3);
+    expect(await store.ruleConfig.listByProject(PROJET)).toHaveLength(9);
   });
 
   it('rend la correspondance dépôt → service lisible', async () => {

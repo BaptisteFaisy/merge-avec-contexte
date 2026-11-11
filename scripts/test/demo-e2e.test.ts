@@ -3,7 +3,7 @@
  * formatage, décision de succès. Aucune requête réseau ici.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { afficherMessage, estExecute, etape, lireConfiguration, payloadPr, raisonsBloquantes } from '../demo-e2e';
+import { afficherMessage, estExecute, etape, lireConfiguration, payloadDe, payloadPr, prParId, PRS_DEMO, raisonsBloquantes } from '../demo-e2e';
 
 describe('démonstration de bout en bout — parties pures', () => {
   afterEach(() => {
@@ -67,6 +67,25 @@ describe('démonstration de bout en bout — parties pures', () => {
     etape('Étape ratée', false, 'raison');
     expect(lignes.mock.calls[0]?.[0]).toBe('OK   Le pont répond (474 ms) — stockage ok');
     expect(lignes.mock.calls[1]?.[0]).toBe('ÉCHEC Étape ratée — raison');
+  });
+
+  it('décrit une PR de démonstration complète à partir de son numéro', () => {
+    expect(prParId(45)).toMatchObject({ cle: 'PAY-130', target: 'release/1.4', depot: 'pricing-api' });
+    expect(prParId(47).cle).toBe('PAY-125');
+    expect(PRS_DEMO).toHaveLength(9);
+  });
+
+  it('construit la charge utile d’une PR de démonstration listée', () => {
+    const config = { url: 'u', secret: 's', workspace: 'ws-demo' };
+    const payload = payloadDe(config, prParId(45), 'on-code-pushed');
+    expect(payload).toMatchObject({
+      repositoryUuid: 'pricing-api',
+      repositorySlug: 'pricing-api',
+      pullRequestId: 45,
+      issueKeys: ['PAY-130'],
+      targetBranch: 'release/1.4',
+      trigger: 'on-code-pushed',
+    });
   });
 
   it('ne s’exécute pas quand un test l’importe', () => {
