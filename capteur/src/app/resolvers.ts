@@ -13,6 +13,7 @@
 import type {
   Evaluation,
   FallbackCause,
+  Incident,
   IssueContext,
   Level,
   Reason,
@@ -58,6 +59,11 @@ export interface ResolverDeps {
   nonceGenerator?: () => string;
   /** Délai des appels au pont (sonde `health` comprise) ; défaut : 4 s. */
   timeoutMs?: number;
+  /**
+   * Incidents du service touché (§17 cas 6 : évaluation périmée). Port
+   * facultatif : sans lui, la carte ne peut pas détecter la péremption.
+   */
+  lireIncidents?: (service: string) => Promise<Incident[]>;
 }
 
 /** Détail renvoyé par la route `card` du Cerveau (`cerveau/src/bridge/routes.ts`). */
@@ -162,6 +168,18 @@ export interface CarteChargee {
   configs: RuleConfig[];
   historique: Evaluation[];
   jumelage: { jumele: boolean; site?: string; depuis?: string };
+  /** Incidents du service de la carte, pour détecter une évaluation périmée. */
+  incidents: Incident[];
+}
+
+/** Incidents du service ; vide sans source, et une panne ne casse pas la carte. */
+async function lireIncidentsService(service: string | undefined, deps: ResolverDeps): Promise<Incident[]> {
+  if (!service || !deps.lireIncidents) return [];
+  try {
+    return await deps.lireIncidents(service);
+  } catch {
+    return [];
+  }
 }
 
 /** Charge utile de la route `card` : les métadonnées de la PR, rien d'autre. */
@@ -211,6 +229,7 @@ async function chargerCarte(context: BitbucketUiContext, deps: ResolverDeps): Pr
       configs: [],
       historique: [],
       jumelage,
+      incidents: [],
     };
   }
   return {
@@ -219,6 +238,7 @@ async function chargerCarte(context: BitbucketUiContext, deps: ResolverDeps): Pr
     configs: configsDepuisCarte(reponse.data),
     historique: [],
     jumelage: { ...jumelage, site: reponse.data.siteUrl || jumelage.site },
+    incidents: await lireIncidentsService(reponse.data.service, deps),
   };
 }
 
@@ -256,6 +276,7 @@ export async function handlePrCard(
   return vmCarte({
     evaluation: carte.evaluation,
     issues: carte.issues,
+    incidents: carte.incidents,
     jumelage: carte.jumelage,
   });
 }
@@ -266,6 +287,7 @@ export async function handlePrPanel(context: BitbucketUiContext, deps: ResolverD
   return vmPanneau({
     evaluation: carte.evaluation,
     issues: carte.issues,
+    incidents: carte.incidents,
     jumelage: carte.jumelage,
     regles: carte.configs,
     historique: carte.historique,

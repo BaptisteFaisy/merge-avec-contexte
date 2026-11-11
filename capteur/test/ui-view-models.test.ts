@@ -7,14 +7,18 @@ import { formatEvaluation } from '../src/shared/message/format';
 import type {
   Evaluation,
   FallbackPolicy,
+  Incident,
   IssueContext,
   Reason,
   RuleConfig,
 } from '../src/shared/types';
 import {
+  activiteApresEvaluation,
   derogationVm,
+  evaluationPerimee,
   jumelageVm,
   marcheASuivreVm,
+  perimeVm,
   politiqueOptions,
   raisonsVm,
   ticketVm,
@@ -315,5 +319,67 @@ describe('réglages de l’espace de travail', () => {
     const options = politiqueOptions('en');
     expect(options[0].label).toBe('Open');
     expect(options[1].aide).toContain('reserve it for critical branches');
+  });
+});
+
+describe('évaluation périmée (§17 cas 6, item 28)', () => {
+  // L'évaluation de référence date de MAINTENANT = 2026-11-11T08:30:00.000Z.
+  const INCIDENT_ANTERIEUR: Incident = {
+    service: 'api-paiement',
+    incidentKey: 'INC-9',
+    openedAt: '2026-11-11T07:00:00.000Z',
+    resolvedAt: '2026-11-11T08:00:00.000Z',
+  };
+  const INCIDENT_CLOS_APRES: Incident = {
+    service: 'api-paiement',
+    incidentKey: 'INC-11',
+    openedAt: '2026-11-11T08:00:00.000Z',
+    resolvedAt: '2026-11-11T09:00:00.000Z', // clos pendant que la PR attend
+  };
+  const INCIDENT_OUVERT_APRES: Incident = {
+    service: 'api-paiement',
+    incidentKey: 'INC-12',
+    openedAt: '2026-11-11T09:30:00.000Z',
+  };
+
+  it('ne dit rien quand les incidents sont antérieurs à l’évaluation', () => {
+    expect(evaluationPerimee(evaluation(), [INCIDENT_ANTERIEUR])).toBe(false);
+    expect(activiteApresEvaluation(evaluation(), [INCIDENT_ANTERIEUR])).toBeUndefined();
+    const vm = vmCarte({ evaluation: evaluation(), jumelage: JUMELAGE, incidents: [INCIDENT_ANTERIEUR] });
+    expect(vm.perime).toBeUndefined();
+  });
+
+  it('dit l’évaluation périmée quand un incident est clos après elle', () => {
+    expect(evaluationPerimee(evaluation(), [INCIDENT_CLOS_APRES])).toBe(true);
+    expect(activiteApresEvaluation(evaluation(), [INCIDENT_ANTERIEUR, INCIDENT_CLOS_APRES]))
+      .toBe('2026-11-11T09:00:00.000Z');
+    const vm = vmCarte({ evaluation: evaluation(), jumelage: JUMELAGE, incidents: [INCIDENT_CLOS_APRES] });
+    expect(vm.perime?.titre).toBe('Évaluation périmée');
+    expect(vm.perime?.texte).toContain('relancez le contrôle');
+  });
+
+  it('dit l’évaluation périmée quand un incident est ouvert après elle', () => {
+    const vm = vmCarte({ evaluation: evaluation(), jumelage: JUMELAGE, incidents: [INCIDENT_OUVERT_APRES] });
+    expect(vm.perime?.titre).toBe('Évaluation périmée');
+  });
+
+  it('est bilingue et se propage au panneau', () => {
+    const en = vmCarte({
+      evaluation: evaluation(),
+      jumelage: JUMELAGE,
+      incidents: [INCIDENT_CLOS_APRES],
+      locale: 'en',
+    });
+    expect(en.perime?.titre).toBe('Stale evaluation');
+    expect(en.perime?.texte).toContain('run the check again');
+    const panneau = vmPanneau({ evaluation: evaluation(), jumelage: JUMELAGE, incidents: [INCIDENT_CLOS_APRES] });
+    expect(panneau.perime?.titre).toBe('Évaluation périmée');
+  });
+
+  it('reste muet sans incidents, sur un horodatage illisible, et via perimeVm', () => {
+    expect(evaluationPerimee(evaluation())).toBe(false);
+    expect(evaluationPerimee(evaluation({ evaluatedAt: 'pas une date' }), [INCIDENT_CLOS_APRES])).toBe(false);
+    expect(perimeVm(evaluation(), [INCIDENT_ANTERIEUR])).toBeUndefined();
+    expect(perimeVm(evaluation(), [INCIDENT_CLOS_APRES], 'en')?.titre).toBe('Stale evaluation');
   });
 });

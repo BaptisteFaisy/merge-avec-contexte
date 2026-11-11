@@ -42,6 +42,26 @@ export function journaliser(deps: DepsHorloge, message: string): void {
 }
 
 /**
+ * Suit un déplacement de ticket (audit item 26, §17 cas 9).
+ *
+ * Un ticket déplacé de projet change de clé : Jira redirige l'ancienne et
+ * rend le ticket sous la nouvelle. L'instantané est donc réécrit sous la clé
+ * qui l'identifie désormais ; l'ancienne entrée est conservée mais marquée
+ * périmée — pas effacée — pour la même raison que `invalider` : un instantané
+ * périmé reste un dernier recours lisible, et toute relecture de l'ancienne
+ * clé repassera par Jira, qui redirige à nouveau.
+ */
+async function suivreDeplacement(
+  cle: string,
+  issue: IssueContext,
+  now: string,
+  deps: DepsCacheTicket,
+): Promise<void> {
+  await ecrireEntree(issue.key, issue, now, deps);
+  if (issue.key !== cle) await ecrireEntree(cle, issue, EPOQUE, deps);
+}
+
+/**
  * Vrai si `updatedAt` a moins de `ttlMs` au regard de l'horloge `now`.
  *
  * Un horodatage illisible ou dans le futur vaut périmé : mieux vaut relire
@@ -98,7 +118,7 @@ export async function lireTicket(
   if (entree && estFrais(entree.updatedAt, now, ttl)) return entree.valeur;
   try {
     const issue = await deps.lecteur.lire(cle);
-    await ecrireEntree(cle, issue, now, deps);
+    await suivreDeplacement(cle, issue, now, deps);
     return issue;
   } catch (erreur) {
     journaliser(deps, `ticket ${cle} : lecture Jira impossible (${messageErreur(erreur)})`);
