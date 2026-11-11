@@ -12,6 +12,7 @@ export default defineConfig({
       'shared/test/**/*.test.ts',
       'capteur/test/**/*.test.ts',
       'cerveau/test/**/*.test.ts',
+      'scripts/test/**/*.test.ts',
     ],
   },
 });

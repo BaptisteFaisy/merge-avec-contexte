@@ -14,7 +14,8 @@
     "shared:sync": "node scripts/shared-sync.mjs sync",
     "shared:check": "node scripts/shared-sync.mjs check",
     "limits": "python3 tools/check-file-limits.py && node tools/check-function-limits.mjs",
-    "verify": "npm run shared:check && npm run typecheck && npm test && npm run limits"
+    "verify": "npm run shared:check && npm run typecheck && npm test && npm run limits",
+    "demo": "vite-node scripts/demo-e2e.ts"
   },
   "devDependencies": {
     "@forge/api": "^8.5.0",
