@@ -159,20 +159,65 @@ Open Rovo on the demo site and chat with the **Merge avec contexte** agent:
 - “Which freezes are planned this week?”
 - “Who can grant me a waiver?”
 
-### A.4 Call the 5 MCP tools
+The last question is answered by `list-approvers`, a **read-only** action: naming the
+approvers records nothing and notifies nobody. `request-waiver` is the only action that
+writes.
 
-The same five actions are exposed over `rovo:mcp` and can be called from any MCP client
+### A.4 Call the 6 MCP tools
+
+The same six actions are exposed over `rovo:mcp` and can be called from any MCP client
 (e.g. a code agent). Each tool mirrors what the merge check itself uses:
 
 | Tool | Verb | Inputs | Returns |
 |---|---|---|---|
-| `evaluate-merge` | GET | `issueKey`, `targetBranch`, `repository` (all optional) | Dry-run evaluation: rules, reasons, possible waivers |
+| `evaluate-merge` | GET | `issueKey` (required), `targetBranch`, `repository` | Dry-run evaluation: verdict, reasons, ready-to-show message |
 | `explain-block` | GET | `issueKey` | Latest real evaluation for the ticket's PRs |
 | `list-freezes` | GET | `days` | Current and upcoming freezes |
 | `list-waivers` | GET | `issueKey` | Active waivers |
+| `list-approvers` | GET | `issueKey` (optional) | Who can grant a waiver — read-only, nothing recorded |
 | `request-waiver` | CREATE | `issueKey`, `ruleCode`, `reason`, `hours` | Request recorded, approvers notified |
 
-`evaluate-merge` is the key tool for code agents: it answers *before* the agent attempts a merge.
+Five of the six are `GET`: only `request-waiver` writes. An Automation-triggered agent can
+therefore use every read-only tool (Automation never invokes CREATE/UPDATE/DELETE/TRIGGER).
+
+### A.5 The code-agent path (§7.4), exactly
+
+A code agent that is about to merge asks the Brain first: one call, one JSON answer, no side
+effect — the agent stops instead of attempting the merge.
+
+Request (MCP tool call):
+
+```json
+{
+  "tool": "evaluate-merge",
+  "arguments": { "issueKey": "PAY-123", "targetBranch": "main", "repository": "paiement-api" }
+}
+```
+
+Response (real shape, produced by `runEvaluateMerge`, serialisable as-is):
+
+```json
+{
+  "verdict": "blocked",
+  "allowed": false,
+  "message": "Blocked, 2 reasons.\n1) PAY-123: 2 acceptance criteria not checked.\n2) Freeze \"Black Friday\" on main until Nov 30, 9:00 AM.\nDetails and waiver: the \"Merge with context\" card on the right.",
+  "reasons": [
+    { "rule": "R-03", "level": "blocking", "text": "PAY-123: 2 acceptance criteria not checked.", "action": "Tick the criteria that are truly validated on the issue." },
+    { "rule": "R-04", "level": "blocking", "text": "Freeze \"Black Friday\" on main until Nov 30, 9:00 AM.", "action": "Wait for the freeze to end, or request a waiver." }
+  ],
+  "evaluatedAt": "2026-11-11T10:00:00.000Z",
+  "durationMs": 8
+}
+```
+
+The agent's decision rule is the `allowed` flag: `false` → stop and report `message` and
+`reasons`; `true` → merge. A rejected input (missing `issueKey`) also answers
+`allowed: false`, with `verdict: "inconclusive"` — never an exception, so an agent can never
+merge “in doubt”.
+
+This journey is replayed at action level by `cerveau/test/rovo-actions.test.ts`
+(`describe('parcours agent de code (§7.4)')`): input → JSON round-trip → decision, and the
+test asserts that no waiver was recorded on the way.
 
 ---
 
@@ -240,4 +285,10 @@ merge checks — see Known Limitations).
   support is only announced in the “Global Apps” early-access program, undated) — hence
   the two-app architecture and the signed bridge.
 - Without a repository → service mapping, incident rule R-05 does not block and says so
-  explicitly (“service unknown for this repository, rule not evaluated”).
+  explicitly (“service unknown for this repository, rule not evaluated”). The mapping reads
+  **two sources, in this order** (§8): the table held in the Brain's settings, then the
+  **Teamwork Graph** relations (service ↔ repository ↔ component ↔ team) through Forge's
+  `requestGraph`. The same graph supplies R-10's owner team when the settings do not name
+  one — so R-10 becomes playable without typing a single account id. The graph schema is
+  young: on an unexpected shape the reader returns nothing and the product falls back to the
+  settings table; it never fails an evaluation.
