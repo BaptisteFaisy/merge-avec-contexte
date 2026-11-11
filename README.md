@@ -51,15 +51,22 @@ npm run limits           # gardes : < 500 lignes par fichier, < 50 lignes par fo
 npm run verify           # les quatre à la suite
 ```
 
-Déploiement des apps (poste de développement, CLI Forge authentifié) :
+Déploiement des deux apps (poste de développement, CLI Forge authentifié) :
 
 ```bash
-cd cerveau && forge deploy    # app Jira : pont, règles, pages, agent Rovo, MCP
-cd capteur && forge deploy    # app Bitbucket : merge check, carte, réglages
+cd cerveau && forge register && forge deploy   # app Jira : pont, règles, pages, Rovo, MCP
+cd capteur && forge register && forge deploy   # app Bitbucket : merge check, carte, réglages
 ```
+
+Puis jumeler les deux installations : l'administrateur Jira génère un code à
+usage unique (10 min) dans les réglages du projet, l'administrateur Bitbucket le
+saisit dans les réglages de l'espace de travail, et l'état de la liaison
+s'affiche des deux côtés.
 
 Les conventions de contribution (architecture testable, horloges injectées, messages
 bilingues, règles de PR) sont dans [`docs/CONVENTIONS.md`](docs/CONVENTIONS.md).
+L'état d'avancement et ce qu'il reste à faire sur une vraie instance Atlassian sont
+dans [`docs/ETAT.md`](docs/ETAT.md).
 
 ## Pipeline
 
@@ -67,7 +74,3 @@ CI sur runners auto-hébergés, verdict en moins de 5 minutes : `ci` (typecheck 
 gardes), `ci-budget` (aucun job déclaré au-delà de 5 min), `couche0` (périmètre déclaré,
 motifs interdits). Les PR vertes entrent dans la **file Mergify** et sont mergées seules ;
 un conflit de rebase est résolu par l'agent de conflit (`.github/fireworks/`).
-
-## Déploiement
-
-Deux apps Forge à déployer, dans cet ordre, avec le CLI Forge authentifié sur le site de démonstration :
