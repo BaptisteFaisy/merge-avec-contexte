@@ -16,8 +16,12 @@ permissions:
   contents: read
 
 concurrency:
+  # Pas d'annulation : ce job dure quelques secondes et la condition de file
+  # Mergify exige `check-success = ci-budget`. Une annulation (relance du
+  # balayeur, nouvelle tête de branche) laissait le check « cancelled », que
+  # GitHub refuse comme statut requis — la PR ne pouvait plus être mergée.
   group: ci-budget-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   ci-budget:
