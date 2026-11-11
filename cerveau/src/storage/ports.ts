@@ -15,6 +15,7 @@
  *   `expire` n'a pas été appelé, un jumelage consommé reste consommé.
  */
 import type { PairingOffer } from '../shared/bridge/pairing';
+import type { WaiverAuditEntry } from '../shared/bridge/payload';
 import type { NonceStore } from '../shared/bridge/verify';
 import type {
   Evaluation,
@@ -92,6 +93,31 @@ export interface WaiverRepository {
   listByIssue(issueKey: string): Promise<StoredWaiver[]>;
   /** Passe en `expired` les dérogations accordées dont la date est passée. */
   expire(now: string): Promise<number>;
+}
+
+// ---------------------------------------------------------------------------
+// Journal d'audit des dérogations
+// ---------------------------------------------------------------------------
+
+/**
+ * Journal d'audit des décisions de dérogation (table `waiver_audit`).
+ *
+ * Une ligne par événement — demande, accord, refus — avec les identités
+ * déclarées et leur statut (vérifiée ou déclarée). Contrairement aux nonces du
+ * pont, ce journal n'est **jamais purgé** : le §16 exige une traçabilité sans
+ * limite de durée. C'est aussi le port par lequel les écrans lisent la trace
+ * (l'écran lui-même est un autre lot).
+ */
+export interface WaiverAuditRepository {
+  /** Enregistre un événement ; l'identifiant vient de l'appelant. */
+  record(entry: WaiverAuditEntry): Promise<void>;
+  find(id: string): Promise<WaiverAuditEntry | undefined>;
+  /** Toute la trace d'une dérogation, la demande d'abord. */
+  listByWaiver(waiverId: string): Promise<WaiverAuditEntry[]>;
+  /** Trace d'une PR : ce que l'écran de la carte et le journal affichent. */
+  listByPullRequest(repositoryUuid: string, prId: number): Promise<WaiverAuditEntry[]>;
+  /** Événements d'une période, les plus récents d'abord. */
+  listSince(since: string, until?: string): Promise<WaiverAuditEntry[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -264,6 +290,7 @@ export interface Store {
   ruleConfig: RuleConfigRepository;
   freezes: FreezeRepository;
   waivers: WaiverRepository;
+  waiverAudit: WaiverAuditRepository;
   evaluations: EvaluationRepository;
   repoService: RepoServiceRepository;
   issueCache: IssueCacheRepository;

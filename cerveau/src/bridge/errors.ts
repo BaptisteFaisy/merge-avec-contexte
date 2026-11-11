@@ -24,12 +24,20 @@ export interface BridgeResponse {
 export class BridgeError extends Error {
   readonly code: BridgeErrorCode;
   readonly statusCode: number;
+  /** En-têtes supplémentaires (par exemple `Retry-After` d'un 429). */
+  readonly headers: Record<string, string>;
 
-  constructor(code: BridgeErrorCode, message: string, statusCode: number) {
+  constructor(
+    code: BridgeErrorCode,
+    message: string,
+    statusCode: number,
+    headers: Record<string, string> = {},
+  ) {
     super(message);
     this.name = 'BridgeError';
     this.code = code;
     this.statusCode = statusCode;
+    this.headers = { ...headers };
   }
 }
 
@@ -43,9 +51,15 @@ export function reponseJson(statusCode: number, corps: unknown): BridgeResponse 
 }
 
 /** Rend la réponse JSON correspondant à un code d'erreur. */
-export function reponseErreur(code: BridgeErrorCode, message: string, statusCode: number): BridgeResponse {
+export function reponseErreur(
+  code: BridgeErrorCode,
+  message: string,
+  statusCode: number,
+  headers: Record<string, string> = {},
+): BridgeResponse {
   const corps: BridgeErrorBody = { error: code, message };
-  return reponseJson(statusCode, corps);
+  const reponse = reponseJson(statusCode, corps);
+  return { ...reponse, headers: { ...reponse.headers, ...headers } };
 }
 
 /** Statut habituel d'un code d'erreur du pont. */
@@ -59,14 +73,34 @@ export function statutParDefaut(code: BridgeErrorCode): number {
     case 'unknown-route':
     case 'not-found':
       return 404;
+    case 'rate-limited':
+      return 429;
     case 'internal':
       return 500;
   }
 }
 
 /** Erreur du pont à partir d'un code : message et statut par défaut. */
-export function erreurPont(code: BridgeErrorCode, message: string): BridgeError {
-  return new BridgeError(code, message, statutParDefaut(code));
+export function erreurPont(
+  code: BridgeErrorCode,
+  message: string,
+  headers: Record<string, string> = {},
+): BridgeError {
+  return new BridgeError(code, message, statutParDefaut(code), headers);
+}
+
+/**
+ * Erreur « trop de requêtes » : 429, avec l'attente conseillée (item 10).
+ *
+ * `retryAfterSecondes` vient de la limite de débit ; le message ne révèle ni
+ * les bornes configurées, ni l'identité des autres appelants.
+ */
+export function erreurDebitLimite(retryAfterSecondes: string): BridgeError {
+  return erreurPont(
+    'rate-limited',
+    'Trop de requêtes sur le pont : réessayez dans quelques secondes.',
+    { 'retry-after': retryAfterSecondes },
+  );
 }
 
 /** Erreur « rien à cette adresse » : 404. */

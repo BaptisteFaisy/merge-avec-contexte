@@ -2,92 +2,44 @@
  * Implémentation Forge SQL des ports de stockage (adaptateur fin).
  *
  * Aucune décision ici : chaque méthode traduit un appel en une requête et rend
- * la ligne telle quelle. Le schéma visé est celui de `schema.ts` (§14) ; les
- * dates sont des chaînes ISO 8601 (Forge SQL ne traduit pas les types) et les
- * structures sont rangées en JSON ou en liste séparée par des virgules.
+ * la ligne telle quelle. Le schéma visé est celui de `schema.ts` (§14, plus les
+ * deux tables de sécurité du pont) ; les dates sont des chaînes ISO 8601 (Forge
+ * SQL ne traduit pas les types) et les structures sont rangées en JSON ou en
+ * liste séparée par des virgules.
  *
- * L'API employée est celle de `@forge/sql` : `sql.prepare<T>(requête)` rend un
- * énoncé, `bindParams(...)` fixe les paramètres, `execute()` envoie la requête
- * et rend `{ rows }`. Une écriture rend `affectedRows` dans `rows`.
+ * Deux modules complètent celui-ci :
+ * - `sql-exec.ts` : les briques basses (`@forge/sql`), partagées par tous les
+ *   adaptateurs `sql-*.ts` ;
+ * - `sql-securite.ts` : l'anti-rejeu (`bridge_nonce`) et le journal d'audit des
+ *   dérogations (`waiver_audit`).
  */
-import { sql } from '@forge/sql';
-import type { UpdateQueryResponse } from '@forge/sql';
 import type { FallbackPolicy, Freeze, Incident, RuleCode, RuleConfig, Waiver } from '../shared/types';
 import type { PairingOffer } from '../shared/bridge/pairing';
 import type {
   EvaluationRepository, EvaluationStats, FreezeRepository, IncidentRepository, IssueCacheEntry,
-  IssueCacheRepository, NonceStore, ObservedBlock, PairingRecord, PairingRepository, RepoServiceMapping,
+  IssueCacheRepository, ObservedBlock, PairingRecord, PairingRepository, RepoServiceMapping,
   RepoServiceRepository, RuleConfigRepository, Store, StoredEvaluation, StoredWaiver, WaiverRepository,
 } from './ports';
-
-/** Valeur acceptable en paramètre lié. */
-type SqlValue = string | number | null;
-
-/** Exécute une lecture et rend les lignes. */
-async function lignes<T>(requete: string, params: SqlValue[] = []): Promise<T[]> {
-  const resultat = await sql.prepare<T>(requete).bindParams(...params).execute();
-  return (resultat.rows as unknown as T[]) ?? [];
-}
-
-/** Exécute une écriture et rend le nombre de lignes touchées. */
-async function ecrire(requete: string, params: SqlValue[] = []): Promise<number> {
-  const resultat = await sql.prepare<UpdateQueryResponse>(requete).bindParams(...params).execute();
-  return resultat.rows?.affectedRows ?? 0;
-}
-
-/** Lit des lignes et les traduit en objets du domaine. */
-async function lire<Row, T>(requete: string, params: SqlValue[], mapper: (ligne: Row) => T): Promise<T[]> {
-  return (await lignes<Row>(requete, params)).map(mapper);
-}
-
-/** Lit une ligne au plus. */
-async function lireUne<Row, T>(requete: string, params: SqlValue[], mapper: (ligne: Row) => T): Promise<T | undefined> {
-  return (await lire(requete, params, mapper))[0];
-}
-
-/** Sérialise une structure en JSON (jamais `undefined`). */
-function json(valeur: unknown): string {
-  return JSON.stringify(valeur ?? null);
-}
-
-/** Relit une colonne JSON, avec une valeur de repli. */
-function lireJson<T>(brut: string | null | undefined, defaut: T): T {
-  if (brut === null || brut === undefined || brut === '') return defaut;
-  try {
-    const valeur = JSON.parse(brut) as T | null;
-    return valeur === null ? defaut : valeur;
-  } catch {
-    return defaut;
-  }
-}
-
-/** Liste de chaînes → colonne `VARCHAR` séparée par des virgules. */
-const enListe = (valeurs: string[]): string => valeurs.join(',');
-
-/** Colonne `VARCHAR` séparée par des virgules → liste. */
-const depuisListe = (brut: string | null | undefined): string[] =>
-  brut ? brut.split(',').filter((valeur) => valeur.length > 0) : [];
+import { creerNonceStore, creerWaiverAuditStore, heureReelleIso } from './sql-securite';
+import {
+  depuisListe,
+  ecrire,
+  enListe,
+  json,
+  lignes,
+  lire,
+  lireJson,
+  lireUne,
+  periodeSur,
+  upsert,
+  type SqlValue,
+} from './sql-exec';
 
 /** Condition de recherche d'une clé exacte dans `issue_keys` (liste séparée par des virgules). */
 const CONDITION_CLE = "CONCAT(',', issue_keys, ',') LIKE ?";
 
 /** Paramètre qui reconnaît une clé exacte dans une colonne `issue_keys`. */
 const parametreCle = (cle: string): string => `%,${cle},%`;
-
-/**
- * Fabrique l'écriture idempotente d'une table : `INSERT … ON DUPLICATE KEY
- * UPDATE` sur les colonnes qui ne font pas partie de la clé. Les paramètres
- * sont donnés dans l'ordre des colonnes ; la clé n'est jamais réécrite.
- */
-function upsert(table: string, colonnes: string[], cles: string[]): (params: SqlValue[]) => Promise<void> {
-  const trous = colonnes.map(() => '?').join(', ');
-  const maj = colonnes.map((colonne, rang) => ({ colonne, rang })).filter(({ colonne }) => !cles.includes(colonne));
-  const requete = `INSERT INTO ${table} (${colonnes.join(', ')}) VALUES (${trous})
-    ON DUPLICATE KEY UPDATE ${maj.map(({ colonne }) => `${colonne} = ?`).join(', ')}`;
-  return async (params) => {
-    await ecrire(requete, [...params, ...maj.map(({ rang }) => params[rang] as SqlValue)]);
-  };
-}
 
 // --- Lignes de table, telles que rendues par Forge SQL --------------------
 
@@ -149,11 +101,8 @@ function blocagesObservés(evaluation: StoredEvaluation): ObservedBlock[] {
       evaluatedAt: evaluation.evaluatedAt, text: raison.text }));
 }
 
-/** Filtre de période sur `evaluated_at`, avec la borne haute facultative. */
-function periode(since: string, until?: string): { clause: string; params: SqlValue[] } {
-  if (until === undefined) return { clause: 'evaluated_at >= ?', params: [since] };
-  return { clause: 'evaluated_at >= ? AND evaluated_at <= ?', params: [since, until] };
-}
+/** Filtre de période sur `evaluated_at`. */
+const periode = (since: string, until?: string) => periodeSur('evaluated_at', since, until);
 
 /** Ligne d'agrégats → statistiques de période. */
 function statistiques(ligne: StatsRow | undefined, since: string, until?: string): EvaluationStats {
@@ -433,36 +382,32 @@ export function creerIncidentStore(): IncidentRepository {
   };
 }
 
-// --- Nonces du pont signé -------------------------------------------------
+// --- Sécurité du pont -----------------------------------------------------
 
-/**
- * Mémoire des nonces du pont (§13.3). Le §14 ne prévoit pas de table pour eux :
- * ils vivent en mémoire du runtime, ce qui suffit à refuser un rejeu pendant la
- * vie de l'invocation. Une table dédiée serait le bon logement d'une protection
- * entre invocations — hors des huit tables du §14.
- */
-export function creerNonceStore(): NonceStore {
-  const vus = new Map<string, number>();
-  return {
-    async seen(nonce) {
-      const expiration = vus.get(nonce);
-      return expiration !== undefined && expiration > Date.now();
-    },
-    async remember(nonce, expiresAt) { vus.set(nonce, Date.parse(expiresAt)); },
-  };
+/** Options de l'assemblage SQL : l'horloge sert à l'anti-rejeu des nonces. */
+export interface SqlStoreOptions {
+  /** Horloge injectée (ISO 8601) ; défaut : l'heure réelle du conteneur. */
+  clock?: () => string;
 }
 
-/** Tout le stockage Forge SQL, assemblé : ce que reçoit l'app Jira. */
-export function createSqlStore(): Store {
+/**
+ * Tout le stockage Forge SQL, assemblé : ce que reçoit l'app Jira.
+ *
+ * Les deux ports de sécurité du pont vivent dans `sql-securite.ts` (tables
+ * `bridge_nonce` et `waiver_audit`, hors §14) : l'anti-rejeu survit ainsi au
+ * redémarrage du conteneur et la traçabilité des dérogations est durable.
+ */
+export function createSqlStore(options: SqlStoreOptions = {}): Store {
   return {
     pairing: creerPairingStore(),
     ruleConfig: creerRuleConfigStore(),
     freezes: creerFreezeStore(),
     waivers: creerWaiverStore(),
+    waiverAudit: creerWaiverAuditStore(),
     evaluations: creerEvaluationStore(),
     repoService: creerRepoServiceStore(),
     issueCache: creerIssueCacheStore(),
     incidents: creerIncidentStore(),
-    nonces: creerNonceStore(),
+    nonces: creerNonceStore(options.clock ?? heureReelleIso),
   };
 }
