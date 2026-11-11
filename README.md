@@ -70,13 +70,4 @@ un conflit de rebase est résolu par l'agent de conflit (`.github/fireworks/`).
 
 ## Déploiement
 
-Le déploiement se fait app par app, avec le CLI Forge authentifié sur le site de
-démonstration :
-
-```bash
-cd cerveau && forge deploy    # app Jira : pont, règles, pages, agent Rovo, MCP
-cd capteur && forge deploy    # app Bitbucket : merge check, carte, réglages
-```
-
-Le jumelage se fait ensuite en trois étapes : générer un code côté Jira, le
-saisir côté Bitbucket, vérifier l'état de la liaison.
+Deux apps Forge à déployer, dans cet ordre, avec le CLI Forge authentifié sur le site de démonstration :
