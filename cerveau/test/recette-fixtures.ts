@@ -52,8 +52,8 @@ export const WORKSPACE_RECETTE = 'demo-workspace-uuid';
 export const SITE_RECETTE = 'https://demo.atlassian.net';
 /** Instant dans le gel « Black Friday » (30/11, 8 h → 10 h UTC). */
 export const NOW_GEL = '2026-11-30T09:00:00Z';
-/** Instant dans la fenêtre nocturne quotidienne (22 h → 23 h, Europe/Paris). */
-export const NOW_DEROGATION = '2026-11-27T21:30:00Z';
+/** Instant dans la fenêtre nocturne quotidienne (22 h → 23 h UTC du jeu). */
+export const NOW_DEROGATION = '2026-11-27T22:30:00Z';
 
 const DEUX_HEURES_MS = 2 * 60 * 60 * 1000;
 
