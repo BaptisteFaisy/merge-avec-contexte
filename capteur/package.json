@@ -1,0 +1,18 @@
+{
+  "name": "capteur",
+  "version": "0.1.0",
+  "private": true,
+  "description": "App Forge Bitbucket : merge check, carte de PR, réglages de l'espace de travail.",
+  "main": "src/index.ts",
+  "scripts": {
+    "lint": "forge lint",
+    "deploy": "forge deploy",
+    "install:app": "forge install"
+  },
+  "dependencies": {
+    "@forge/api": "^8.5.0",
+    "@forge/react": "^12.5.0",
+    "@forge/resolver": "^2.0.2",
+    "@forge/storage": "^2.0.3"
+  }
+}
