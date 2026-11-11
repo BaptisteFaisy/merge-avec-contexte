@@ -48,6 +48,12 @@ de la semaine 1, sous peine de bloquer le plan jusqu'au 22 décembre (§21).
   `issue_cache` + SQL, zéro appel Jira direct) ; si la borne est < 5 s, évaluation en deux
   temps : verdict rapide sur cache, détail asynchrone dans la carte.
 - [ ] Validé le : ____________ — borne observée : ____________
+- **Avancement du 2026-11-11 (partiel)** : la borne Bitbucket reste inconnue (aucun espace
+  de travail Bitbucket disponible, voir `docs/ETAT.md`). En revanche la chaîne mesurée côté
+  Cerveau est déjà conforme : sur l'app déployée en production, 10 appels consécutifs du
+  pont donnent une médiane de 0,57 s, un **P95 de 0,83 s** et un maximum de 1,10 s ; premier
+  appel après déploiement (démarrage à froid + 8 migrations SQL) 6,4 s. La marge sur les 5 s
+  de MC-11 est donc d'environ 6× avant même l'évaluation, qui tourne en mémoire.
 
 ## V2 — Appel d'un web trigger depuis une app Bitbucket
 
@@ -65,6 +71,14 @@ de la semaine 1, sous peine de bloquer le plan jusqu'au 22 décembre (§21).
   réglages du Capteur (le pont devient un appel REST Jira classique ; perte : l'absence
   d'identifiants long-lived).
 - [ ] Validé le : ____________ — taux de succès : ____________
+- **Avancement du 2026-11-11 (partiel)** : le web trigger est déployé et joignable depuis
+  l'extérieur de Forge. Trois comportements vérifiés en direct sur l'environnement de
+  production : `health` répond 200 avec `{"status":"ok","stockage":"ok"}` ; une requête
+  `evaluate` **sans signature** est refusée en 401 ; une route protégée avec une empreinte
+  invalide est refusée en 401 ; un corps non JSON est refusé en 400 `bad-payload` ; un code
+  de jumelage inconnu sur la route publique `pair` est refusé en 401. Reste à mesurer l'appel
+  **depuis une app Bitbucket** (contexte merge check et carte de PR), qui exige un espace de
+  travail Bitbucket et donc le niveau 2 de la démonstration.
 
 ## V3 — Longueur maximale du message affiché
 
