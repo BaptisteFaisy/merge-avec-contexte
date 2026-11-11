@@ -1,0 +1,168 @@
+# Instructions for Judges — Merge avec contexte
+
+> Codegeist 2026 · Apps for Software Teams
+> **Merge avec contexte** is a Bitbucket merge check that evaluates *context* before merging —
+> the linked Jira ticket, acceptance criteria, deployment freezes, open JSM incidents,
+> blocking issue links, and released versions — instead of code alone. It blocks or warns
+> **and explains why, with a concrete unblock path**.
+
+Because a single Forge app cannot hold both Bitbucket and Jira permissions, the product ships
+as **two paired Forge apps** talking over an **HMAC-SHA256-signed web trigger**:
+
+| App | Platform | Role |
+|---|---|---|
+| **Capteur** (Sensor) | Bitbucket | Merge check, PR side panel card, workspace settings (pairing, fallback policy) |
+| **Cerveau** (Brain) | Jira | Rule engine, Forge SQL storage, test console, issue panel, Rovo agent, MCP tools |
+
+Testing is offered at **two levels**: Level A needs only a Jira site (no Bitbucket required);
+Level B exercises the real Bitbucket merge check end to end.
+
+---
+
+## Prerequisites
+
+- Node.js 18+ and the Forge CLI: `npm install -g @forge/cli`
+- `forge login` with an Atlassian developer account
+- For Level A only, a demo site is enough. Create one with:
+
+```bash
+forge site provision
+```
+
+  This provisions a demo site with **Jira, Confluence, JSM, Rovo and Studio**
+  (note: **Bitbucket is not included** — see Known Limitations below).
+
+- Clone and deploy both apps:
+
+```bash
+git clone https://github.com/BaptisteFaisy/merge-avec-contexte.git
+cd merge-avec-contexte
+cd cerveau && forge deploy      # Jira app
+cd ../capteur && forge deploy   # Bitbucket app (Level B only)
+```
+
+- Install each app (`forge install`) on the target site / workspace.
+
+---
+
+## Level A — Without Bitbucket (Jira only)
+
+Everything below runs on the **Cerveau** app installed on a Jira site. All seven MVP rules
+are demonstrable without any Bitbucket workspace.
+
+### A.1 Load the demo dataset
+
+In the app's project settings page, click **Load demo dataset**. It creates:
+
+- a demo project with ticket `PAY-123` (two unchecked acceptance criteria, one blocking link),
+- a `checkout-api` service with an open JSM incident `INC-52`,
+- a freeze window named **Black Friday** on `main`,
+- a repository → service mapping row.
+
+### A.2 Use the Test Console
+
+The **Test Console** (Jira page shipped with the app) simulates a PR without Bitbucket:
+pick an issue key and a target branch, run the evaluation, and get the exact verdict and
+the exact message the real merge check would show. Example output for `PAY-123` on `main`:
+
+```
+Blocked, 2 reasons.
+1) PAY-123: 2 acceptance criteria not checked.
+2) Freeze "Black Friday" on main until Nov 30, 9:00 AM.
+Details and waiver: "Merge avec contexte" card on the right.
+```
+
+Try: check the two acceptance criteria boxes on the ticket, re-run the console — only the
+freeze remains. Grant a waiver — the evaluation passes with the waiver recorded.
+
+### A.3 Ask the Rovo agent
+
+Open Rovo on the demo site and chat with the **Merge avec contexte** agent:
+
+- “Why is the PR for PAY-123 blocked?”
+- “Can I merge PAY-123 now?”
+- “Which freezes are planned this week?”
+- “Who can grant me a waiver?”
+
+### A.4 Call the 5 MCP tools
+
+The same five actions are exposed over `rovo:mcp` and can be called from any MCP client
+(e.g. a code agent). Each tool mirrors what the merge check itself uses:
+
+| Tool | Verb | Inputs | Returns |
+|---|---|---|---|
+| `evaluate-merge` | GET | `issueKey`, `targetBranch`, `repository` (all optional) | Dry-run evaluation: rules, reasons, possible waivers |
+| `explain-block` | GET | `issueKey` | Latest real evaluation for the ticket's PRs |
+| `list-freezes` | GET | `days` | Current and upcoming freezes |
+| `list-waivers` | GET | `issueKey` | Active waivers |
+| `request-waiver` | CREATE | `issueKey`, `ruleCode`, `reason`, `hours` | Request recorded, approvers notified |
+
+`evaluate-merge` is the key tool for code agents: it answers *before* the agent attempts a merge.
+
+---
+
+## Level B — With Bitbucket (full end-to-end)
+
+Requires a **shared** Bitbucket Cloud workspace (personal workspaces do not support custom
+merge checks — see Known Limitations).
+
+### B.1 Install the Sensor app
+
+1. `cd capteur && forge install` and choose **Bitbucket** → your shared workspace.
+2. In Bitbucket, a workspace admin enables **custom merge checks**
+   (Workspace settings → Merge checks), then selects, per check, the target branches and
+   whether it is **mandatory**. Mandatory checks require the workspace's **Premium** plan.
+
+### B.2 Pair the two apps (3 steps)
+
+1. **Jira**: in the Cerveau project settings, click **Generate pairing code**
+   (single-use, valid 10 minutes).
+2. **Bitbucket**: open the Capteur workspace settings page and paste the code.
+3. The Sensor calls the Brain's web trigger with the code; both sides store a shared
+   secret and the trigger URL. Done — the link status turns green.
+
+(Re-pairing rotates the secret and invalidates the old one.)
+
+### B.3 Open a test PR
+
+1. Create a branch named `feature/PAY-123-limit-attempts` with any commit, open a PR
+   targeting `main`.
+2. The merge check runs on **push**, on **reviewer status change**, and again on the
+   **merge attempt** itself.
+3. You should see the check fail with the two-reason message, and the
+   **“Merge avec contexte” card** in the PR's right panel listing each reason, a link to
+   the ticket, and a **Request a waiver** button.
+4. Check the acceptance criteria on `PAY-123`, re-run the check from the PR
+   (individual re-run is supported), request a waiver from the card, grant it as the
+   approver — the final merge-attempt check passes and the waiver is logged.
+
+---
+
+## Acceptance scenarios (§18) and expected results
+
+| # | Given / When | Then (expected) |
+|---|---|---|
+| 1 | A PR whose ticket has 2 unchecked acceptance-criteria boxes, rule R-03 set to blocking | Check fails; message names the ticket and the number of unchecked boxes |
+| 2 | An active freeze on `main` | Every PR targeting `main` fails with the freeze name and end date |
+| 3 | An open incident on the repository's service | The PR fails — unless its ticket is linked to the incident (incident fixes pass, with a note) |
+| 4 | A 2-hour waiver is granted | The check passes; the log shows who, why, and until when |
+| 5 | The Brain is stopped and the fallback policy is **open** | The check passes with the message “context unavailable” |
+| 6 | A web-trigger request with a bad signature or an old timestamp | The request is rejected |
+| 7 | The Test Console is run for a given ticket | It returns the same message as the real check |
+| 8 | `evaluate-merge` is called from an MCP client | It returns the same reasons as the PR card |
+| 9 | A rule is in observation mode | Nothing appears in the PR; the evaluation still appears in the log |
+
+---
+
+## Known limitations (§15)
+
+- **Mandatory merge checks require the Bitbucket Premium plan.** On lower plans the check
+  informs but cannot block. (A Premium trial on the demo workspace covers the blocking demo.)
+- **Personal Bitbucket workspaces do not offer custom merge checks.** Use a shared workspace.
+- **`forge site provision` does not include Bitbucket** — the demo site covers Jira,
+  Confluence, JSM, Rovo and Studio. Level B needs a real shared Bitbucket workspace.
+- A single Forge app cannot mix Bitbucket and Jira scopes today (Bitbucket multi-app
+  support is only announced in the “Global Apps” early-access program, undated) — hence
+  the two-app architecture and the signed bridge.
+- Without a repository → service mapping, incident rule R-05 does not block and says so
+  explicitly (“service unknown for this repository, rule not evaluated”).
