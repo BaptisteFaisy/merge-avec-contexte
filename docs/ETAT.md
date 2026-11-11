@@ -20,7 +20,7 @@ Relevé du 2026-11-11 (nuit du 10 au 11). Tout ce qui est décrit ici est sur
 | Documentation | cahier des charges, architecture, conventions, référence des modules Forge, instructions aux juges (EN), scénario vidéo (EN), plan des six validations, recette | `docs/` |
 
 Chiffres : **352 tests** en 26 fichiers (vitest, logique pure, aucun réseau),
-**11 183 lignes** de TypeScript/JSX hors copies générées du contrat, 64 commits,
+**11 183 lignes** de TypeScript/JSX hors copies générées du contrat, 29 commits,
 **22 PR mergées par la file Mergify** — aucune intervention humaine sur un merge.
 
 Gardes en CI : `ci` (typecheck strict, tests, sanity docs), `ci-budget` (aucun
