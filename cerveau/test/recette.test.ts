@@ -6,6 +6,7 @@
  * seulement sur le verdict. Aucune dépendance Forge, jamais `Date.now()`.
  */
 import { describe, expect, it } from 'vitest';
+import { formatDayAndHour } from '../src/shared';
 import { DEMO_NOW } from '../src/seed/dataset';
 import {
   corpsEvaluate,
@@ -47,12 +48,19 @@ describe('recette §18', () => {
   });
 
   it('recette 2 : gel actif sur main ⇒ toute PR vers main échoue, message nommant le gel et sa fin', () => {
+    // Le jeu de démonstration date ses gels relativement à l'instant fourni :
+    // on évalue donc *pendant* la fenêtre du gel, calculée depuis le jeu, et
+    // non à une date figée qui sortirait de la fenêtre.
     const dataset = jeuDeRecette(NOW_GEL);
+    const gel = dataset.freezes.find((entree) => entree.name === 'Black Friday');
+    expect(gel).toBeDefined();
+    const pendant = new Date(Date.parse(gel!.startsAt) + 60 * 60 * 1000).toISOString();
+    const fin = formatDayAndHour(gel!.endsAt, 'fr', gel!.timezone ?? 'UTC');
     for (const prId of [42, 43, 44]) {
-      const { evaluation, reponse } = reponseRecette({ dataset, prId, now: NOW_GEL });
+      const { evaluation, reponse } = reponseRecette({ dataset, prId, now: pendant });
       expect(evaluation.verdict, `PR ${prId}`).toBe('blocked');
       expect(reponse.success, `PR ${prId}`).toBe(false);
-      expect(reponse.message, `PR ${prId}`).toContain('Gel « Black Friday » sur main jusqu’au 30/11 à 11 h.');
+      expect(reponse.message, `PR ${prId}`).toContain(`Gel « Black Friday » sur main jusqu’au ${fin}.`);
       expect(reponse.message, `PR ${prId}`).toMatch(/^Bloqué, \d raison/);
     }
   });
