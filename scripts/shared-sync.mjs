@@ -8,13 +8,28 @@
  * `<app>/src/shared/` (fichiers générés, versionnés) et sait vérifier que les
  * copies n'ont pas dérivé.
  *
- * Usage : node scripts/shared-sync.mjs sync|check [--quiet]
+ * Il porte aussi deux garde-fous :
+ *  - l'**empreinte du contrat** (audit 79) : `shared/CONTRACT.sha256`, somme
+ *    SHA-256 de l'arborescence `shared/src/` (chemins + contenus, triés).
+ *    `sync` la régénère, `check` la compare au contenu courant — la CI et le
+ *    script de déploiement s'appuient dessus pour garantir que les deux apps
+ *    partent de la même version du contrat ;
+ *  - le **hook pre-commit** (audit 76) : `hooks` installe un hook qui refuse un
+ *    commit dont les copies ou l'empreinte dérivent. La CI ne voit que l'arbre
+ *    poussé (puis l'arbre fusionné via `merge_group` et `main`) ; le hook, lui,
+ *    bloque la désynchronisation à la source, à coût nul pour la CI.
+ *    `npm install` l'installe automatiquement (script `prepare`).
+ *
+ * Usage : node scripts/shared-sync.mjs sync|check|hooks [--quiet]
  * Codes : 0 = OK, 1 = dérive (check) ou erreur d'écriture.
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import {
+  cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync,
+} from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { readdirSync } from 'node:fs';
 
 const RACINE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE = join(RACINE, 'shared', 'src');
@@ -22,9 +37,23 @@ const CIBLES = [
   join(RACINE, 'capteur', 'src', 'shared'),
   join(RACINE, 'cerveau', 'src', 'shared'),
 ];
+export const CHEMIN_EMPREINTE = join(RACINE, 'shared', 'CONTRACT.sha256');
+const MARQUEUR_HOOK = '# merge-avec-contexte : garde du contrat partagé (scripts/shared-sync.mjs)';
+const CONTENU_HOOK = [
+  '#!/bin/sh',
+  MARQUEUR_HOOK,
+  '# Refuse un commit dont les copies */src/shared/ ou l’empreinte dérivent.',
+  'exec node "$(git rev-parse --show-toplevel)/scripts/shared-sync.mjs" check --quiet',
+  '',
+].join('\n');
+
+/** Chemin relatif posix. */
+function posix(chemin) {
+  return chemin.split('\\').join('/');
+}
 
 /** Liste les fichiers d'un dossier, chemins relatifs triés. */
-function lister(racine) {
+export function lister(racine) {
   if (!existsSync(racine)) return [];
   const trouve = [];
   const pile = [racine];
@@ -47,45 +76,127 @@ function synchroniser(cible) {
   return lister(cible).length;
 }
 
-/** Compare une cible au fichier près ; rend la liste des dérives. */
-function verifier(cible) {
+/** Compare une cible à la source au fichier près ; rend la liste des dérives. */
+export function verifier(cible, source = SOURCE) {
   const derives = [];
-  const source = lister(SOURCE);
+  const fichiersSource = lister(source);
   const copie = lister(cible);
-  for (const fichier of source) {
+  for (const fichier of fichiersSource) {
     const cheminCopie = join(cible, fichier);
     if (!copie.includes(fichier)) {
-      derives.push(`${relative(RACINE, cheminCopie)} : absent`);
+      derives.push(`${posix(relative(RACINE, cheminCopie))} : absent`);
       continue;
     }
-    const a = readFileSync(join(SOURCE, fichier));
+    const a = readFileSync(join(source, fichier));
     const b = readFileSync(cheminCopie);
-    if (!a.equals(b)) derives.push(`${relative(RACINE, cheminCopie)} : différent de shared/src/${fichier}`);
+    if (!a.equals(b)) derives.push(`${posix(relative(RACINE, cheminCopie))} : différent de shared/src/${fichier}`);
   }
   for (const fichier of copie) {
-    if (!source.includes(fichier)) {
-      derives.push(`${relative(RACINE, join(cible, fichier))} : en trop (ne pas écrire ici)`);
+    if (!fichiersSource.includes(fichier)) {
+      derives.push(`${posix(relative(RACINE, join(cible, fichier)))} : en trop (ne pas écrire ici)`);
     }
   }
   return derives;
 }
 
-const mode = process.argv[2];
-if (mode === 'sync') {
-  for (const cible of CIBLES) {
-    const nombre = synchroniser(cible);
-    console.log(`${relative(RACINE, cible)} : ${nombre} fichier(s) recopié(s)`);
+/** Somme SHA-256 de l'arborescence source (chemins + contenus, triés). */
+export function empreinte(source = SOURCE) {
+  const hachoir = createHash('sha256');
+  for (const fichier of lister(source)) {
+    hachoir.update(`${posix(fichier)}\n`);
+    hachoir.update(readFileSync(join(source, fichier)));
+    hachoir.update('\n');
   }
-} else if (mode === 'check') {
-  const derives = CIBLES.flatMap(verifier);
-  if (derives.length > 0) {
-    console.error('Contrat partagé désynchronisé :');
-    for (const ligne of derives) console.error(`  - ${ligne}`);
-    console.error('Corrigez shared/src/ puis lancez : npm run shared:sync');
+  return hachoir.digest('hex');
+}
+
+/** Écrit l'empreinte du contrat dans le fichier versionné. */
+export function ecrireEmpreinte(valeur, chemin = CHEMIN_EMPREINTE) {
+  writeFileSync(chemin, [
+    '# Empreinte SHA-256 du contrat partagé (shared/src) — audit 79.',
+    '# Générée par `npm run shared:sync` : ne pas modifier à la main.',
+    valeur,
+    '',
+  ].join('\n'));
+}
+
+/** Empreinte enregistrée dans le fichier versionné, ou `null`. */
+export function lireEmpreinte(chemin = CHEMIN_EMPREINTE) {
+  if (!existsSync(chemin)) return null;
+  const trouve = readFileSync(chemin, 'utf8').match(/^[0-9a-f]{64}$/m);
+  return trouve ? trouve[0] : null;
+}
+
+/** Dossier des hooks git du dépôt (core.hooksPath sinon .git/hooks), ou `null`. */
+export function dossierHooks(base = RACINE) {
+  const git = (...args) => execFileSync('git', args, { cwd: base, encoding: 'utf8' }).trim();
+  try {
+    const configure = git('config', 'core.hooksPath');
+    if (configure) return resolve(base, configure);
+    const chemin = git('rev-parse', '--git-path', 'hooks');
+    if (chemin) return resolve(base, chemin);
+  } catch {
+    /* pas de dépôt git ou pas de git : rien à installer */
+  }
+  return null;
+}
+
+/** Installe (ou met à jour) le hook pre-commit ; rend son chemin ou `null`. */
+export function installerHook(base = RACINE, dossier = null) {
+  const cible = dossier ?? dossierHooks(base);
+  if (!cible) {
+    console.log('Hook pre-commit non installé : dépôt git introuvable.');
+    return null;
+  }
+  mkdirSync(cible, { recursive: true });
+  const chemin = join(cible, 'pre-commit');
+  if (existsSync(chemin) && !readFileSync(chemin, 'utf8').includes(MARQUEUR_HOOK)) {
+    console.log(`Hook pre-commit existant conservé (${posix(chemin)}) : ajoutez-y`
+      + ' `node scripts/shared-sync.mjs check --quiet` pour garder le contrôle.');
+    return null;
+  }
+  writeFileSync(chemin, CONTENU_HOOK, { mode: 0o755 });
+  return chemin;
+}
+
+/** Mode `check` : copies + empreinte ; rend les dérives. */
+function controler() {
+  const derives = CIBLES.flatMap((cible) => verifier(cible));
+  const attendue = empreinte();
+  const enregistree = lireEmpreinte();
+  if (enregistree !== attendue) {
+    derives.push(`shared/CONTRACT.sha256 : ${enregistree === null ? 'absente' : 'périmée'}`
+      + ` (empreinte courante ${attendue.slice(0, 12)}…) — lancez npm run shared:sync`);
+  }
+  return derives;
+}
+
+function main() {
+  const mode = process.argv[2];
+  const silencieux = process.argv.includes('--quiet');
+  if (mode === 'sync') {
+    for (const cible of CIBLES) {
+      const nombre = synchroniser(cible);
+      console.log(`${posix(relative(RACINE, cible))} : ${nombre} fichier(s) recopié(s)`);
+    }
+    ecrireEmpreinte(empreinte());
+    console.log(`shared/CONTRACT.sha256 : ${lireEmpreinte()?.slice(0, 12)}…`);
+  } else if (mode === 'check') {
+    const derives = controler();
+    if (derives.length > 0) {
+      console.error('Contrat partagé désynchronisé :');
+      for (const ligne of derives) console.error(`  - ${ligne}`);
+      console.error('Corrigez shared/src/ puis lancez : npm run shared:sync');
+      process.exit(1);
+    }
+    if (!silencieux) console.log('Contrat partagé synchronisé (copies + empreinte).');
+  } else if (mode === 'hooks') {
+    const chemin = installerHook();
+    if (chemin && !silencieux) console.log(`Hook pre-commit installé : ${posix(chemin)}`);
+  } else {
+    console.error('Usage : node scripts/shared-sync.mjs sync|check|hooks');
     process.exit(1);
   }
-  if (!process.argv.includes('--quiet')) console.log('Contrat partagé synchronisé.');
-} else {
-  console.error('Usage : node scripts/shared-sync.mjs sync|check');
-  process.exit(1);
 }
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) main();

@@ -12,6 +12,12 @@ on:
   pull_request:
   # File de merge : même contrôle sur le commit temporaire du groupe.
   merge_group:
+  # Contrôle après merge (audit 76) : le hook pre-commit (scripts/shared-sync.mjs
+  # hooks) refuse les commits désynchronisés à la source et `merge_group` teste
+  # l'arbre de la file ; ce run sur `main` est l'alarme finale si un rebase de
+  # la file cassait malgré tout les copies du contrat partagé.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 concurrency:
@@ -79,6 +85,19 @@ jobs:
         shell: bash
         run: node tools/check-manifests.mjs
 
+      # Le vrai schéma de la plateforme, porté par le paquet @forge/manifest
+      # déjà installé (audit 77) : ajv vient de l'arbre, aucune dépendance ajoutée.
+      - name: Schéma des manifestes (@forge/manifest)
+        shell: bash
+        run: node tools/check-manifest-schema.mjs
+
+      # Conventions TypeScript du dépôt contrôlées sur l'AST (audit 75) :
+      # imports sans extension, @forge/* interdit en logique pure, console.*
+      # et Date.now() bornés — voir docs/CONVENTIONS.md.
+      - name: Style et conventions TypeScript
+        shell: bash
+        run: npm run lint
+
       - name: Sanity docs (UTF-8, non vides)
         shell: bash
         run: |
@@ -117,3 +136,9 @@ jobs:
           python3 .github/fireworks/test_scope_agent.py
           python3 .github/fireworks/test_union_journal.py
           python3 .github/fireworks/test_quota.py
+
+      # Les gardes outillage se testent elles-mêmes aussi (node:test,
+      # bibliothèque standard de Node — audit 75, 76, 77, 78, 79).
+      - name: Tests des gardes outillage (tools)
+        shell: bash
+        run: node --test tools/selftests/*.test.mjs
