@@ -6,15 +6,17 @@
  *   ceux qui suivent n'ont de clé nulle part, ils restent ici.
  * - `useResolver` : chargement et appels du resolver Forge, avec état
  *   chargement / erreur / données — un écran n'est jamais blanc.
+ * - `useUtilisateur` : le compte courant, joint à la charge utile des écrans qui
+ *   doivent savoir si la personne peut agir (décider d'une dérogation).
  *
  * Contrat des resolvers (voir `cerveau/src/index.ts`) : chaque `invoke` renvoie
  * `{ locale, ... }` où les vues sont celles produites par `vmReglages`,
  * `vmEncart`, `vmConsole` et `vmJournal`.
  */
 import React from 'react';
-import { useCallback, useState } from '@forge/react';
+import { useCallback, useEffect, useState } from '@forge/react';
 import { Box, SectionMessage, Spinner, Text } from '@forge/react';
-import { invoke } from '@forge/bridge';
+import { invoke, view } from '@forge/bridge';
 
 const TEXTES = {
   'commun.chargement': { fr: 'Chargement…', en: 'Loading…' },
@@ -58,12 +60,60 @@ const TEXTES = {
   'encart.message': { fr: 'Message affiché par le contrôle', en: 'Message shown by the check' },
   'encart.raisons': { fr: 'Raisons et marche à suivre', en: 'Reasons and next steps' },
   'encart.derogations': { fr: 'Dérogations en cours', en: 'Active waivers' },
+  'encart.derogationAccordee': {
+    fr: 'Accordée par {by} jusqu’au {until} : {reason}',
+    en: 'Granted by {by} until {until}: {reason}',
+  },
   'encart.aucuneDerogation': { fr: 'Aucune dérogation en cours.', en: 'No active waiver.' },
   'encart.demander': { fr: 'Demander une dérogation', en: 'Request a waiver' },
   'encart.regle': { fr: 'Règle', en: 'Rule' },
   'encart.motif': { fr: 'Motif', en: 'Reason' },
   'encart.heures': { fr: 'Durée (heures)', en: 'Duration (hours)' },
   'encart.envoyer': { fr: 'Envoyer la demande', en: 'Send the request' },
+  'encart.decider': { fr: 'Demandes en attente de décision', en: 'Requests awaiting a decision' },
+  'encart.aucuneDemande': { fr: 'Aucune demande en attente.', en: 'No pending request.' },
+  'encart.demande': {
+    fr: 'Demandée par {by} le {at} : {reason}',
+    en: 'Requested by {by} on {at}: {reason}',
+  },
+  'encart.accorder': { fr: 'Accorder', en: 'Grant' },
+  'encart.refuser': { fr: 'Refuser', en: 'Refuse' },
+  'encart.dureeAccord': { fr: 'Durée de l’accord (heures, de 1 à 72)', en: 'Grant duration (hours, 1 to 72)' },
+  'encart.decideurs': { fr: 'Qui peut décider', en: 'Who can decide' },
+  'encart.aucunDecideur': {
+    fr: 'Aucun approbateur dans l’annuaire : ajoutez-en depuis les réglages du projet.',
+    en: 'No approver in the directory: add one from the project settings.',
+  },
+  'encart.motif.annuaire-vide': {
+    fr: 'Décision impossible : l’annuaire des approbateurs est vide.',
+    en: 'Cannot decide: the approver directory is empty.',
+  },
+  'encart.motif.non-approbateur': {
+    fr: 'Décision impossible : elle est réservée aux approbateurs de l’annuaire.',
+    en: 'Cannot decide: it is restricted to the approvers in the directory.',
+  },
+  'encart.decisions': { fr: 'Décisions prises', en: 'Decisions taken' },
+  'encart.statut.refused': { fr: 'Refusée', en: 'Refused' },
+  'encart.statut.expired': { fr: 'Expirée', en: 'Expired' },
+  'encart.decision': {
+    fr: '{statut} — décidée par {by}{echeance} : {reason}',
+    en: '{statut} — decided by {by}{echeance}: {reason}',
+  },
+  'encart.jusquAu': { fr: ' jusqu’au {until}', en: ' until {until}' },
+  'encart.avis.accordee': { fr: 'Dérogation accordée.', en: 'Waiver granted.' },
+  'encart.avis.refusee': { fr: 'Dérogation refusée.', en: 'Waiver refused.' },
+  'encart.avis.non-approbateur': {
+    fr: 'Décision non appliquée : seul un approbateur de l’annuaire peut trancher.',
+    en: 'Decision not applied: only an approver from the directory can decide.',
+  },
+  'encart.avis.introuvable': {
+    fr: 'Décision non appliquée : aucune dérogation de ce ticket ne correspond.',
+    en: 'Decision not applied: no matching waiver for this issue.',
+  },
+  'encart.avis.deja-decidee': {
+    fr: 'Décision non appliquée : cette dérogation a déjà été tranchée.',
+    en: 'Decision not applied: this waiver has already been decided.',
+  },
   'console.titre': { fr: 'Console de test', en: 'Test console' },
   'console.ticket': { fr: 'Ticket', en: 'Issue key' },
   'console.branche': { fr: 'Branche cible', en: 'Target branch' },
@@ -130,6 +180,34 @@ export function useResolver(nom) {
     [nom],
   );
   return { ...etat, appeler };
+}
+
+/**
+ * Identité de la personne qui regarde l'écran.
+ *
+ * Le resolver ne reçoit pas le contexte Forge : c'est l'écran qui lit le compte
+ * courant dans le contexte de la vue et le joint à sa charge utile. Lecture en
+ * dernier recours — si la plateforme ne répond pas, l'identité reste vide et le
+ * resolver applique sa propre convention (l'administrateur de l'installation).
+ */
+export function useUtilisateur() {
+  const [utilisateur, setUtilisateur] = useState('');
+  useEffect(() => {
+    let actif = true;
+    const retenir = (contexte) => {
+      if (actif) setUtilisateur((contexte && contexte.accountId) || '');
+    };
+    try {
+      const contexte = view && view.getContext ? view.getContext() : Promise.resolve(null);
+      contexte.then(retenir).catch(() => retenir(null));
+    } catch {
+      retenir(null);
+    }
+    return () => {
+      actif = false;
+    };
+  }, []);
+  return utilisateur;
 }
 
 /** Bandeau d'avertissement affiché quand le resolver échoue. */

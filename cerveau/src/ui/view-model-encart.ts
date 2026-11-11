@@ -1,8 +1,12 @@
 /**
  * Écran 5 — encart sur le ticket (§12, écran 5).
  *
- * PR connues du ticket, dernière évaluation, raisons avec la marche à suivre et
- * dérogations encore en cours. Module **pur** : aucune dépendance Forge.
+ * PR connues du ticket, dernière évaluation, raisons avec la marche à suivre,
+ * dérogations encore en cours, demandes à trancher et décisions closes.
+ * L'annuaire des approbateurs dit qui peut décider : une personne qui n'y figure
+ * pas voit les boutons désactivés, et pourquoi (§7.1 étape 6, MC-07).
+ *
+ * Module **pur** : aucune dépendance Forge, aucune lecture d'heure.
  */
 import { formatEvaluation, visibleReasons } from '../shared/message/format';
 import { t } from '../shared/message/strings';
@@ -26,6 +30,10 @@ export interface EntreeEncart {
   configs?: RuleConfig[];
   /** Instant injecté : décide quelles dérogations sont encore en cours. */
   maintenant?: string;
+  /** Annuaire des approbateurs (écran 4) : il dit qui peut décider. */
+  approbateurs?: string[];
+  /** Identité de la personne qui regarde l'encart, vide si l'écran l'ignore. */
+  utilisateur?: string;
 }
 
 export interface VuePr {
@@ -46,6 +54,35 @@ export interface VueDerogation {
   expiresLabel: string;
 }
 
+/** Une dérogation déjà close : refusée, ou accordée puis arrivée à échéance. */
+export type StatutDecision = 'refused' | 'expired';
+
+/** Pourquoi les boutons « Accorder » / « Refuser » sont désactivés. */
+export type MotifDecision = 'annuaire-vide' | 'non-approbateur';
+
+/** Une demande en attente : ce qu'un approbateur doit trancher (§7.1, MC-07). */
+export interface VueDemande {
+  id: string;
+  rule: RuleCode;
+  titre: string;
+  requestedBy: string;
+  reason: string;
+  requestedAtLabel: string;
+  /** Durée demandée, bornée de 1 à 72 h : proposition par défaut de l'accord. */
+  heuresDemandees: number;
+}
+
+/** Une décision prise : qui a tranché, jusqu'à quand, et pourquoi. */
+export interface VueDecision {
+  id: string;
+  rule: RuleCode;
+  statut: StatutDecision;
+  decidedBy: string;
+  reason: string;
+  /** Échéance de l'accord expiré ; `null` pour un refus. */
+  expiresLabel: string | null;
+}
+
 /** Une règle pour laquelle l'encart propose de demander une dérogation. */
 export interface RegleDerogable {
   code: RuleCode;
@@ -60,6 +97,16 @@ export interface VueEncart {
   derogations: VueDerogation[];
   /** Règles dont le niveau peut peser sur le verdict : bloquant ou avertissement. */
   reglesDerogables: RegleDerogable[];
+  /** Demandes en attente d'un approbateur : l'encart y met les boutons. */
+  demandes: VueDemande[];
+  /** Décisions closes : refus, et accords arrivés à échéance. */
+  decisions: VueDecision[];
+  /** Annuaire des approbateurs : qui peut décider. */
+  approbateurs: string[];
+  /** La personne qui regarde peut-elle trancher ? */
+  peutDecider: boolean;
+  /** Motif de l'interdiction de trancher, `null` quand c'est possible. */
+  motif: MotifDecision | null;
 }
 
 /** Une PR et son évaluation, telle que l'encart la montre. */
@@ -99,8 +146,58 @@ function derogationsEnCours(waivers: Waiver[], locale: Locale, maintenant?: stri
     }));
 }
 
-/** Règles dérogables : celles dont le niveau (réglé ou par défaut) pèse sur le verdict. */
-function reglesDerogables(configs: RuleConfig[] | undefined, locale: Locale): RegleDerogable[] {
+/** Durée demandée, en heures bornées : sert de proposition à l'accord. */
+function heuresDemandees(waiver: Waiver): number {
+  if (!waiver.expiresAt) return 2;
+  const heures = Math.round((Date.parse(waiver.expiresAt) - Date.parse(waiver.requestedAt)) / 3_600_000);
+  return Math.min(Math.max(heures, 1), 72);
+}
+
+/** Demandes en attente : ce que l'approbateur peut accorder ou refuser. */
+function demandes(waivers: Waiver[], locale: Locale): VueDemande[] {
+  return waivers
+    .filter((waiver) => waiver.status === 'requested')
+    .map((waiver) => ({
+      id: waiver.id,
+      rule: waiver.rule,
+      titre: t(locale, descriptorFor(waiver.rule).titleKey),
+      requestedBy: waiver.requestedBy,
+      reason: waiver.reason,
+      requestedAtLabel: formatDayAndHour(waiver.requestedAt, locale),
+      heuresDemandees: heuresDemandees(waiver),
+    }));
+}
+
+/** Une décision est-elle close ? Refus, ou accord dont l'échéance est passée. */
+function close(waiver: Waiver, instant: number): boolean {
+  if (waiver.status === 'refused' || waiver.status === 'expired') return true;
+  return waiver.status === 'granted' && waiver.expiresAt !== undefined && Date.parse(waiver.expiresAt) <= instant;
+}
+
+/** Décisions closes : qui a tranché, jusqu'à quand, et pourquoi. */
+function decisions(waivers: Waiver[], locale: Locale, maintenant?: string): VueDecision[] {
+  const instant = maintenant ? Date.parse(maintenant) : Number.POSITIVE_INFINITY;
+  return waivers
+    .filter((waiver) => close(waiver, instant))
+    .map((waiver) => ({
+      id: waiver.id,
+      rule: waiver.rule,
+      statut: (waiver.status === 'refused' ? 'refused' : 'expired') as StatutDecision,
+      decidedBy: waiver.grantedBy ?? waiver.requestedBy,
+      reason: waiver.reason,
+      expiresLabel:
+        waiver.status === 'refused' || !waiver.expiresAt ? null : formatDayAndHour(waiver.expiresAt, locale),
+    }));
+}
+
+/** Droit de décider : l'annuaire des approbateurs fait foi (§12, écran 4). */
+function droitDeDecider(annuaire: string[], utilisateur: string | undefined): { peutDecider: boolean; motif: MotifDecision | null } {
+  if (annuaire.length === 0) return { peutDecider: false, motif: 'annuaire-vide' };
+  const habilite = utilisateur !== undefined && annuaire.includes(utilisateur);
+  return habilite ? { peutDecider: true, motif: null } : { peutDecider: false, motif: 'non-approbateur' };
+}
+
+/** Règles dérogables : celles dont le niveau (réglé ou par défaut) pèse sur le verdict. */function reglesDerogables(configs: RuleConfig[] | undefined, locale: Locale): RegleDerogable[] {
   const parCode = new Map((configs ?? []).map((config) => [config.rule, config]));
   return RULE_CODES.map((code) => {
     const niveau = parCode.get(code)?.level ?? descriptorFor(code).defaultLevel;
@@ -111,10 +208,18 @@ function reglesDerogables(configs: RuleConfig[] | undefined, locale: Locale): Re
 /** Écran 5 — encart sur le ticket : PR connues, dernière évaluation, dérogations. */
 export function vmEncart(entree: EntreeEncart): VueEncart {
   const vues = (entree.prs ?? []).map((pr) => vuePr(pr, entree.locale));
+  const waivers = entree.waivers ?? [];
+  const annuaire = [...(entree.approbateurs ?? [])];
+  const droit = droitDeDecider(annuaire, entree.utilisateur);
   return {
     prs: vues,
     derniere: plusRecente(vues),
-    derogations: derogationsEnCours(entree.waivers ?? [], entree.locale, entree.maintenant),
+    derogations: derogationsEnCours(waivers, entree.locale, entree.maintenant),
     reglesDerogables: reglesDerogables(entree.configs, entree.locale),
+    demandes: demandes(waivers, entree.locale),
+    decisions: decisions(waivers, entree.locale, entree.maintenant),
+    approbateurs: annuaire,
+    peutDecider: droit.peutDecider,
+    motif: droit.motif,
   };
 }
