@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { computeSignature, HEADER_NAMES, SIGNATURE_VERSION, signRequest, signatureEquals } from '../src/bridge/sign';
-import { createMemoryNonceStore, verifyRequest } from '../src/bridge/verify';
+import { createMemoryNonceStore, verifyRequest, type NonceStore } from '../src/bridge/verify';
 
 const SECRET = 'secret-de-test-32-octets-0123456789';
 const CORPS = JSON.stringify({ route: 'evaluate', payload: { pullRequestId: 42 } });
@@ -67,6 +67,25 @@ describe('pont signé — signature', () => {
     const headers = Object.fromEntries(Object.entries(requete.headers).map(([cle, valeur]) => [cle.toUpperCase(), valeur]));
     const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(() => T0), now: T0 });
     expect(resultat.ok).toBe(true);
+  });
+
+  it('purge les nonces expirés quand le store le propose', async () => {
+    const nonces = createMemoryNonceStore(() => T0);
+    await nonces.remember('perime', new Date(T0 - 1000).toISOString());
+    await nonces.remember('frais', new Date(T0 + 60_000).toISOString());
+    expect(await nonces.purge?.(new Date(T0).toISOString())).toBe(1);
+    expect(nonces.size()).toBe(1);
+  });
+
+  it('laisse `purge` facultative : un store minimal reste conforme au contrat', async () => {
+    const minimal: NonceStore = { seen: async () => false, remember: async () => undefined };
+    const resultat = await verifyRequest({
+      secret: SECRET,
+      headers: signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'n6' }).headers,
+      body: CORPS, nonces: minimal, now: T0,
+    });
+    expect(resultat.ok).toBe(true);
+    expect(minimal.purge).toBeUndefined();
   });
 
   it('produit une empreinte stable et versionnée', () => {

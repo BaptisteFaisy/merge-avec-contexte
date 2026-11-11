@@ -1,5 +1,6 @@
 /**
- * Schéma Forge SQL du Cerveau (§14) : huit tables, DDL MySQL idempotente.
+ * Schéma Forge SQL du Cerveau (§14) : huit tables du cahier des charges, deux
+ * tables de sécurité du pont, DDL MySQL idempotente.
  *
  * Chaque entrée de `SCHEMA_STATEMENTS` est **une seule** instruction : la file
  * de `migrationRunner` n'exécute qu'une instruction par `enqueue`, et la
@@ -12,6 +13,13 @@
  * - les dates sont des chaînes ISO 8601 en `VARCHAR(40)` : Forge SQL ne
  *   traduit pas les types et rend les dates sous forme de chaînes ;
  * - pas de clé étrangère (non supportée) : l'intégrité est celle du code.
+ *
+ * Les deux tables qui ne viennent pas du §14 portent la sécurité du pont :
+ * `bridge_nonce` loge l'anti-rejeu hors de la mémoire du conteneur (un
+ * redémarrage ou un second conteneur n'annule plus la protection), et
+ * `waiver_audit` journalise les décisions de dérogation sans limite de durée
+ * (§16). Les nonces expirés sont purgés ; les lignes d'audit ne le sont
+ * jamais.
  *
  * Les colonnes marquées d'un commentaire `-- §14` sont celles du cahier des
  * charges ; les autres sont les compléments que le domaine réclame (fuseau
@@ -133,9 +141,36 @@ export const SCHEMA_STATEMENTS: string[] = [
     PRIMARY KEY (service, incident_key),
     KEY idx_service_incident_open (service, resolved_at)
   )`,
+
+  `CREATE TABLE IF NOT EXISTS bridge_nonce (
+    nonce VARCHAR(128) NOT NULL,
+    expires_at VARCHAR(40) NOT NULL,
+    created_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (nonce),
+    KEY idx_bridge_nonce_expires_at (expires_at)
+  )`,
+
+  `CREATE TABLE IF NOT EXISTS waiver_audit (
+    id VARCHAR(64) NOT NULL,
+    waiver_id VARCHAR(64) NOT NULL,
+    pr_id INT NOT NULL,
+    repo_uuid VARCHAR(64) NOT NULL,
+    rule_code VARCHAR(8) NOT NULL,
+    workspace_uuid VARCHAR(64) NULL,
+    requested_by VARCHAR(255) NOT NULL,
+    decided_by VARCHAR(255) NULL,
+    decision VARCHAR(16) NOT NULL,
+    reason TEXT NOT NULL,
+    identity_status VARCHAR(16) NOT NULL,
+    created_at VARCHAR(40) NOT NULL,
+    PRIMARY KEY (id),
+    KEY idx_waiver_audit_waiver (waiver_id),
+    KEY idx_waiver_audit_pr (repo_uuid, pr_id),
+    KEY idx_waiver_audit_created_at (created_at)
+  )`,
 ];
 
-/** Les huit tables du §14, dans l'ordre de création. */
+/** Les huit tables du §14, puis les deux tables de sécurité du pont. */
 export const TABLE_NAMES = [
   'pairing',
   'rule_config',
@@ -145,6 +180,8 @@ export const TABLE_NAMES = [
   'waiver',
   'issue_cache',
   'service_incident',
+  'bridge_nonce',
+  'waiver_audit',
 ] as const;
 
 export type TableName = (typeof TABLE_NAMES)[number];

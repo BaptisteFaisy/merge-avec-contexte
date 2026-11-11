@@ -26,7 +26,7 @@ export type MigrationMode = 'runner' | 'direct' | 'unavailable';
 /** Résultat d'une migration : ce qui est passé, et par quel chemin. */
 export interface MigrationReport {
   mode: MigrationMode;
-  /** Noms des migrations traitées (les huit tables, ou rien). */
+  /** Noms des migrations traitées (une par table du schéma, ou rien). */
   applied: string[];
   /** Message du premier échec, s'il y en a eu un. */
   failure?: string;
@@ -44,7 +44,7 @@ function messageDe(erreur: unknown): string {
   return erreur instanceof Error ? erreur.message : String(erreur);
 }
 
-/** Enfile les huit instructions dans `migrationRunner` puis exécute la file. */
+/** Enfile les instructions du schéma dans `migrationRunner` puis exécute la file. */
 async function migrerParRunner(): Promise<MigrationReport> {
   const noms = SCHEMA_STATEMENTS.map((statement, rang) => migrationName(statement, rang));
   let file = migrationRunner;

@@ -5,6 +5,11 @@
  * l'administrateur Bitbucket le saisit ; le Capteur appelle alors la route
  * `pair` du pont, qui rend le secret partagé. Un nouveau jumelage remplace le
  * secret : l'ancien ne signe plus rien.
+ *
+ * C'est donc aussi la **procédure de rotation en cas de fuite du secret** :
+ * nouvelle offre, nouveau jumelage, ancien secret invalidé de fait (plus aucun
+ * jumelage actif ne le porte). La marche à suivre détaillée est documentée dans
+ * l'en-tête du module `handler.ts` (item 52).
  */
 import {
   consumePairingOffer,

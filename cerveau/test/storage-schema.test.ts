@@ -1,6 +1,6 @@
 /**
- * Schéma Forge SQL (§14) : huit tables, colonnes du cahier des charges, DDL
- * idempotente.
+ * Schéma Forge SQL (§14) : les huit tables du cahier des charges et les deux
+ * tables de sécurité du pont, colonnes attendues, DDL idempotente.
  *
  * Il n'y a pas de base dans les tests : le DDL est lu par un analyseur
  * minimal qui tient un catalogue (table → colonnes, index). Exécuter deux fois
@@ -83,15 +83,23 @@ const COLONNES_DU_CAHIER: Record<string, string[]> = {
   service_incident: ['service', 'incident_key', 'opened_at', 'resolved_at'],
 };
 
+/** Colonnes des deux tables hors §14 : anti-rejeu persistant et journal d'audit. */
+const COLONNES_DE_SECURITE: Record<string, string[]> = {
+  bridge_nonce: ['nonce', 'expires_at', 'created_at'],
+  waiver_audit: ['id', 'waiver_id', 'pr_id', 'repo_uuid', 'rule_code', 'requested_by', 'decided_by',
+    'decision', 'reason', 'identity_status', 'created_at'],
+};
+
 describe('schéma §14', () => {
-  it('déclare les huit tables du cahier des charges', () => {
+  it('déclare les huit tables du cahier des charges et les deux tables de sécurité', () => {
     const catalogue = construire();
     expect([...catalogue.keys()].sort()).toEqual([...TABLE_NAMES].sort());
-    expect(catalogue.size).toBe(8);
+    expect(catalogue.size).toBe(10);
+    expect([...catalogue.keys()]).toEqual(expect.arrayContaining(Object.keys(COLONNES_DU_CAHIER)));
   });
 
   it('n’envoie qu’une instruction par table (la file n’en accepte qu’une)', () => {
-    expect(SCHEMA_STATEMENTS).toHaveLength(8);
+    expect(SCHEMA_STATEMENTS).toHaveLength(TABLE_NAMES.length);
     for (const statement of SCHEMA_STATEMENTS) {
       expect(statement).not.toContain(';');
       expect(statement.trim().startsWith('CREATE TABLE IF NOT EXISTS')).toBe(true);
@@ -107,6 +115,19 @@ describe('schéma §14', () => {
         expect(trouvee?.colonnes, `${table}.${colonne}`).toContain(colonne);
       }
     }
+  });
+
+  it('loge les nonces et le journal d’audit dans leurs propres tables', () => {
+    const catalogue = construire();
+    for (const [table, attendues] of Object.entries(COLONNES_DE_SECURITE)) {
+      const trouvee = catalogue.get(table);
+      expect(trouvee, `table ${table}`).toBeDefined();
+      for (const colonne of attendues) {
+        expect(trouvee?.colonnes, `${table}.${colonne}`).toContain(colonne);
+      }
+    }
+    expect(catalogue.get('bridge_nonce')?.index).toContain('idx_bridge_nonce_expires_at(expires_at)');
+    expect(catalogue.get('waiver_audit')?.index).toContain('idx_waiver_audit_waiver(waiver_id)');
   });
 
   it('est idempotente : deux exécutions laissent le catalogue identique', () => {
@@ -139,6 +160,7 @@ describe('schéma §14', () => {
     expect(SCHEMA_STATEMENTS.map((statement, rang) => migrationName(statement, rang))).toEqual([
       'v001_pairing', 'v002_rule_config', 'v003_freeze', 'v004_repo_service',
       'v005_evaluation', 'v006_waiver', 'v007_issue_cache', 'v008_service_incident',
+      'v009_bridge_nonce', 'v010_waiver_audit',
     ]);
   });
 
