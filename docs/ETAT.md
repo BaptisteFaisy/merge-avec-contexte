@@ -29,6 +29,15 @@ trois gardes maison — taille des fichiers (< 500 lignes), taille des fonctions
 (< 50 lignes, via l'AST TypeScript) et cohérence des manifestes Forge (fonctions
 référencées, handlers exportés, ressources présentes).
 
+## Démonstration gratuite, en une commande
+
+`docs/DEMO-E2E.md` : onze vérifications jouées contre l'app déployée par un
+script signé (`npm run demo`), sans navigateur, sans espace de travail
+Bitbucket et sans rien payer. Sortie réelle du 2026-11-11 dans le document :
+PR bloquée avec les deux raisons du §9, carte détaillée, dérogation demandée
+puis accordée puis retirée, PR bloquée par l'incident, correctif lié autorisé,
+requête non signée refusée.
+
 ## Essayer sans Bitbucket (niveau 1 des juges)
 
 Rien ne dépend d'un espace de travail Bitbucket pour démontrer le produit :

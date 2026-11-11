@@ -19,6 +19,44 @@ Level B exercises the real Bitbucket merge check end to end.
 
 ---
 
+## Level 0 — One command, no browser, no cost
+
+The fastest way to see the product work for real: a script that signs its
+requests with the shared contract and plays the whole scenario against the
+deployed app (blocked PR with the §9 message, PR card, waiver requested and
+granted, incident with the fix fast-path, unsigned request rejected).
+
+```bash
+npm install
+MAC_BRIDGE_URL=<web trigger URL> MAC_SHARED_SECRET=<shared secret> npm run demo
+```
+
+Real output, measured on the production deployment:
+
+```
+OK   Le pont répond (474 ms) — stockage ok
+OK   PR #42 bloquée (666 ms) — verdict blocked
+        │ Bloqué, 2 raisons.
+        │ 1) PAY-123 : 2 critère(s) d’acceptation non coché(s).
+        │ 2) Incident INC-52 ouvert sur checkout-api.
+        │ Détail et dérogation : carte « Merge avec contexte » à droite.
+OK   Carte de PR détaillée (496 ms) — 13 règle(s) exposée(s)
+OK   Dérogation demandée (278 ms) — dérogation w-42-R-03-…
+OK   Dérogation accordée (372 ms) — par tech-lead, 2 h
+OK   La dérogation lève la règle visée (478 ms) — 1 blocage(s) restant(s)
+OK   Dérogation retirée, la règle rebloque (440 ms) — verdict blocked
+OK   PR #43 bloquée par l’incident (618 ms) — 1) Incident INC-52 ouvert sur checkout-api.
+OK   Correctif lié à l’incident autorisé (516 ms) — Autorisé, 1 avertissement : Correctif d’incident INC-52 : la fusion reste autorisée.
+OK   Requête non signée refusée (484 ms) — HTTP 401
+Démonstration réussie
+```
+
+Setup and the honest limits (no Bitbucket workspace, Premium needed to *block*,
+demo dataset dated relatively to load time) are in
+[`docs/DEMO-E2E.md`](DEMO-E2E.md).
+
+---
+
 ## Already deployed — you can skip the build
 
 Both apps are registered, deployed and the Brain is installed on a demo site:
