@@ -109,3 +109,45 @@ export async function invaliderPourEvenement(event: unknown, deps: DepsEvenement
     await invaliderIncidents(service, cache);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Sonde de santé (§61)
+// ---------------------------------------------------------------------------
+
+/** TTL court de la sonde de santé : la route ne doit pas reconvertir la base en charge. */
+export const TTL_SONDE_STOCKAGE_MS = 5_000;
+
+/** Ce dont la sonde de santé a besoin : une lecture de jumelage et une horloge. */
+export interface DepsSondeStockage {
+  /** Lit les jumelages (une requête en base) pour vérifier qu'elle répond. */
+  pairings: () => Promise<unknown[]>;
+  now: HorlogeIso;
+  /** Fraîcheur du résultat en cache ; défaut `TTL_SONDE_STOCKAGE_MS`. */
+  ttlMs?: number;
+}
+
+/** État de la sonde : la base répond-elle ? */
+export type EtatStockage = 'ok' | 'indisponible';
+
+/**
+ * Sonde de santé mémorisée : la valeur est relue au plus une fois par `ttlMs`.
+ *
+ * Fonction de câblage : à brancher sur la route `health` pour que ses appels
+ * répétés ne re-lisent pas les jumelages à chaque fois (§61). Une panne est,
+ * elle aussi, mémorisée pendant le TTL, pour ne pas marteler une base morte.
+ */
+export function createSondeStockageEnCache(deps: DepsSondeStockage): () => Promise<EtatStockage> {
+  const ttl = deps.ttlMs ?? TTL_SONDE_STOCKAGE_MS;
+  let resultat: { etat: EtatStockage; updatedAt: string } | undefined;
+  return async () => {
+    const now = deps.now();
+    if (resultat && Date.parse(now) - Date.parse(resultat.updatedAt) < ttl) return resultat.etat;
+    try {
+      await deps.pairings();
+      resultat = { etat: 'ok', updatedAt: now };
+    } catch {
+      resultat = { etat: 'indisponible', updatedAt: now };
+    }
+    return resultat.etat;
+  };
+}

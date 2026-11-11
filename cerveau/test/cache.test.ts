@@ -6,6 +6,9 @@ import { incidentsDuService, serviceIncidentOuvert } from '../src/cache/service-
 import type { DepsCacheIncidents } from '../src/cache/service-cache';
 import type { EntreeCache, IssueCacheRepository } from '../src/cache/ports';
 import type { IssueReader } from '../src/jira/reader';
+import { createSondeStockageEnCache } from '../src/app/cache-adaptateurs';
+import { createMemoryStore } from '../src/storage/memory-store';
+import type { StoredEvaluation } from '../src/storage/ports';
 
 /** Instantané minimal d'un ticket, suffisant pour distinguer deux lectures. */
 function ticket(cle: string, statut: string): IssueContext {
@@ -264,5 +267,101 @@ describe('serviceIncidentOuvert', () => {
     ).toBe(true);
     expect(serviceIncidentOuvert([INCIDENT], 'api-paiement', 'pas une date')).toBe(false);
     expect(serviceIncidentOuvert([], 'api-paiement', now)).toBe(false);
+  });
+});
+
+/** Évaluation minimale, suffisante pour éprouver la pagination du journal. */
+function evaluation(id: string, evaluatedAt: string): StoredEvaluation {
+  return {
+    id,
+    workspaceUuid: 'ws',
+    repositoryUuid: 'repo',
+    pullRequestId: 1,
+    issueKeys: [],
+    trigger: 'on-code-pushed',
+    verdict: 'allowed',
+    reasons: [],
+    evaluatedAt,
+    durationMs: 10,
+  };
+}
+
+describe('pagination du journal des évaluations (item 56)', () => {
+  const depuis = '2026-11-01T00:00:00.000Z';
+  const base = Date.parse(depuis);
+
+  it('rend une page bornée, les plus récentes d’abord', async () => {
+    const store = createMemoryStore();
+    for (let i = 0; i < 5; i += 1) {
+      await store.evaluations.record(evaluation(`ev${i}`, new Date(base + i * 1000).toISOString()));
+    }
+    const toutes = await store.evaluations.listSince(depuis);
+    expect(toutes.map((e) => e.id)).toEqual(['ev4', 'ev3', 'ev2', 'ev1', 'ev0']);
+    const page = await store.evaluations.listSince(depuis, undefined, { limit: 2 });
+    expect(page.map((e) => e.id)).toEqual(['ev4', 'ev3']);
+    const suivante = await store.evaluations.listSince(depuis, undefined, { limit: 2, offset: 2 });
+    expect(suivante.map((e) => e.id)).toEqual(['ev2', 'ev1']);
+  });
+
+  it('reste compatible avec un appel sans pagination', async () => {
+    const store = createMemoryStore();
+    await store.evaluations.record(evaluation('ev0', depuis));
+    const toutes = await store.evaluations.listSince(depuis, '2026-11-02T00:00:00.000Z');
+    expect(toutes).toHaveLength(1);
+  });
+});
+
+describe('sonde de santé mémorisée (item 61)', () => {
+  function horlogeIso() {
+    let instant = Date.parse('2026-11-11T10:00:00.000Z');
+    return {
+      now: () => new Date(instant).toISOString(),
+      avancer: (ms: number) => {
+        instant += ms;
+      },
+    };
+  }
+
+  it('ne relit la base qu’une fois par fenêtre de TTL', async () => {
+    const { now, avancer } = horlogeIso();
+    let lectures = 0;
+    const sonde = createSondeStockageEnCache({
+      pairings: async () => {
+        lectures += 1;
+        return [];
+      },
+      now,
+      ttlMs: 5000,
+    });
+    expect(await sonde()).toBe('ok');
+    expect(await sonde()).toBe('ok');
+    avancer(4999);
+    expect(await sonde()).toBe('ok');
+    expect(lectures).toBe(1);
+    avancer(2);
+    expect(await sonde()).toBe('ok');
+    expect(lectures).toBe(2);
+  });
+
+  it('mémorise aussi une panne pendant le TTL', async () => {
+    const { now, avancer } = horlogeIso();
+    let enPanne = true;
+    let lectures = 0;
+    const sonde = createSondeStockageEnCache({
+      pairings: async () => {
+        lectures += 1;
+        if (enPanne) throw new Error('base morte');
+        return [];
+      },
+      now,
+      ttlMs: 5000,
+    });
+    expect(await sonde()).toBe('indisponible');
+    enPanne = false;
+    expect(await sonde()).toBe('indisponible'); // encore servi depuis le cache
+    expect(lectures).toBe(1);
+    avancer(5000);
+    expect(await sonde()).toBe('ok');
+    expect(lectures).toBe(2);
   });
 });
