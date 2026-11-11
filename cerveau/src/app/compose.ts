@@ -118,9 +118,10 @@ export function actionsRovo(cerveau: Cerveau) {
 export function resolversUi(cerveau: Cerveau) {
   const deps = cerveau.uiDeps;
   return {
-    reglages: (payload?: Record<string, unknown>) => handleResolverReglages(payload, deps),
-    encart: (payload?: Record<string, unknown>, issueKey?: string) => handleResolverEncart(payload, issueKey, deps),
-    console: (payload?: Record<string, unknown>) => handleResolverConsole(payload, deps),
+    reglages: (payload?: Record<string, unknown>, projet?: string) => handleResolverReglages(payload, deps, projet),
+    encart: (payload?: Record<string, unknown>, issueKey?: string, projet?: string) =>
+      handleResolverEncart(payload, issueKey, deps, projet),
+    console: (payload?: Record<string, unknown>, projet?: string) => handleResolverConsole(payload, deps, projet),
   };
 }
 
