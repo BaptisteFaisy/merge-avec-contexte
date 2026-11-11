@@ -165,6 +165,14 @@ export interface ObservedBlock {
   text: string;
 }
 
+/** Une page du journal : limite et décalage facultatifs (item 56). */
+export interface PageEvaluation {
+  /** Nombre maximal d'évaluations rendues ; sans borne si omis. */
+  limit?: number;
+  /** Nombre d'évaluations sautées avant la page courante ; défaut 0. */
+  offset?: number;
+}
+
 /** Journal des évaluations (table `evaluation`). */
 export interface EvaluationRepository {
   /** Enregistre une évaluation : une ligne par contrôle. */
@@ -175,7 +183,7 @@ export interface EvaluationRepository {
   /** Dernière évaluation qui a reconnu ce ticket. */
   latestByIssue(issueKey: string): Promise<StoredEvaluation | undefined>;
   /** Évaluations d'une période, les plus récentes d'abord. */
-  listSince(since: string, until?: string): Promise<StoredEvaluation[]>;
+  listSince(since: string, until?: string, page?: PageEvaluation): Promise<StoredEvaluation[]>;
   /** Comptages et durée moyenne d'une période. */
   stats(since: string, until?: string): Promise<EvaluationStats>;
   /** Ce qui aurait été bloqué : raisons bloquantes en mode observation. */

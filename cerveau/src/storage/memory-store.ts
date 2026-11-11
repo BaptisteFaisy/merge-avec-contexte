@@ -23,6 +23,7 @@ import type {
   ObservedBlock,
   PairingRecord,
   PairingRepository,
+  PageEvaluation,
   RepoServiceMapping,
   RepoServiceRepository,
   RuleConfigRepository,
@@ -69,6 +70,14 @@ function compter(evaluations: StoredEvaluation[], since: string, until?: string)
     fallbacks: evaluations.filter((e) => e.fallback !== undefined).length,
     averageDurationMs: durees.length === 0 ? 0 : Math.round(somme / durees.length),
   };
+}
+
+/** Découpe une page d'évaluations : limite et décalage facultatifs (item 56). */
+function paginer(evaluations: StoredEvaluation[], page?: PageEvaluation): StoredEvaluation[] {
+  if (page === undefined) return evaluations;
+  const debut = Math.max(0, Math.trunc(page.offset ?? 0));
+  const fin = page.limit === undefined ? undefined : debut + Math.max(0, Math.trunc(page.limit));
+  return evaluations.slice(debut, fin);
 }
 
 /** Magasin des réglages de règles. */
@@ -204,8 +213,8 @@ function creerEvaluationStore(map: Map<string, StoredEvaluation>): EvaluationRep
       const candidates = [...map.values()].filter((e) => e.issueKeys.includes(issueKey));
       return candidates.length === 0 ? undefined : copie(candidates.sort(parDateDesc)[0] as StoredEvaluation);
     },
-    async listSince(since, until) {
-      return periode(since, until);
+    async listSince(since, until, page) {
+      return paginer(periode(since, until), page);
     },
     async stats(since, until) {
       return compter(periode(since, until), since, until);

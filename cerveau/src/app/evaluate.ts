@@ -4,6 +4,10 @@
  * Charge les tickets par le cache (60 s), les incidents du service, applique
  * les règles, journalise l'évaluation, et ne lève jamais : une erreur devient
  * une évaluation de repli selon la politique choisie (§13.5).
+ *
+ * Les tickets sont chargés en concurrence bornée (§57), et la chaîne est
+ * instrumentée : chaque étape (Jira, base, règles) est chronométrée (horloge
+ * injectée) pour exposer la décomposition des durées dans le journal (§58).
  */
 import { incidentsDuService } from '../cache/service-cache';
 import { lireTicket } from '../cache/issue-cache';
@@ -14,6 +18,8 @@ import type { EvaluateService, EvaluationInput as EntreePont } from '../bridge/d
 import type { StoredEvaluation, Store } from '../storage/ports';
 import { fallbackEvaluation, type Evaluation, type IssueContext } from '../shared';
 import { depsCacheIncidents, depsCacheTickets } from './cache-adaptateurs';
+import { chargeEnLimite } from './fiabilite';
+import { compteursPartages, mesurer, mesurerAsync, type DecompositionDurees } from './mesure';
 import { identifiant } from './waivers';
 import type { HorlogeIso } from './horloge';
 import type { LoggerCommun } from './logger';
@@ -25,10 +31,16 @@ export interface DepsEvaluate {
   logger: LoggerCommun;
 }
 
+/** Tickets d'une PR chargés en parallèle, au plus quatre à la fois (§57). */
+const CONCURRENCE_TICKETS = 4;
+
+/** Ligne journalisée augmentée de la décomposition des durées (§58). */
+type StoredEvaluationMesure = StoredEvaluation & { decomposition?: DecompositionDurees };
+
 /** Tickets de la PR, lus par le cache ; une clé illisible est rendue « absente ». */
 export async function chargerTickets(cles: string[], deps: DepsEvaluate): Promise<IssueContext[]> {
   const cache = depsCacheTickets(deps.store, deps.jira, deps.clock, deps.logger);
-  const lus = await Promise.all(cles.map(async (cle) => lireTicket(cle, cache)));
+  const lus = await chargeEnLimite(cles, CONCURRENCE_TICKETS, (cle) => lireTicket(cle, cache));
   return lus.filter((ticket): ticket is IssueContext => ticket !== undefined);
 }
 
@@ -55,15 +67,21 @@ export async function chargerIncidents(service: string | undefined, deps: DepsEv
 }
 
 /** Écrit l'évaluation au journal (§14, table `evaluation`) sans jamais échouer. */
-async function journaliser(deps: DepsEvaluate, entree: EntreePont, evaluation: Evaluation): Promise<void> {
+async function journaliser(
+  deps: DepsEvaluate,
+  entree: EntreePont,
+  evaluation: Evaluation,
+  decomposition?: DecompositionDurees,
+): Promise<void> {
   try {
-    const ligne: StoredEvaluation = {
+    const ligne: StoredEvaluationMesure = {
       ...evaluation,
       id: identifiant('ev', entree.pr.pullRequestId, Date.parse(evaluation.evaluatedAt)),
       workspaceUuid: entree.pr.workspaceUuid,
       repositoryUuid: entree.pr.repositoryUuid,
       pullRequestId: entree.pr.pullRequestId,
       service: entree.service,
+      ...(decomposition ? { decomposition } : {}),
     };
     await deps.store.evaluations.record(ligne);
   } catch (erreur) {
@@ -71,13 +89,37 @@ async function journaliser(deps: DepsEvaluate, entree: EntreePont, evaluation: E
   }
 }
 
+/** Horloge milliseconde dérivée de l'horloge ISO injectée. */
+function horlogeMs(deps: DepsEvaluate): () => number {
+  return () => Date.parse(deps.clock());
+}
+
+/** Applique le moteur de règles et chronomètre l'étape. */
+function appliquerRegles(moteur: EntreeMoteur, deps: DepsEvaluate) {
+  return mesurer(horlogeMs(deps), () => evaluateAll(moteur));
+}
+
+/** Charge tickets, sonde éventuelle et incidents, en deux étapes chronométrées. */
+async function chargerContexte(entree: EntreePont, deps: DepsEvaluate) {
+  const { valeur: issues, ms: jiraMs } = await mesurerAsync(horlogeMs(deps), async () => {
+    const lues = await chargerTickets(entree.issueKeys, deps);
+    await sonderJiraSiVide(entree.issueKeys, lues, deps);
+    return lues;
+  });
+  const { valeur: incidents, ms: baseMs } = await mesurerAsync(
+    horlogeMs(deps),
+    () => chargerIncidents(entree.service, deps),
+  );
+  return { issues, incidents, jiraMs, baseMs };
+}
+
 /** Fabrique le `EvaluateService` injecté dans le pont. */
 export function createEvaluateService(deps: DepsEvaluate): EvaluateService {
+  const compte = compteursPartages();
   return async (entree) => {
+    compte.incrementer('evaluations');
     try {
-      const issues = await chargerTickets(entree.issueKeys, deps);
-      await sonderJiraSiVide(entree.issueKeys, issues, deps);
-      const incidents = await chargerIncidents(entree.service, deps);
+      const { issues, incidents, jiraMs, baseMs } = await chargerContexte(entree, deps);
       const moteur: EntreeMoteur = {
         pr: entree.pr,
         issues,
@@ -89,11 +131,18 @@ export function createEvaluateService(deps: DepsEvaluate): EvaluateService {
         now: entree.now,
         locale: entree.locale,
       };
-      const evaluation = evaluateAll(moteur);
-      await journaliser(deps, entree, evaluation);
+      const { valeur: evaluation, ms: reglesMs } = appliquerRegles(moteur, deps);
+      const decomposition: DecompositionDurees = { jiraMs, baseMs, reglesMs, totalMs: jiraMs + baseMs + reglesMs };
+      deps.logger.info('évaluation : décomposition des durées', {
+        prId: entree.pr.pullRequestId,
+        ...decomposition,
+      });
+      if (evaluation.verdict === 'blocked') compte.incrementer('blocages');
+      await journaliser(deps, entree, evaluation, decomposition);
       return evaluation;
     } catch (erreur) {
       deps.logger.error('évaluation en échec : repli appliqué', { erreur: String(erreur) });
+      compte.incrementer('replis');
       const repli = fallbackEvaluation({
         policy: entree.fallbackPolicy,
         cause: 'error',

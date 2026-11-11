@@ -17,8 +17,9 @@ import type { FallbackPolicy, Freeze, Incident, RuleCode, RuleConfig, Waiver } f
 import type { PairingOffer } from '../shared/bridge/pairing';
 import type {
   EvaluationRepository, EvaluationStats, FreezeRepository, IncidentRepository, IssueCacheEntry,
-  IssueCacheRepository, ObservedBlock, PairingRecord, PairingRepository, RepoServiceMapping,
-  RepoServiceRepository, RuleConfigRepository, Store, StoredEvaluation, StoredWaiver, WaiverRepository,
+  IssueCacheRepository, NonceStore, ObservedBlock, PairingRecord, PairingRepository, PageEvaluation,
+  RepoServiceMapping, RepoServiceRepository, RuleConfigRepository, Store, StoredEvaluation, StoredWaiver,
+  WaiverRepository,
 } from './ports';
 import { creerNonceStore, creerWaiverAuditStore, heureReelleIso } from './sql-securite';
 import {
@@ -103,6 +104,16 @@ function blocagesObservés(evaluation: StoredEvaluation): ObservedBlock[] {
 
 /** Filtre de période sur `evaluated_at`. */
 const periode = (since: string, until?: string) => periodeSur('evaluated_at', since, until);
+
+/**
+ * Borne un entier pour une clause LIMIT/OFFSET (item 56) : non négatif et sûr,
+ * sinon `undefined` (la borne est alors ignorée, pas d'injection SQL).
+ */
+function entierPagination(valeur: number | undefined): number | undefined {
+  if (valeur === undefined) return undefined;
+  const borne = Math.trunc(valeur);
+  return Number.isSafeInteger(borne) && borne >= 0 ? borne : undefined;
+}
 
 /** Ligne d'agrégats → statistiques de période. */
 function statistiques(ligne: StatsRow | undefined, since: string, until?: string): EvaluationStats {
@@ -225,9 +236,17 @@ export function creerEvaluationStore(): EvaluationRepository {
     find: (id) => lireUne('SELECT * FROM evaluation WHERE id = ?', [id], evaluationDepuisLigne),
     latestByPullRequest: (repositoryUuid, prId) => derniere('repo_uuid = ? AND pr_id = ?', [repositoryUuid, prId]),
     latestByIssue: (issueKey) => derniere(CONDITION_CLE, [parametreCle(issueKey)]),
-    listSince: (since, until) => {
+    listSince: (since, until, page) => {
       const filtre = periode(since, until);
-      return lire(`SELECT * FROM evaluation WHERE ${filtre.clause} ORDER BY evaluated_at DESC`,
+      const limit = entierPagination(page?.limit);
+      const offset = entierPagination(page?.offset) ?? 0;
+      const ordre = ' ORDER BY evaluated_at DESC';
+      if (limit === undefined) {
+        const saut = offset > 0 ? ` LIMIT 18446744073709551615 OFFSET ${offset}` : '';
+        return lire(`SELECT * FROM evaluation WHERE ${filtre.clause}${ordre}${saut}`,
+          filtre.params, evaluationDepuisLigne);
+      }
+      return lire(`SELECT * FROM evaluation WHERE ${filtre.clause}${ordre} LIMIT ${limit} OFFSET ${offset}`,
         filtre.params, evaluationDepuisLigne);
     },
     async stats(since, until) {
