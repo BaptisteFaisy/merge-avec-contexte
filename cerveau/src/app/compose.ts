@@ -164,17 +164,30 @@ export async function cerveauProduction(): Promise<Cerveau> {
       import('./reglages'),
     ]);
     await assurerMigrations(logger);
+    const { amorcerInstallation } = await import('./bootstrap');
+    const { lireAmorcageEnv } = await import('./env');
+    const env = lireAmorcageEnv();
     const { urlDuPontEffective } = await import('./pont-url');
     const bridgeUrl = await urlDuPontEffective();
+    const vault = createForgeSecretVault();
+    const config = configParDefaut({
+      bridgeUrl,
+      siteUrl: env.siteUrl ?? configParDefaut().siteUrl,
+    });
+    await amorcerInstallation({
+      store,
+      vault,
+      config,
+      clock: horlogeReelle(),
+      logger,
+      env,
+    });
     instance = assemblerCerveau({
       store,
-      vault: createForgeSecretVault(),
+      vault,
       reglages: createForgeReglagesStore(),
       logger,
-      config: {
-        bridgeUrl,
-        siteUrl: process.env.MAC_SITE_URL ?? configParDefaut().siteUrl,
-      },
+      config,
     });
     if (bridgeUrl === '') logger.warn('adresse du pont indisponible : le jumelage ne pourra pas aboutir');
   }
