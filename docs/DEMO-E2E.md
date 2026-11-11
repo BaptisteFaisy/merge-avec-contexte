@@ -2,7 +2,7 @@
 
 Objectif : montrer le produit en fonctionnement réel — règles évaluées, message
 imposé, dérogation, incident — **sans navigateur, sans espace de travail
-Bitbucket et sans rien payer**. Une commande, onze vérifications.
+Bitbucket et sans rien payer**. Une commande, dix vérifications.
 
 ## Ce qu'il faut (et ce qu'il ne faut pas)
 
@@ -75,9 +75,9 @@ Démonstration réussie
 | Correctif lié à l'incident autorisé | MC-12 : voie rapide des correctifs, avec trace |
 | Requête non signée refusée | §13.3 : un web trigger n'a aucune authentification par défaut |
 
-Latence mesurée sur l'app déployée : médiane **0,5 s**, maximum 0,7 s pour une
-évaluation complète (huit règles, cache, base) — l'objectif MC-11 de 5 s est
-tenu avec de la marge.
+Latence mesurée sur l'app déployée, sur trente appels : médiane **0,5 s**,
+P95 **0,8 s**, et un maximum de 2,6 s (appel à froid, juste après un
+déploiement). L'objectif MC-11 de 5 s est tenu avec de la marge.
 
 ## Honnêteté sur les limites
 
