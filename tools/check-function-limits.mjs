@@ -2,7 +2,7 @@
 /**
  * Garde de taille des fonctions : moins de 50 lignes.
  *
- * Règle utilisateur du 2026-10-24 : toute fonction fait moins de 50 lignes.
+ * Règle utilisateur (24 octobre 2026) : toute fonction fait moins de 50 lignes.
  * Le contrôle s'appuie sur l'AST TypeScript (pas de regex), sur les mêmes
  * racines que la garde de taille des fichiers.
  *
