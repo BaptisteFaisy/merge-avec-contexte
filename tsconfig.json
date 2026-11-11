@@ -1,0 +1,16 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "shared/src/**/*.ts",
+    "shared/test/**/*.ts",
+    "capteur/src/**/*.ts",
+    "capteur/test/**/*.ts",
+    "cerveau/src/**/*.ts",
+    "cerveau/test/**/*.ts",
+    "vitest.config.ts"
+  ]
+}
