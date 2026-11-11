@@ -60,6 +60,17 @@ function SectionCorrespondance({ vue, locale, ajout, onChamp, onAjouter }) {
 }
 
 /** Approbateurs de dérogations : badges et ajout. */
+/** Chargement du jeu de démonstration (§20, niveau 1 des juges). */
+function SectionDemo({ locale, onCharger }) {
+  return (
+    <Box>
+      <Heading>{texte(locale, 'reglages.demo')}</Heading>
+      <Text>{texte(locale, 'reglages.demoAide')}</Text>
+      <Button onClick={onCharger}>{texte(locale, 'reglages.demoCharger')}</Button>
+    </Box>
+  );
+}
+
 function SectionApprobateurs({ vue, locale, valeur, onChamp, onAjouter }) {
   return (
     <Box>
@@ -136,6 +147,7 @@ export default function ReglagesProjet() {
           onChamp={champAjout}
           onAjouter={ajouterCorrespondance}
         />
+        <SectionDemo locale={locale} onCharger={() => appeler({ method: 'chargerDemo' })} />
         <SectionApprobateurs
           vue={vue}
           locale={locale}

@@ -25,6 +25,12 @@ const TEXTES = {
   },
   'commun.enregistrer': { fr: 'Enregistrer', en: 'Save' },
   'commun.ajouter': { fr: 'Ajouter', en: 'Add' },
+  'reglages.demo': { fr: 'Jeu de démonstration', en: 'Demo dataset' },
+  'reglages.demoAide': {
+    fr: 'Charge les tickets, les gels, l’incident et la correspondance du jeu d’exemple : la console de test et l’agent Rovo ont alors de la matière.',
+    en: 'Loads the demo issues, freezes, incident and repository mapping so the test console and the Rovo agent have something to work with.',
+  },
+  'reglages.demoCharger': { fr: 'Charger le jeu de démonstration', en: 'Load demo dataset' },
   'commun.annuler': { fr: 'Annuler', en: 'Cancel' },
   'reglages.regles': { fr: 'Règles', en: 'Rules' },
   'reglages.niveau': { fr: 'Niveau', en: 'Level' },

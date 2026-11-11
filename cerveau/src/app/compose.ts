@@ -93,7 +93,7 @@ export function assemblerCerveau(options: OptionsAssemblage = {}): Cerveau {
     bridgeDeps,
     evaluate,
     rovoDeps: createRovoDeps(store, reglages, config, clock, logger, evaluate, depsEval),
-    uiDeps: { store, reglages, config, clock, evaluate, depsEval },
+    uiDeps: { store, reglages, config, clock, evaluate, depsEval, logger },
   };
 }
 
