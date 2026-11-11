@@ -82,9 +82,9 @@ refusé). Un motif sans joker désigne un dossier et tout son contenu
 
 Modifications interdites sans décision explicite : `.mergify.yml`, `.github/` (les fichiers de
 garde exigent la mention libre `SAMVISION_ALLOW_GUARD_BUMP` dans le corps de la PR). Sont
-aussi refusés dans les lignes ajoutées : les pushes forcés, `pull_request_target`, toute clé
-d'API, et les dates antérieures au 26 octobre 2026 (les citer comme « relevé antérieur, hors
-de cet arbre »).
+aussi refusés dans les lignes ajoutées : les pushes forcés, le déclencheur de PR à privilèges
+(celui qui expose les secrets aux forks), toute clé d'API, et les dates antérieures au
+26 octobre 2026 (les citer comme « relevé antérieur, hors de cet arbre »).
 
 ## 7. Nommage
 

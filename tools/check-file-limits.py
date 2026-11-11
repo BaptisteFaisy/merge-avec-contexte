@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Garde de taille des fichiers de code : moins de 500 lignes.
 
-Règle utilisateur du 2026-10-24 : tout fichier de code écrit ou modifié fait
+Règle utilisateur (24 octobre 2026) : tout fichier de code écrit ou modifié fait
 moins de 500 lignes. Au-delà, on découpe (module, helper, sous-composant).
 
 Périmètre : le code du produit et son outillage (`shared/`, `capteur/`,
