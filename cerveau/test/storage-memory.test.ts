@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 import { createMemoryStore } from '../src/storage/memory-store';
 import type { StoredEvaluation, StoredWaiver } from '../src/storage/ports';
+import type { WaiverAuditEntry } from '../src/shared/bridge/payload';
 import type { Freeze, IssueContext, RuleConfig } from '../src/shared/types';
 
 const NOW = '2026-11-11T10:00:00.000Z';
@@ -312,6 +313,63 @@ describe('nonces', () => {
     await store.nonces.remember('vieux', '2020-01-01T00:00:00.000Z');
     expect(await store.nonces.seen('vieux')).toBe(false);
   });
+
+  it('purge les nonces expirés et rend leur nombre', async () => {
+    const store = createMemoryStore({ clock: () => Date.parse(NOW) });
+    await store.nonces.remember('perime', '2026-11-11T09:59:59.000Z');
+    await store.nonces.remember('frais', '2026-11-11T10:05:00.000Z');
+    expect(await store.nonces.purge?.(NOW)).toBe(1);
+    expect(await store.nonces.seen('frais')).toBe(true);
+    expect(await store.nonces.purge?.(NOW)).toBe(0);
+  });
+});
+
+describe('waiver_audit', () => {
+  /** Ligne d'audit du journal des dérogations. */
+  function ligne(id: string, over: Partial<WaiverAuditEntry> = {}): WaiverAuditEntry {
+    return {
+      id, waiverId: 'w-1', prId: 42, repositoryUuid: REPO, rule: 'R-04', requestedBy: 'lea',
+      decision: 'requested', reason: 'correctif urgent', identity: 'declared', createdAt: NOW, ...over,
+    };
+  }
+
+  it('relit la trace d’une dérogation dans l’ordre chronologique', async () => {
+    const store = createMemoryStore();
+    await store.waiverAudit.record(ligne('a2', {
+      decision: 'granted', decidedBy: 'tech-lead', identity: 'verified', createdAt: '2026-11-11T11:00:00.000Z',
+    }));
+    await store.waiverAudit.record(ligne('a1', { createdAt: '2026-11-11T10:30:00.000Z' }));
+    const trace = await store.waiverAudit.listByWaiver('w-1');
+    expect(trace.map((e) => e.id)).toEqual(['a1', 'a2']);
+    expect(trace[1]?.identity).toBe('verified');
+    expect(trace[1]?.decidedBy).toBe('tech-lead');
+  });
+
+  it('remplace au lieu de dupliquer, et retrouve une ligne par identifiant', async () => {
+    const store = createMemoryStore();
+    await store.waiverAudit.record(ligne('a1'));
+    await store.waiverAudit.record(ligne('a1', { decision: 'refused' }));
+    expect(await store.waiverAudit.listByWaiver('w-1')).toHaveLength(1);
+    expect((await store.waiverAudit.find('a1'))?.decision).toBe('refused');
+    expect(await store.waiverAudit.find('a9')).toBeUndefined();
+  });
+
+  it('liste par PR et par période, les plus récents d’abord', async () => {
+    const store = createMemoryStore();
+    await store.waiverAudit.record(ligne('a1', { createdAt: '2026-11-11T09:00:00.000Z' }));
+    await store.waiverAudit.record(ligne('a2', { prId: 43, createdAt: '2026-11-11T11:00:00.000Z' }));
+    await store.waiverAudit.record(ligne('a3', { repositoryUuid: 'autre', createdAt: '2026-11-11T12:00:00.000Z' }));
+    expect(await store.waiverAudit.listByPullRequest(REPO, 42)).toHaveLength(1);
+    const periode = await store.waiverAudit.listSince('2026-11-11T10:00:00.000Z');
+    expect(periode.map((e) => e.id)).toEqual(['a3', 'a2']);
+    const borne = await store.waiverAudit.listSince('2026-11-11T10:00:00.000Z', '2026-11-11T11:30:00.000Z');
+    expect(borne.map((e) => e.id)).toEqual(['a2']);
+  });
+
+  it('n’offre aucune méthode d’effacement : la trace est durable (§16)', () => {
+    const store = createMemoryStore();
+    expect(Object.keys(store.waiverAudit).some((cle) => /purge|remove|delete|expire/i.test(cle))).toBe(false);
+  });
 });
 
 describe('magasin complet', () => {
@@ -323,10 +381,11 @@ describe('magasin complet', () => {
     expect((await store.ruleConfig.find('p1', 'R-04'))?.level).toBe('blocking');
   });
 
-  it('expose les neuf ports', () => {
+  it('expose les dix ports', () => {
     const store = createMemoryStore();
     expect(Object.keys(store).sort()).toEqual([
-      'evaluations', 'freezes', 'incidents', 'issueCache', 'nonces', 'pairing', 'repoService', 'ruleConfig', 'waivers',
+      'evaluations', 'freezes', 'incidents', 'issueCache', 'nonces', 'pairing', 'repoService',
+      'ruleConfig', 'waiverAudit', 'waivers',
     ]);
   });
 });

@@ -18,11 +18,14 @@ import type {
   PrContext,
   RuleConfig,
   Waiver,
+  WaiverAuditEntry,
   WaiverDecisionPayload,
   WaiverRequestPayload,
 } from '../shared';
+import type { RateLimiter } from './limite-debit';
+import type { PurgeurNonces } from './purge-nonces';
 
-export type { NonceStore };
+export type { NonceStore, RateLimiter, PurgeurNonces };
 
 /** Horloge injectée : horodatage ISO 8601. Jamais `Date.now()` ici. */
 export type Clock = () => string;
@@ -90,6 +93,27 @@ export interface WaiverService {
 }
 
 /**
+ * Écriture du journal d'audit des décisions de dérogation (item 50, §16).
+ *
+ * Le port ne fait qu'écrire : la lecture passe par le port de stockage
+ * (`store.waiverAudit`, `WaiverAuditRepository`), que les écrans consomment
+ * directement. Le journal n'a pas de purge : la traçabilité est durable.
+ */
+export interface WaiverAuditWriter {
+  /** Une ligne par événement : demande, accord, refus. */
+  record(entree: WaiverAuditEntry): Promise<void>;
+}
+
+/**
+ * Approbateurs habilités à décider d'une dérogation (item 48).
+ *
+ * La liste vient des réglages de l'installation, édités depuis l'écran de
+ * réglages ; vide, l'installation n'a habilité personne et le pont ne peut
+ * alors que journaliser une identité **déclarée**.
+ */
+export type ApprobateursReader = () => Promise<string[]>;
+
+/**
  * Tout ce dont une évaluation a besoin, déjà chargé par le pont.
  *
  * Le pont rassemble le contexte (site, règles, service, gels, dérogations) ;
@@ -147,6 +171,17 @@ export interface BridgeDeps {
   clock: Clock;
   logger: Logger;
   config: BridgeConfig;
+  /**
+   * Limite de débit (item 10). Absente, aucune limite n'est appliquée : les
+   * assemblages de test s'en passent, l'assemblage de production le fournit.
+   */
+  limite?: RateLimiter;
+  /** Purge opportuniste des nonces expirés (item 26) ; absente = jamais. */
+  purgeNonces?: PurgeurNonces;
+  /** Journal d'audit des décisions de dérogation (item 50) ; absent = aucune trace. */
+  audit?: WaiverAuditWriter;
+  /** Approbateurs habilités à décider d'une dérogation (item 48). */
+  approbateurs?: ApprobateursReader;
 }
 
 /** Résultat d'un jumelage : succès, ou refus explicite. */

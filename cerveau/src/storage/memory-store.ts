@@ -11,6 +11,7 @@
  */
 import type { FallbackPolicy, Freeze, Incident, RuleConfig } from '../shared/types';
 import type { PairingOffer } from '../shared/bridge/pairing';
+import type { WaiverAuditEntry } from '../shared/bridge/payload';
 import type {
   EvaluationRepository,
   EvaluationStats,
@@ -28,6 +29,7 @@ import type {
   Store,
   StoredEvaluation,
   StoredWaiver,
+  WaiverAuditRepository,
   WaiverRepository,
 } from './ports';
 
@@ -329,6 +331,50 @@ function creerNonceStore(map: Map<string, number>, clock: () => number = Date.no
     async remember(nonce, expiresAt) {
       map.set(nonce, Date.parse(expiresAt));
     },
+    async purge(now) {
+      const limite = Date.parse(now);
+      let effaces = 0;
+      for (const [nonce, expiration] of map) {
+        if (expiration > limite) continue;
+        map.delete(nonce);
+        effaces += 1;
+      }
+      return effaces;
+    },
+  };
+}
+
+/**
+ * Magasin du journal d'audit des dérogations.
+ *
+ * Aucune purge ici : le §16 exige une traçabilité sans limite de durée. La
+ * trace d'une dérogation se lit dans l'ordre chronologique (demande d'abord),
+ * les listings transverses du plus récent au plus ancien.
+ */
+function creerWaiverAuditStore(map: Map<string, WaiverAuditEntry>): WaiverAuditRepository {
+  const chronologique = (liste: WaiverAuditEntry[]) =>
+    liste.sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt)).map(copie);
+  const recentesDAbord = (liste: WaiverAuditEntry[]) =>
+    liste.sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt)).map(copie);
+  return {
+    async record(entry) {
+      map.set(entry.id, copie(entry));
+    },
+    async find(id) {
+      const trouve = map.get(id);
+      return trouve ? copie(trouve) : undefined;
+    },
+    async listByWaiver(waiverId) {
+      return chronologique([...map.values()].filter((e) => e.waiverId === waiverId));
+    },
+    async listByPullRequest(repositoryUuid, prId) {
+      return recentesDAbord(
+        [...map.values()].filter((e) => e.repositoryUuid === repositoryUuid && e.prId === prId),
+      );
+    },
+    async listSince(since, until) {
+      return recentesDAbord([...map.values()].filter((e) => dansPeriode(e.createdAt, since, until)));
+    },
   };
 }
 
@@ -346,6 +392,7 @@ export function createMemoryStore(options: MemoryStoreOptions = {}): Store {
     ruleConfig: creerRuleConfigStore(new Map<string, RuleConfig>()),
     freezes: creerFreezeStore(new Map<string, Freeze>()),
     waivers: creerWaiverStore(new Map<string, StoredWaiver>()),
+    waiverAudit: creerWaiverAuditStore(new Map<string, WaiverAuditEntry>()),
     evaluations: creerEvaluationStore(new Map<string, StoredEvaluation>()),
     repoService: creerRepoServiceStore(new Map<string, RepoServiceMapping>()),
     issueCache: creerIssueCacheStore(new Map<string, IssueCacheEntry>()),
