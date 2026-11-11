@@ -45,6 +45,21 @@ export async function incidentsDuService(
 }
 
 /**
+ * Rafraîchit le cache des incidents d'un service après un événement Jira
+ * (audit item 31, §13.4) : sans cet appel, un incident clos ou ouvert côté
+ * Jira reste invisible jusqu'à ce que la table soit remise à jour autrement.
+ * Ne lève jamais : un échec est journalisé, la prochaine lecture réessaiera.
+ */
+export async function invaliderIncidents(service: string, deps: DepsCacheIncidents): Promise<void> {
+  if (!deps.cache.invalider) return;
+  try {
+    await deps.cache.invalider(service);
+  } catch (erreur) {
+    journaliser(deps, `cache ${service} : rafraîchissement impossible (${messageErreur(erreur)})`);
+  }
+}
+
+/**
  * Vrai si un incident du service est ouvert à l'instant `now`.
  *
  * Ouvert = commencé (`openedAt` passé) et pas encore résolu ; un incident

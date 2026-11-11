@@ -33,4 +33,10 @@ export interface IncidentRepository {
    * jour du cache. La table est tenue par les événements Jira : lecture seule.
    */
   incidentsOuverts(service: string): Promise<EntreeCache<Incident[]> | undefined>;
+  /**
+   * Rafraîchit les incidents d'un service après un événement Jira (audit
+   * item 31) : relit Jira et remet la table d'aplomb. Facultatif : un cache
+   * de test peut s'en passer, l'invalidation devient alors un non-lieu.
+   */
+  invalider?(service: string): Promise<void>;
 }

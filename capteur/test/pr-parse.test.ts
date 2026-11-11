@@ -11,6 +11,7 @@ import {
   versPrContext,
 } from '../src/bitbucket/pr';
 import type { CommitBrut, DiffstatBrut, PullRequestBrut } from '../src/bitbucket/types';
+import { extractIssueKeys } from '../src/shared';
 
 const OPTIONS = {
   workspaceUuid: 'ws-1',
@@ -182,5 +183,44 @@ describe('versPrContext', () => {
     expect(contexte.targetBranch).toBe('');
     expect(contexte.reviewers).toEqual([]);
     expect(contexte.trigger).toBe('on-merge');
+  });
+});
+
+describe('§17 cas 8 — PR issue d’un fork (item 30)', () => {
+  it('trouve la clé dans le titre quand la branche du fork n’en porte aucune', () => {
+    const contexte = versPrContext(
+      prBrute({
+        title: 'PAY-123 correctif urgent depuis un fork',
+        source: { branch: { name: 'contributeur-externe:hotfix-urgent' } },
+      }),
+      [{ hash: 'f1', message: 'correctif urgent, aucune clé ici' }],
+      DIFFSTAT,
+      OPTIONS,
+    );
+    expect(contexte.sourceBranch).toBe('contributeur-externe:hotfix-urgent');
+    expect(extractIssueKeys(contexte)).toEqual(['PAY-123']);
+  });
+
+  it('verrouille l’ordre branche → titre → commits, sans doublon', () => {
+    const contexte = versPrContext(
+      prBrute({
+        title: 'PAY-2 : titre porteur d’une autre clé',
+        source: { branch: { name: 'feature/PAY-1-depuis-branche' } },
+      }),
+      [{ hash: 'c1', message: 'PAY-3 puis PAY-1 déjà vue' }],
+      [],
+      OPTIONS,
+    );
+    expect(extractIssueKeys(contexte)).toEqual(['PAY-1', 'PAY-2', 'PAY-3']);
+  });
+
+  it('ne trouve rien quand ni la branche, ni le titre, ni les commits ne portent de clé', () => {
+    const contexte = versPrContext(
+      prBrute({ title: 'Ménage de printemps', source: { branch: { name: 'chore/nettoyage' } } }),
+      [{ hash: 'z1', message: 'suppression de code mort' }],
+      [],
+      OPTIONS,
+    );
+    expect(extractIssueKeys(contexte)).toEqual([]);
   });
 });

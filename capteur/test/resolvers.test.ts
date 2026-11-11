@@ -105,4 +105,43 @@ describe('capteur — resolvers d’interface (§12)', () => {
     expect(vm.politique.valeur).toBe('closed');
     expect(vm.envoyerChemins.actif).toBe(false);
   });
+
+  it('dit l’évaluation périmée quand un incident a été clos après elle (§17 cas 6)', async () => {
+    const deps = await depsAvec({ ...carteBloquee, service: 'api-paiement' });
+    const servicesVus: string[] = [];
+    deps.lireIncidents = async (service) => {
+      servicesVus.push(service);
+      return [
+        {
+          service,
+          incidentKey: 'INC-11',
+          openedAt: '2026-11-27T15:00:00Z',
+          resolvedAt: '2026-11-27T17:00:00Z', // clos après evaluatedAt (16:30)
+        },
+      ];
+    };
+    const vm = await handlePrCard(contextePr, {}, deps);
+    expect(servicesVus).toEqual(['api-paiement']);
+    expect(vm.perime?.titre).toBe('Évaluation périmée');
+    expect(vm.perime?.texte).toContain('relancez le contrôle');
+    const panneau = await handlePrPanel(contextePr, deps);
+    expect(panneau.perime?.titre).toBe('Évaluation périmée');
+  });
+
+  it('reste muet sans incident postérieur, sans source d’incidents, ou si la source tombe', async () => {
+    const frais = await depsAvec({ ...carteBloquee, service: 'api-paiement' });
+    frais.lireIncidents = async () => [
+      { service: 'api-paiement', incidentKey: 'INC-9', openedAt: '2026-11-27T15:00:00Z', resolvedAt: '2026-11-27T16:00:00Z' },
+    ];
+    expect((await handlePrCard(contextePr, {}, frais)).perime).toBeUndefined();
+
+    const sansSource = await depsAvec({ ...carteBloquee, service: 'api-paiement' });
+    expect((await handlePrCard(contextePr, {}, sansSource)).perime).toBeUndefined();
+
+    const enPanne = await depsAvec({ ...carteBloquee, service: 'api-paiement' });
+    enPanne.lireIncidents = async () => {
+      throw new Error('Jira muet');
+    };
+    expect((await handlePrCard(contextePr, {}, enPanne)).perime).toBeUndefined();
+  });
 });
