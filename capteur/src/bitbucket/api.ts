@@ -6,6 +6,10 @@
  * leur UUID, accolades retirées (l'API Forge attend un identifiant, pas un
  * slug). Les relecteurs n'ont pas d'endpoint dédié : ils viennent de
  * `participants[]` de la PR elle-même (§8.3 de docs/FORGE-API-NOTES.md).
+ *
+ * La fonction de requête est injectée (`RequeteBitbucket`, même principe que
+ * `FetchPont` dans `bridge/client.ts`) : les tests passent une doublure, le
+ * comportement par défaut reste `api.asApp().requestBitbucket`.
  */
 import api, { route } from '@forge/api';
 import { unwrapUuid } from './types';
@@ -17,6 +21,16 @@ type Route = ReturnType<typeof route>;
 /** Nombre maximal de commits lus : une seule page suffit au contrôle. */
 export const MAX_COMMITS = 100;
 
+/** Réponse minimale de `requestBitbucket` ; les tests passent une doublure. */
+export interface ReponseBitbucket {
+  ok: boolean;
+  status: number;
+  json(): Promise<unknown>;
+}
+
+/** Fonction de requête injectée : un chemin `route` vers une réponse JSON. */
+export type RequeteBitbucket = (chemin: Route) => Promise<ReponseBitbucket>;
+
 /** Tout ce qu'une lecture de PR rapporte au contrôle. */
 export interface LecturePr {
   pr: PullRequestBrut;
@@ -24,9 +38,13 @@ export interface LecturePr {
   diffstat: DiffstatBrut[];
 }
 
+/** Requête réelle : identité de l'app, via le gabarit `route` (anti-injection). */
+export const requeteForge: RequeteBitbucket = (chemin) =>
+  api.asApp().requestBitbucket(chemin) as unknown as Promise<ReponseBitbucket>;
+
 /** Lit une ressource JSON ; lève si l'API répond autre chose qu'un succès. */
-async function lireJson<T>(chemin: Route): Promise<T> {
-  const reponse = await api.asApp().requestBitbucket(chemin);
+async function lireJson<T>(chemin: Route, requete: RequeteBitbucket): Promise<T> {
+  const reponse = await requete(chemin);
   if (!reponse.ok) {
     throw new Error(`Bitbucket a répondu ${reponse.status} sur ${chemin.value}`);
   }
@@ -42,14 +60,19 @@ export function routePr(event: PRCheckEvent): Route {
 }
 
 /** Lit la PR, ses commits (100 au plus) et son diffstat en une passe. */
-export async function lirePr(event: PRCheckEvent): Promise<LecturePr> {
+export async function lirePr(
+  event: PRCheckEvent,
+  requete: RequeteBitbucket = requeteForge,
+): Promise<LecturePr> {
   const pr = routePr(event);
-  const detail = await lireJson<PullRequestBrut>(pr);
+  const detail = await lireJson<PullRequestBrut>(pr, requete);
   const pageCommits = await lireJson<{ values?: CommitBrut[] }>(
     route`${pr}/commits?pagelen=${MAX_COMMITS}`,
+    requete,
   );
   const pageDiffstat = await lireJson<{ values?: DiffstatBrut[] }>(
     route`${pr}/diffstat?pagelen=${MAX_COMMITS}`,
+    requete,
   );
   return {
     pr: detail,
