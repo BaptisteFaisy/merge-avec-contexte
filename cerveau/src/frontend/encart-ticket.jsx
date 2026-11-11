@@ -6,6 +6,7 @@
  * Affiché dans le panneau `jira:issueContext`. Toutes les données viennent du
  * modèle de vue `vmEncart` (`cerveau/src/ui`) via `resolverEncart`.
  */
+import React from 'react';
 import { useEffect, useState } from '@forge/react';
 import { Badge, Box, Button, Heading, Stack, Text } from '@forge/react';
 import { EtatEcran, langueDe, texte, useResolver } from './composants/commun';

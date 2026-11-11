@@ -300,7 +300,7 @@ describe('pairing', () => {
 
 describe('nonces', () => {
   it('reconnaît un nonce déjà vu, une fois mémorisé', async () => {
-    const store = createMemoryStore();
+    const store = createMemoryStore({ clock: () => Date.parse('2026-11-11T10:00:00.000Z') });
     expect(await store.nonces.seen('n1')).toBe(false);
     await store.nonces.remember('n1', '2026-11-11T10:05:00.000Z');
     expect(await store.nonces.seen('n1')).toBe(true);

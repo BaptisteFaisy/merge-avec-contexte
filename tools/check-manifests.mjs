@@ -7,6 +7,10 @@
  * référencée qui n'existe pas, un handler qui ne correspond à aucun export du
  * `src/index.ts`, une ressource absente, une clé de module mal formée.
  *
+ * Les clés de fonction sont bornées à 23 caractères par la plateforme (relevé
+ * sur `forge lint`) : le garde le vérifie aussi, parce qu'un dépassement ne se
+ * voit qu'au déploiement.
+ *
  * Usage : node tools/check-manifests.mjs
  * Codes : 0 = conforme, 1 = erreur(s), 2 = erreur interne.
  */
@@ -17,12 +21,15 @@ import { parse } from 'yaml';
 
 const APPS = ['capteur', 'cerveau'];
 const CLE_VALIDE = /^[a-zA-Z0-9_-]+$/;
+const LONGUEUR_MAX_CLE_FONCTION = 23;
 const BASE = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Clés de fonctions référencées par les modules d'un manifeste. */
 function fonctionsReferencees(modules) {
   const referencees = new Set();
   for (const [type, entrees] of Object.entries(modules ?? {})) {
+    // `modules.function` déclare les fonctions, il ne se référence pas lui-même.
+    if (type === 'function') continue;
     for (const entree of Array.isArray(entrees) ? entrees : []) {
       if (typeof entree?.function === 'string') referencees.add(entree.function);
       if (typeof entree?.resolver?.function === 'string') referencees.add(entree.resolver.function);
@@ -59,13 +66,19 @@ function controlerApp(app) {
     return erreurs;
   }
   const source = readFileSync(cheminIndex, 'utf8');
-  const fonctions = (manifeste.function ?? []).map((entree) => entree.key);
+  // Les fonctions sont un module comme les autres (`modules.function`).
+  const fonctions = (manifeste.modules?.function ?? []).map((entree) => entree.key);
   for (const referencee of fonctionsReferencees(manifeste.modules)) {
     if (!fonctions.includes(referencee)) {
       erreurs.push(`${app} : module référençant « ${referencee} », absent de la section function`);
     }
   }
-  for (const entree of manifeste.function ?? []) {
+  for (const entree of manifeste.modules?.function ?? []) {
+    if (String(entree.key ?? '').length > LONGUEUR_MAX_CLE_FONCTION) {
+      erreurs.push(
+        `${app} : clé de fonction « ${entree.key} » dépasse ${LONGUEUR_MAX_CLE_FONCTION} caractères`,
+      );
+    }
     const handler = String(entree.handler ?? '');
     const [, nom] = handler.split('.');
     if (!handler.startsWith('index.') || !nom) {

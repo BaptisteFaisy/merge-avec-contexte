@@ -7,7 +7,7 @@
 # Le Cerveau porte toutes les données durables : règles, gels, dérogations,
 # journal, cache de tickets et d'incidents (§14).
 app:
-  id: ari:cloud:ecosystem::app/00000000-0000-0000-0000-000000000000
+  id: ari:cloud:ecosystem::app/8361630d-9d57-4099-9c2b-5201bb00648d
   runtime:
     name: nodejs22.x
 
@@ -31,6 +31,7 @@ modules:
 
   jira:issueContext:
     - key: encart-ticket
+      title: Merge avec contexte
       label: Merge avec contexte
       resource: encart-ticket
       render: native
@@ -51,28 +52,34 @@ modules:
       name: Évaluer une fusion
       function: evaluateMerge
       actionVerb: GET
-      description: Évaluation à blanc des règles de contexte pour un ticket, sans fusion réelle.
+      description: Évaluation à blanc des règles de contexte pour un ticket, sans
+        fusion réelle.
       inputs:
         issueKey:
           title: Clé du ticket
+          description: Clé du ticket Jira concerné, par exemple PAY-123.
           type: string
           required: true
         targetBranch:
           title: Branche cible
+          description: Branche cible de la pull request, par exemple main.
           type: string
           required: false
         repository:
           title: Dépôt
+          description: Nom ou identifiant du dépôt Bitbucket concerné.
           type: string
           required: false
     - key: explain-block
       name: Expliquer un blocage
       function: explainBlock
       actionVerb: GET
-      description: Dernière évaluation réelle des PR d'un ticket, avec les raisons du blocage.
+      description: Dernière évaluation réelle des PR d'un ticket, avec les raisons du
+        blocage.
       inputs:
         issueKey:
           title: Clé du ticket
+          description: Clé du ticket Jira concerné, par exemple PAY-123.
           type: string
           required: true
     - key: list-freezes
@@ -83,6 +90,7 @@ modules:
       inputs:
         days:
           title: Horizon en jours
+          description: Horizon en jours pour les gels à venir (7 par défaut).
           type: number
           required: false
     - key: list-waivers
@@ -93,6 +101,7 @@ modules:
       inputs:
         issueKey:
           title: Clé du ticket
+          description: Clé du ticket Jira concerné, par exemple PAY-123.
           type: string
           required: true
     - key: request-waiver
@@ -103,18 +112,22 @@ modules:
       inputs:
         issueKey:
           title: Clé du ticket
+          description: Clé du ticket Jira concerné, par exemple PAY-123.
           type: string
           required: true
         ruleCode:
           title: Code de la règle
+          description: Code de la règle à déroger, par exemple R-04.
           type: string
           required: true
         reason:
           title: Motif
+          description: Motif de la dérogation, tel qu'il apparaîtra dans le journal.
           type: string
           required: true
         hours:
           title: Durée en heures
+          description: Durée demandée en heures, entre 1 et 72.
           type: number
           required: true
 
@@ -172,6 +185,30 @@ modules:
     - key: main
       engine: mysql
 
+  function:
+    - key: gererPont
+      handler: index.gererPont
+    - key: resolver-reglages
+      handler: index.resolverReglages
+    - key: resolver-encart
+      handler: index.resolverEncart
+    - key: resolver-console
+      handler: index.resolverConsole
+    - key: evaluateMerge
+      handler: index.evaluateMerge
+    - key: explainBlock
+      handler: index.explainBlock
+    - key: listFreezes
+      handler: index.listFreezes
+    - key: listWaivers
+      handler: index.listWaivers
+    - key: requestWaiver
+      handler: index.requestWaiver
+    - key: surTicketModifie
+      handler: index.surTicketModifie
+    - key: migrerSchema
+      handler: index.migrerSchema
+
 resources:
   - key: reglages-projet
     path: src/frontend/reglages-projet.jsx
@@ -179,30 +216,6 @@ resources:
     path: src/frontend/encart-ticket.jsx
   - key: console-journal
     path: src/frontend/console-journal.jsx
-
-function:
-  - key: gererPont
-    handler: index.gererPont
-  - key: resolver-reglages
-    handler: index.resolverReglages
-  - key: resolver-encart
-    handler: index.resolverEncart
-  - key: resolver-console
-    handler: index.resolverConsole
-  - key: evaluateMerge
-    handler: index.evaluateMerge
-  - key: explainBlock
-    handler: index.explainBlock
-  - key: listFreezes
-    handler: index.listFreezes
-  - key: listWaivers
-    handler: index.listWaivers
-  - key: requestWaiver
-    handler: index.requestWaiver
-  - key: surTicketModifie
-    handler: index.surTicketModifie
-  - key: migrerSchema
-    handler: index.migrerSchema
 
 permissions:
   scopes:
@@ -214,4 +227,4 @@ permissions:
   external:
     fetch:
       backend:
-        - '*.atlassian.net'
+        - address: "*.atlassian.net"

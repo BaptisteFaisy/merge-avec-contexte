@@ -5,6 +5,7 @@
  * motif, durée en heures. L'envoi remonte par `onEnvoyer({ rule, reason, hours })`
  * et correspond à l'action `request-waiver` du manifeste (MC-07).
  */
+import React from 'react';
 import { useState } from '@forge/react';
 import { Box, Button, Select, Text, TextField } from '@forge/react';
 import { texte } from './commun';

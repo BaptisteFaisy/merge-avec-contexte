@@ -2,6 +2,7 @@
  * Console de test (écran 6, §12) : formulaire ticket / branche / dépôt et
  * aperçu immédiat du message exact affiché par Bitbucket (§9, recette §18-7).
  */
+import React from 'react';
 import { Box, Button, Heading, Select, Text, TextField } from '@forge/react';
 import { texte } from './commun';
 

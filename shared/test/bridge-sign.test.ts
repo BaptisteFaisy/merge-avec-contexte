@@ -10,7 +10,7 @@ describe('pont signé — signature', () => {
   it('signe et vérifie une requête fraîche', async () => {
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'nonce-1' });
     const resultat = await verifyRequest({
-      secret: SECRET, headers: requete.headers, body: CORPS, nonces: createMemoryNonceStore(), now: T0,
+      secret: SECRET, headers: requete.headers, body: CORPS, nonces: createMemoryNonceStore(() => T0), now: T0,
     });
     expect(resultat.ok).toBe(true);
   });
@@ -18,7 +18,7 @@ describe('pont signé — signature', () => {
   it('refuse une signature falsifiée', async () => {
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'n' });
     const headers = { ...requete.headers, [HEADER_NAMES.signature]: 'a'.repeat(64) };
-    const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(), now: T0 });
+    const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(() => T0), now: T0 });
     expect(resultat).toEqual({ ok: false, reason: 'bad-signature' });
   });
 
@@ -26,7 +26,7 @@ describe('pont signé — signature', () => {
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'n2' });
     const resultat = await verifyRequest({
       secret: SECRET, headers: requete.headers, body: CORPS.replace('42', '43'),
-      nonces: createMemoryNonceStore(), now: T0,
+      nonces: createMemoryNonceStore(() => T0), now: T0,
     });
     expect(resultat).toEqual({ ok: false, reason: 'bad-signature' });
   });
@@ -34,13 +34,13 @@ describe('pont signé — signature', () => {
   it('refuse une requête de plus de 5 minutes', async () => {
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'n3' });
     const resultat = await verifyRequest({
-      secret: SECRET, headers: requete.headers, body: CORPS, nonces: createMemoryNonceStore(), now: T0 + 301_000,
+      secret: SECRET, headers: requete.headers, body: CORPS, nonces: createMemoryNonceStore(() => T0), now: T0 + 301_000,
     });
     expect(resultat).toEqual({ ok: false, reason: 'stale-timestamp' });
   });
 
   it('refuse un rejeu du même nonce', async () => {
-    const nonces = createMemoryNonceStore();
+    const nonces = createMemoryNonceStore(() => T0);
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'unique' });
     await verifyRequest({ secret: SECRET, headers: requete.headers, body: CORPS, nonces, now: T0 });
     const second = await verifyRequest({ secret: SECRET, headers: requete.headers, body: CORPS, nonces, now: T0 + 1000 });
@@ -50,7 +50,7 @@ describe('pont signé — signature', () => {
   it('refuse une requête sans en-tête de signature', async () => {
     const resultat = await verifyRequest({
       secret: SECRET, headers: { [HEADER_NAMES.timestamp]: String(T0) }, body: CORPS,
-      nonces: createMemoryNonceStore(), now: T0,
+      nonces: createMemoryNonceStore(() => T0), now: T0,
     });
     expect(resultat).toEqual({ ok: false, reason: 'missing-header' });
   });
@@ -58,14 +58,14 @@ describe('pont signé — signature', () => {
   it('refuse une version inconnue', async () => {
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'n4' });
     const headers = { ...requete.headers, [HEADER_NAMES.version]: 'v0' };
-    const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(), now: T0 });
+    const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(() => T0), now: T0 });
     expect(resultat).toEqual({ ok: false, reason: 'bad-version' });
   });
 
   it('lit les en-têtes sans tenir compte de la casse', async () => {
     const requete = signRequest({ secret: SECRET, body: CORPS, now: () => T0, nonceGenerator: () => 'n5' });
     const headers = Object.fromEntries(Object.entries(requete.headers).map(([cle, valeur]) => [cle.toUpperCase(), valeur]));
-    const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(), now: T0 });
+    const resultat = await verifyRequest({ secret: SECRET, headers, body: CORPS, nonces: createMemoryNonceStore(() => T0), now: T0 });
     expect(resultat.ok).toBe(true);
   });
 

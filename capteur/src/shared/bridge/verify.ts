@@ -27,24 +27,32 @@ export interface VerifyInput {
   maxSkewMs?: number;
 }
 
-/** Store mémoire, pour les tests et les déploiements sans base. */
-export function createMemoryNonceStore(): NonceStore & { size(): number } {
+/**
+ * Store mémoire, pour les tests et les déploiements sans base.
+ *
+ * L'horloge est injectée : un test qui vérifie l'anti-rejeu avec un
+ * horodatage fixe ne doit pas dépendre de l'heure réelle du moment où il
+ * tourne (sinon la purge vide la mémoire et le rejeu passe — bug réel relevé
+ * le jour où l'horodatage des tests est devenu passé).
+ */
+export function createMemoryNonceStore(clock: () => number = Date.now): NonceStore & { size(): number } {
   const vus = new Map<string, number>();
-  const purger = (maintenant: number) => {
+  const purger = () => {
+    const maintenant = clock();
     for (const [nonce, expiration] of vus) {
       if (expiration <= maintenant) vus.delete(nonce);
     }
   };
   return {
     async seen(nonce) {
-      purger(Date.now());
+      purger();
       return vus.has(nonce);
     },
     async remember(nonce, expiresAt) {
       vus.set(nonce, Date.parse(expiresAt));
     },
     size() {
-      purger(Date.now());
+      purger();
       return vus.size;
     },
   };
