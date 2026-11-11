@@ -389,10 +389,8 @@ Points de la recherche restant **non confirmés** ou identifiés comme risques t
 Les manifestes `capteur/manifest.yml` et `cerveau/manifest.yml` restent la référence : rien
 ci-dessous ne les contredit, ce sont des points à arbitrer ou à corriger côté code.
 
-1. **`jira:issueContext` sans `title`** : le dépôt ne déclare que `label: Merge avec contexte`.
-   La référence officielle marque **`title` et `label` comme obligatoires** tous les deux
-   (`title` s'affiche à côté du `label`). Le manifeste du dépôt devrait donc porter un `title`
-   (chaîne ou objet i18n). À corriger avant le premier `forge deploy`.
+1. **`jira:issueContext` sans `title`** : **corrigé au déploiement réel** — le
+   manifeste du Cerveau porte bien `title` et `label` (voir §8).
 2. **Propriété `resource` (singulier)** : plusieurs notes brutes de recherche écrivaient
    `resources:` comme propriété d'un module UI. La référence officielle confirme le singulier
    **`resource: <clé>`**, qui pointe vers une entrée de la liste racine `resources:`. Les
@@ -429,15 +427,30 @@ ci-dessous ne les contredit, ce sont des points à arbitrer ou à corriger côt�
    25 DDL/min ; le dépôt a choisi le déclencheur horaire (timeout standard 55 s), qui reste
    documenté comme valide et dont Forge rejoue les DDL en échec chaque heure. Choix assumé, à
    surveiller si le schéma grossit.
-9. **`docs/ARCHITECTURE.md` cite `bitbucket:pullRequestOverviewPanel`** : cette clé n'existe
-   pas dans la référence Bitbucket ; la clé confirmée est
-   **`bitbucket:repoPullRequestOverviewPanel`**, celle qu'utilise le manifeste du Capteur.
-   Fichier hors du périmètre de cette PR, à corriger séparément.
+9. **`docs/ARCHITECTURE.md` citait `bitbucket:pullRequestOverviewPanel`** : clé inexistante
+   dans la référence Bitbucket ; corrigé — le document cite désormais
+   **`bitbucket:repoPullRequestOverviewPanel`**, conforme au manifeste du Capteur.
 10. **`forge site provision` et « Studio »** : la documentation du site de démonstration
     énumère Jira, Confluence, Jira Service Management et Rovo — « Studio » n'y figure pas. Le
     cahier des charges et `docs/JUDGES.md` le mentionnent : à confirmer sur un site réel.
 
-## 8. Sources
+## 8. Contraintes découvertes au déploiement réel
+
+Constatées en déployant vraiment les deux apps avec le CLI Forge (2026-11),
+absentes de la documentation ou mal décrites ; toutes sont déjà reflétées dans
+les manifestes et les tsconfig du dépôt :
+
+- La section `function` est un **module** : elle se déclare sous `modules:`, au même niveau que `webtrigger` ou `action` — pas à la racine du manifeste.
+- `jira:issueContext` exige **`title` en plus de `label`** (écart n°1 ci-dessus, corrigé).
+- Chaque entrée d'une `action` exige une **`description`** ; chacun de ses `inputs` aussi (`title`, `type`, `required`, `description`).
+- Une **clé de fonction est bornée à 23 caractères** : `resolver-workspace-settings` (27) est refusé ; le Capteur déclare `resolver-reglages-ws` (20). Les clés de *modules* ne connaissent pas cette borne (`merge-avec-contexte-check`, 25 caractères, passe).
+- L'egress s'écrit en **objets** : `external.fetch.backend` est une liste de `- address: '*.webtrigger.atlassian.app'`, pas une liste de chaînes nues.
+- Le tsconfig d'une app ne doit **pas porter `noEmit`** : le bundler Forge n'émet rien et le refuse. (`noEmit` reste correct au tsconfig racine, qui ne sert qu'au typecheck hors plateforme.)
+- Il ne doit **pas porter `jsxImportSource`** non plus : le bundler impose `jsx: react` — les tsconfig d'app déclarent `"jsx": "react"`, point.
+- Les écrans `.jsx` doivent **importer `React`** explicitement : le bundler ne l'injecte pas (les six écrans du dépôt le font).
+- **`webTrigger.getUrl(moduleKey)`** (`@forge/api`) rend l'adresse du pont à l'exécution, propre à chaque installation et à chaque environnement : c'est ainsi que le Cerveau communique son URL au Capteur au moment du jumelage (`cerveau/src/app/pont-url.ts`), et qu'on la régénère après réinstallation (`docs/DEPANNAGE.md`).
+
+## 9. Sources
 
 https://developer.atlassian.com/platform/forge/manifest-reference/modules/bitbucket-merge-check/
 https://developer.atlassian.com/platform/forge/manifest-reference/modules/bitbucket-repository-pull-request-card/

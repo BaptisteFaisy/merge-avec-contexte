@@ -71,7 +71,11 @@ le contrôle réel, `evaluate-merge` aligné sur la carte de PR, mode observatio
 5. **Vidéo de soumission** (moins de 5 minutes, anglais) : le scénario minute par
    minute est prêt dans `docs/VIDEO-SCRIPT.md`.
 6. **Marketplace** : une fiche de présentation pour les deux apps, avec les
-   instructions de jumelage en trois étapes.
+   instructions de jumelage en trois étapes — et la mention **explicite** que
+   le caractère bloquant du contrôle exige l'offre Premium Bitbucket : sur une
+   offre gratuite, le contrôle s'exécute et informe sans empêcher la fusion
+   (`docs/AUDIT.md` n°39, `docs/DEPANNAGE.md` §7). Le dire dans la fiche de
+   soumission, pas seulement ici.
 
 ## Incertitudes assumées
 
