@@ -9,7 +9,7 @@ complète et `docs/SOUMISSION.md` §D pour la liste récapitulative).
 
 - **NN** : un numéro à deux chiffres (`01`, `02`, …), dans l'ordre de la check-list.
 - **suffixe** : une lettre minuscule pour une variante (`06b`).
-- **plateforme** : `bitbucket`, `jira` ou `terminal`.
+- **plateforme** : `bitbucket`, `jira`, `terminal` ou `site` (le site public du projet).
 - **ecran** : un nom court et explicite.
 - Tout en minuscules, sans accents, sans espaces, tirets `-` comme séparateur, extension `.png`.
 
@@ -30,6 +30,8 @@ Exemples : `01-bitbucket-resultat-controle.png`, `04-jira-reglages-projet.png`,
 | `07-terminal-demo-e2e.png` | sortie de `npm run demo` | à capturer |
 | `08-jira-agent-rovo.png` | agent Rovo (bonus) | à capturer si possible |
 | `09-terminal-client-mcp.png` | appel MCP (bonus) | à capturer si possible |
+| `10-site-accueil-en.png` | 10 — site public (accueil, anglais) | capturé |
+| `10b-site-accueil-fr.png` | 10 — site public (accueil, français) | capturé |
 
 ## Consignes
 
