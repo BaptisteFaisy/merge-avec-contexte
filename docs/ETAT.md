@@ -152,6 +152,27 @@ avec `forge webtrigger create -f pont-bitbucket -e production -s <site> -p jira`
 et le Cerveau la lit lui-même à l'exécution (`webTrigger.getUrl`) pour la rendre
 au Capteur au moment du jumelage.
 
+### Jumelage sans navigateur (Capteur)
+
+Le Capteur accepte le jumelage par variables d'environnement, en **repli
+seulement** — un jumelage saisi dans l'écran de réglages garde toujours la
+priorité :
+
+```bash
+forge variables set MAC_BRIDGE_URL   '<adresse du pont>'   -e production   # côté capteur
+forge variables set MAC_SHARED_SECRET '<secret partagé>'   -e production --encrypt
+forge variables set MAC_WORKSPACE     '<uuid de l’espace>' -e production   # facultatif
+forge variables set MAC_FALLBACK_POLICY closed             -e production   # facultatif
+forge variables set MAC_ENVOI_CHEMINS 0                    -e production   # facultatif
+forge deploy -e production
+```
+
+C'est ce qui rend l'installation Bitbucket scriptable : sans cela, le jumelage
+exige un navigateur pour saisir le code à usage unique. Un `hasSettings`
+optionnel a été ajouté au port des réglages pour distinguer « jamais réglé » de
+« réglé aux valeurs par défaut » — sinon une variable écraserait un choix
+explicite de l'administrateur.
+
 ### Ce qui bloque encore
 
 1. **Le Capteur n'est installé nulle part.** `forge site provision` ne fournit

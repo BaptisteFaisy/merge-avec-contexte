@@ -22,6 +22,7 @@ import { executerControle } from './check/run';
 import type { PRCheckEvent } from './bitbucket/types';
 import { defaultForgeStorage, ForgePairingStore } from './pairing/store';
 import { ForgeSettingsStore } from './policy/settings';
+import { avecRepliEnvironnement, lireEnvPairing, reglagesAvecRepliEnvironnement } from './app/env-pairing';
 import {
   handlePrCard,
   handlePrPanel,
@@ -33,8 +34,14 @@ import type { MergeCheckResponse } from './shared';
 export type PullRequestCheckEvent = PRCheckEvent;
 export type BitbucketExtensionContext = BitbucketUiContext;
 
-const pairingStore = new ForgePairingStore();
-const settingsStore = new ForgeSettingsStore(defaultForgeStorage());
+/**
+ * Le jumelage saisi dans l'écran de réglages a toujours priorité ; les
+ * variables d'environnement ne servent que de repli, pour une installation
+ * sans navigateur (démo, recette, espace de travail créé pour l'occasion).
+ */
+const env = lireEnvPairing();
+const pairingStore = avecRepliEnvironnement(new ForgePairingStore(), env);
+const settingsStore = reglagesAvecRepliEnvironnement(new ForgeSettingsStore(defaultForgeStorage()), env);
 const deps = { pairingStore, settingsStore, lirePr };
 
 /** Contrôle de fusion : `executerControle` applique lui-même la politique de repli. */

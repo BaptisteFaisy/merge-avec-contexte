@@ -22,6 +22,14 @@ export interface WorkspaceSettings {
 /** Port d'accès aux réglages par espace de travail. */
 export interface SettingsStore {
   getSettings(workspaceUuid: string): Promise<WorkspaceSettings>;
+  /**
+   * Vrai si des réglages ont déjà été enregistrés pour cet espace.
+   *
+   * Facultatif : sans lui, « jamais réglé » et « réglé aux valeurs par défaut »
+   * sont indiscernables, et un repli par variable d'environnement écraserait un
+   * choix explicite de l'administrateur.
+   */
+  hasSettings?(workspaceUuid: string): Promise<boolean>;
   setFallbackPolicy(workspaceUuid: string, policy: FallbackPolicy): Promise<void>;
   setEnvoiDesChemins(workspaceUuid: string, actif: boolean): Promise<void>;
 }
@@ -50,6 +58,11 @@ export class ForgeSettingsStore implements SettingsStore {
     };
   }
 
+  async hasSettings(workspaceUuid: string): Promise<boolean> {
+    const valeur = await this.client.get(cleSettings(workspaceUuid));
+    return Boolean(valeur) && typeof valeur === 'object';
+  }
+
   async setFallbackPolicy(workspaceUuid: string, policy: FallbackPolicy): Promise<void> {
     const actuels = await this.getSettings(workspaceUuid);
     await this.client.set(cleSettings(workspaceUuid), { ...actuels, fallbackPolicy: policy });
@@ -64,6 +77,10 @@ export class ForgeSettingsStore implements SettingsStore {
 /** Implémentation mémoire pour les tests. */
 export class MemorySettingsStore implements SettingsStore {
   private donnees = new Map<string, WorkspaceSettings>();
+
+  async hasSettings(workspaceUuid: string): Promise<boolean> {
+    return this.donnees.has(unwrapUuid(workspaceUuid));
+  }
 
   async getSettings(workspaceUuid: string): Promise<WorkspaceSettings> {
     const trouve = this.donnees.get(unwrapUuid(workspaceUuid));
