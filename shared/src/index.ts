@@ -13,6 +13,8 @@ export * from './message/strings';
 export * from './message/format';
 export * from './check/response';
 export * from './issues/extract-keys';
+export * from './issues/libelles';
+export * from './issues/statuts';
 export * from './bridge/sign';
 export * from './bridge/verify';
 export * from './bridge/pairing';
