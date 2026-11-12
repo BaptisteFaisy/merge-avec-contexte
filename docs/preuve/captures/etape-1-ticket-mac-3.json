@@ -1,0 +1,708 @@
+{
+  "etape": "etape-1-ticket-mac-3",
+  "titre": "Ticket réel MAC-3 sur le site Jira",
+  "horodatage": "2026-11-12T15:37:54.803Z",
+  "requete": {
+    "site": "https://one-atlas-cndz.atlassian.net",
+    "cle": "MAC-3",
+    "url": "https://one-atlas-cndz.atlassian.net/browse/MAC-3"
+  },
+  "reponse": {
+    "brut": {
+      "expand": "renderedFields,names,schema,operations,editmeta,changelog,versionedRepresentations,customfield_10180.cmdb.label,customfield_10180.cmdb.objectKey,customfield_10180.cmdb.attributes,customfield_10181.cmdb.label,customfield_10181.cmdb.objectKey,customfield_10181.cmdb.attributes,customfield_10182.cmdb.label,customfield_10182.cmdb.objectKey,customfield_10182.cmdb.attributes,customfield_10183.cmdb.label,customfield_10183.cmdb.objectKey,customfield_10183.cmdb.attributes,customfield_10184.cmdb.label,customfield_10184.cmdb.objectKey,customfield_10184.cmdb.attributes,customfield_10185.cmdb.label,customfield_10185.cmdb.objectKey,customfield_10185.cmdb.attributes,customfield_10186.cmdb.label,customfield_10186.cmdb.objectKey,customfield_10186.cmdb.attributes,customfield_10187.cmdb.label,customfield_10187.cmdb.objectKey,customfield_10187.cmdb.attributes,customfield_10189.cmdb.label,customfield_10189.cmdb.objectKey,customfield_10189.cmdb.attributes,customfield_10294.cmdb.label,customfield_10294.cmdb.objectKey,customfield_10294.cmdb.attributes,customfield_10173.cmdb.label,customfield_10173.cmdb.objectKey,customfield_10173.cmdb.attributes,customfield_10174.cmdb.label,customfield_10174.cmdb.objectKey,customfield_10174.cmdb.attributes,customfield_10295.cmdb.label,customfield_10295.cmdb.objectKey,customfield_10295.cmdb.attributes,customfield_10175.cmdb.label,customfield_10175.cmdb.objectKey,customfield_10175.cmdb.attributes,customfield_10176.cmdb.label,customfield_10176.cmdb.objectKey,customfield_10176.cmdb.attributes,customfield_10177.cmdb.label,customfield_10177.cmdb.objectKey,customfield_10177.cmdb.attributes,customfield_10161.cmdb.label,customfield_10161.cmdb.objectKey,customfield_10161.cmdb.attributes,customfield_10162.cmdb.label,customfield_10162.cmdb.objectKey,customfield_10162.cmdb.attributes,customfield_10163.cmdb.label,customfield_10163.cmdb.objectKey,customfield_10163.cmdb.attributes,customfield_10164.cmdb.label,customfield_10164.cmdb.objectKey,customfield_10164.cmdb.attributes,customfield_10165.cmdb.label,customfield_10165.cmdb.objectKey,customfield_10165.cmdb.attributes,customfield_10166.cmdb.label,customfield_10166.cmdb.objectKey,customfield_10166.cmdb.attributes,customfield_10167.cmdb.label,customfield_10167.cmdb.objectKey,customfield_10167.cmdb.attributes,customfield_10168.cmdb.label,customfield_10168.cmdb.objectKey,customfield_10168.cmdb.attributes,customfield_10151.cmdb.label,customfield_10151.cmdb.objectKey,customfield_10151.cmdb.attributes,customfield_10152.cmdb.label,customfield_10152.cmdb.objectKey,customfield_10152.cmdb.attributes,customfield_10153.cmdb.label,customfield_10153.cmdb.objectKey,customfield_10153.cmdb.attributes,customfield_10154.cmdb.label,customfield_10154.cmdb.objectKey,customfield_10154.cmdb.attributes,customfield_10824.cmdb.label,customfield_10824.cmdb.objectKey,customfield_10824.cmdb.attributes,customfield_10828.cmdb.label,customfield_10828.cmdb.objectKey,customfield_10828.cmdb.attributes,customfield_10143.cmdb.label,customfield_10143.cmdb.objectKey,customfield_10143.cmdb.attributes,customfield_10147.cmdb.label,customfield_10147.cmdb.objectKey,customfield_10147.cmdb.attributes,customfield_10137.cmdb.label,customfield_10137.cmdb.objectKey,customfield_10137.cmdb.attributes,customfield_10139.cmdb.label,customfield_10139.cmdb.objectKey,customfield_10139.cmdb.attributes,customfield_10810.cmdb.label,customfield_10810.cmdb.objectKey,customfield_10810.cmdb.attributes,customfield_10811.cmdb.label,customfield_10811.cmdb.objectKey,customfield_10811.cmdb.attributes,customfield_10812.cmdb.label,customfield_10812.cmdb.objectKey,customfield_10812.cmdb.attributes,customfield_10814.cmdb.label,customfield_10814.cmdb.objectKey,customfield_10814.cmdb.attributes,customfield_10815.cmdb.label,customfield_10815.cmdb.objectKey,customfield_10815.cmdb.attributes,customfield_10818.cmdb.label,customfield_10818.cmdb.objectKey,customfield_10818.cmdb.attributes,customfield_10819.cmdb.label,customfield_10819.cmdb.objectKey,customfield_10819.cmdb.attributes,customfield_10492.cmdb.label,customfield_10492.cmdb.objectKey,customfield_10492.cmdb.attributes,customfield_10493.cmdb.label,customfield_10493.cmdb.objectKey,customfield_10493.cmdb.attributes,customfield_10131.cmdb.label,customfield_10131.cmdb.objectKey,customfield_10131.cmdb.attributes,customfield_10010.requestTypePractice,customfield_10132.cmdb.label,customfield_10132.cmdb.objectKey,customfield_10132.cmdb.attributes,customfield_10133.cmdb.label,customfield_10133.cmdb.objectKey,customfield_10133.cmdb.attributes,customfield_10134.cmdb.label,customfield_10134.cmdb.objectKey,customfield_10134.cmdb.attributes,customfield_10135.cmdb.label,customfield_10135.cmdb.objectKey,customfield_10135.cmdb.attributes,customfield_10136.cmdb.label,customfield_10136.cmdb.objectKey,customfield_10136.cmdb.attributes,customfield_10126.cmdb.label,customfield_10126.cmdb.objectKey,customfield_10126.cmdb.attributes,customfield_10127.cmdb.label,customfield_10127.cmdb.objectKey,customfield_10127.cmdb.attributes,customfield_10129.cmdb.label,customfield_10129.cmdb.objectKey,customfield_10129.cmdb.attributes,customfield_10800.cmdb.label,customfield_10800.cmdb.objectKey,customfield_10800.cmdb.attributes,customfield_10801.cmdb.label,customfield_10801.cmdb.objectKey,customfield_10801.cmdb.attributes,customfield_10803.cmdb.label,customfield_10803.cmdb.objectKey,customfield_10803.cmdb.attributes,customfield_10804.cmdb.label,customfield_10804.cmdb.objectKey,customfield_10804.cmdb.attributes,customfield_10805.cmdb.label,customfield_10805.cmdb.objectKey,customfield_10805.cmdb.attributes,customfield_10806.cmdb.label,customfield_10806.cmdb.objectKey,customfield_10806.cmdb.attributes,customfield_10807.cmdb.label,customfield_10807.cmdb.objectKey,customfield_10807.cmdb.attributes,customfield_10809.cmdb.label,customfield_10809.cmdb.objectKey,customfield_10809.cmdb.attributes,customfield_10123.cmdb.label,customfield_10123.cmdb.objectKey,customfield_10123.cmdb.attributes,customfield_10116.cmdb.label,customfield_10116.cmdb.objectKey,customfield_10116.cmdb.attributes,customfield_10111.cmdb.label,customfield_10111.cmdb.objectKey,customfield_10111.cmdb.attributes,customfield_10113.cmdb.label,customfield_10113.cmdb.objectKey,customfield_10113.cmdb.attributes,customfield_10114.cmdb.label,customfield_10114.cmdb.objectKey,customfield_10114.cmdb.attributes,customfield_10106.cmdb.label,customfield_10106.cmdb.objectKey,customfield_10106.cmdb.attributes,customfield_10107.cmdb.label,customfield_10107.cmdb.objectKey,customfield_10107.cmdb.attributes,customfield_10108.cmdb.label,customfield_10108.cmdb.objectKey,customfield_10108.cmdb.attributes,customfield_10109.cmdb.label,customfield_10109.cmdb.objectKey,customfield_10109.cmdb.attributes,customfield_10101.cmdb.label,customfield_10101.cmdb.objectKey,customfield_10101.cmdb.attributes,customfield_10102.cmdb.label,customfield_10102.cmdb.objectKey,customfield_10102.cmdb.attributes,customfield_10103.cmdb.label,customfield_10103.cmdb.objectKey,customfield_10103.cmdb.attributes,customfield_10090.cmdb.label,customfield_10090.cmdb.objectKey,customfield_10090.cmdb.attributes,customfield_10091.cmdb.label,customfield_10091.cmdb.objectKey,customfield_10091.cmdb.attributes,customfield_10092.cmdb.label,customfield_10092.cmdb.objectKey,customfield_10092.cmdb.attributes,customfield_10093.cmdb.label,customfield_10093.cmdb.objectKey,customfield_10093.cmdb.attributes,customfield_10098.cmdb.label,customfield_10098.cmdb.objectKey,customfield_10098.cmdb.attributes,customfield_10099.cmdb.label,customfield_10099.cmdb.objectKey,customfield_10099.cmdb.attributes,customfield_10081.cmdb.label,customfield_10081.cmdb.objectKey,customfield_10081.cmdb.attributes,customfield_10082.cmdb.label,customfield_10082.cmdb.objectKey,customfield_10082.cmdb.attributes,customfield_10087.cmdb.label,customfield_10087.cmdb.objectKey,customfield_10087.cmdb.attributes,customfield_10088.cmdb.label,customfield_10088.cmdb.objectKey,customfield_10088.cmdb.attributes,customfield_10089.cmdb.label,customfield_10089.cmdb.objectKey,customfield_10089.cmdb.attributes",
+      "id": "66648",
+      "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66648",
+      "key": "MAC-3",
+      "fields": {
+        "customfield_10070": null,
+        "customfield_10071": null,
+        "customfield_10072": null,
+        "customfield_10193": null,
+        "customfield_10194": null,
+        "customfield_10073": null,
+        "customfield_10195": null,
+        "customfield_10196": null,
+        "statusCategory": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/statuscategory/4",
+          "id": 4,
+          "key": "indeterminate",
+          "colorName": "yellow",
+          "name": "En cours"
+        },
+        "resolution": null,
+        "customfield_10871": null,
+        "customfield_10630": null,
+        "customfield_10864": null,
+        "customfield_10865": null,
+        "customfield_10866": null,
+        "customfield_10868": null,
+        "customfield_10869": null,
+        "lastViewed": null,
+        "customfield_10180": [],
+        "customfield_10181": [],
+        "customfield_10060": null,
+        "customfield_10061": null,
+        "customfield_10182": [],
+        "customfield_10062": null,
+        "customfield_10183": [],
+        "customfield_10063": null,
+        "customfield_10184": [],
+        "customfield_10185": [],
+        "customfield_10064": null,
+        "customfield_10186": [],
+        "customfield_10065": null,
+        "customfield_10066": null,
+        "customfield_10187": [],
+        "customfield_10067": null,
+        "customfield_10189": [],
+        "customfield_10068": null,
+        "customfield_10069": null,
+        "labels": [],
+        "aggregatetimeoriginalestimate": null,
+        "issuelinks": [
+          {
+            "id": "59303",
+            "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issueLink/59303",
+            "type": {
+              "id": "10000",
+              "name": "Blocks",
+              "inward": "is blocked by",
+              "outward": "blocks",
+              "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issueLinkType/10000"
+            },
+            "inwardIssue": {
+              "id": "66645",
+              "key": "MAC-2",
+              "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66645",
+              "fields": {
+                "summary": "Limiter les tentatives de paiement (preuve réelle)",
+                "status": {
+                  "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/status/3",
+                  "description": "Ce ticket est en cours de traitement par la personne assignée.",
+                  "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/statuses/inprogress.png",
+                  "name": "En cours",
+                  "id": "3",
+                  "statusCategory": {
+                    "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/statuscategory/4",
+                    "id": 4,
+                    "key": "indeterminate",
+                    "colorName": "yellow",
+                    "name": "En cours"
+                  }
+                },
+                "priority": {
+                  "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/priority/10000",
+                  "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/priorities/blocker_new.svg",
+                  "name": "Critique",
+                  "id": "10000"
+                },
+                "issuetype": {
+                  "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issuetype/10002",
+                  "id": "10002",
+                  "description": "Une tâche distincte.",
+                  "iconUrl": "https://one-atlas-cndz.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
+                  "name": "Tâche",
+                  "subtask": false,
+                  "avatarId": 10318,
+                  "hierarchyLevel": 0
+                }
+              }
+            }
+          }
+        ],
+        "assignee": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aba9bbe36-cf26-4e6a-8f5e-2369b742296b",
+          "accountId": "712020:ba9bbe36-cf26-4e6a-8f5e-2369b742296b",
+          "emailAddress": "baptiste.faisy@gmail.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "24x24": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "16x16": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "32x32": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png"
+          },
+          "displayName": "Baptiste Faisy",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        },
+        "components": [
+          {
+            "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/component/10134",
+            "id": "10134",
+            "name": "checkout-api",
+            "description": "Service de paiement (preuve réelle)."
+          }
+        ],
+        "customfield_10170": null,
+        "customfield_10050": null,
+        "customfield_10051": null,
+        "customfield_10294": [],
+        "customfield_10173": [],
+        "customfield_10052": null,
+        "customfield_10174": [],
+        "customfield_10295": [],
+        "customfield_10053": null,
+        "customfield_10054": null,
+        "customfield_10175": [],
+        "customfield_10055": null,
+        "customfield_10176": [],
+        "customfield_10177": [],
+        "customfield_10056": null,
+        "customfield_10178": null,
+        "customfield_10057": null,
+        "customfield_10179": null,
+        "customfield_10058": null,
+        "customfield_10059": null,
+        "customfield_10049": null,
+        "customfield_10729": [],
+        "subtasks": [],
+        "customfield_10160": null,
+        "customfield_10161": [],
+        "customfield_10040": null,
+        "customfield_10162": [],
+        "customfield_10041": null,
+        "customfield_10163": [],
+        "customfield_10042": null,
+        "reporter": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aba9bbe36-cf26-4e6a-8f5e-2369b742296b",
+          "accountId": "712020:ba9bbe36-cf26-4e6a-8f5e-2369b742296b",
+          "emailAddress": "baptiste.faisy@gmail.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "24x24": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "16x16": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "32x32": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png"
+          },
+          "displayName": "Baptiste Faisy",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        },
+        "customfield_10164": [],
+        "customfield_10043": null,
+        "customfield_10044": null,
+        "customfield_10165": [],
+        "customfield_10166": [],
+        "customfield_10045": null,
+        "customfield_10046": null,
+        "customfield_10167": [],
+        "customfield_10168": [],
+        "customfield_10047": null,
+        "customfield_10048": null,
+        "customfield_10169": null,
+        "customfield_10038": null,
+        "customfield_10830": null,
+        "customfield_10039": null,
+        "progress": {
+          "progress": 0,
+          "total": 0
+        },
+        "votes": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/MAC-3/votes",
+          "votes": 0,
+          "hasVoted": false
+        },
+        "worklog": {
+          "startAt": 0,
+          "maxResults": 20,
+          "total": 0,
+          "worklogs": []
+        },
+        "issuetype": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issuetype/10002",
+          "id": "10002",
+          "description": "Une tâche distincte.",
+          "iconUrl": "https://one-atlas-cndz.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
+          "name": "Tâche",
+          "subtask": false,
+          "avatarId": 10318,
+          "hierarchyLevel": 0
+        },
+        "customfield_10151": [],
+        "project": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/project/10237",
+          "id": "10237",
+          "key": "MAC",
+          "name": "Merge avec contexte",
+          "projectTypeKey": "software",
+          "simplified": false,
+          "avatarUrls": {
+            "48x48": "https://one-atlas-cndz.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10413",
+            "24x24": "https://one-atlas-cndz.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10413?size=small",
+            "16x16": "https://one-atlas-cndz.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10413?size=xsmall",
+            "32x32": "https://one-atlas-cndz.atlassian.net/rest/api/3/universal_avatar/view/type/project/avatar/10413?size=medium"
+          }
+        },
+        "customfield_10152": [],
+        "customfield_10153": [],
+        "customfield_10033": null,
+        "customfield_10154": [],
+        "customfield_10034": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/customFieldOption/10022",
+          "value": "Medium",
+          "id": "10022"
+        },
+        "customfield_10155": null,
+        "customfield_10035": null,
+        "customfield_10156": null,
+        "customfield_10157": null,
+        "customfield_10036": null,
+        "customfield_10158": null,
+        "customfield_10037": null,
+        "customfield_10027": [],
+        "customfield_10148": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/customFieldOption/10159",
+          "value": "Standard",
+          "id": "10159"
+        },
+        "customfield_10820": null,
+        "customfield_10028": null,
+        "customfield_10029": null,
+        "customfield_10821": null,
+        "customfield_10822": null,
+        "customfield_10823": null,
+        "customfield_10824": [],
+        "resolutiondate": null,
+        "customfield_10825": null,
+        "customfield_10826": null,
+        "customfield_10827": null,
+        "customfield_10828": [],
+        "customfield_10829": null,
+        "watches": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/MAC-3/watchers",
+          "watchCount": 2,
+          "isWatching": true
+        },
+        "customfield_10140": null,
+        "customfield_10261": null,
+        "customfield_10020": null,
+        "customfield_10142": null,
+        "customfield_10021": null,
+        "customfield_10143": [],
+        "customfield_10022": null,
+        "customfield_10023": null,
+        "customfield_10144": null,
+        "customfield_10024": "2026-11-12T09:15:19.157-0500",
+        "customfield_10145": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/customFieldOption/10155",
+          "value": "User",
+          "id": "10155"
+        },
+        "customfield_10025": null,
+        "customfield_10147": [],
+        "customfield_10026": null,
+        "customfield_10016": null,
+        "customfield_10137": [],
+        "customfield_10138": null,
+        "customfield_10017": null,
+        "customfield_10139": [],
+        "customfield_10810": [],
+        "customfield_10811": [],
+        "customfield_10019": "0|i08q9g:",
+        "customfield_10812": [],
+        "customfield_10813": null,
+        "customfield_10814": [],
+        "customfield_10815": [],
+        "customfield_10816": null,
+        "customfield_10817": null,
+        "customfield_10818": [],
+        "customfield_10819": [],
+        "updated": "2026-11-12T09:21:09.899-0500",
+        "timeoriginalestimate": null,
+        "customfield_10492": [],
+        "description": {
+          "type": "doc",
+          "version": 1,
+          "content": [
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "Critères d'acceptation :"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "- [x] Correctif validé en préproduction"
+                }
+              ]
+            },
+            {
+              "type": "paragraph",
+              "content": [
+                {
+                  "type": "text",
+                  "text": "- [x] Plan de retour arrière joint"
+                }
+              ]
+            }
+          ]
+        },
+        "customfield_10130": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/customFieldOption/10144",
+          "value": "Yes - Standard for Role",
+          "id": "10144"
+        },
+        "customfield_10493": [],
+        "customfield_10131": [],
+        "customfield_10010": null,
+        "customfield_10132": [],
+        "customfield_10133": [],
+        "customfield_10134": [],
+        "customfield_10135": [],
+        "customfield_10014": null,
+        "customfield_10136": [],
+        "timetracking": {},
+        "customfield_10015": null,
+        "customfield_10126": [],
+        "customfield_10005": null,
+        "customfield_10127": [],
+        "customfield_10006": null,
+        "customfield_10128": [],
+        "customfield_10007": null,
+        "customfield_10129": [],
+        "customfield_10800": [],
+        "customfield_10008": null,
+        "customfield_10801": [],
+        "customfield_10009": null,
+        "customfield_10802": null,
+        "customfield_10803": [],
+        "customfield_10804": [],
+        "customfield_10805": [],
+        "customfield_10806": [],
+        "customfield_10807": [],
+        "customfield_10808": null,
+        "customfield_10809": [],
+        "summary": "Correctif incident checkout-api (preuve réelle)",
+        "customfield_10120": null,
+        "customfield_10121": null,
+        "customfield_10122": null,
+        "customfield_10001": null,
+        "customfield_10002": [],
+        "customfield_10123": [],
+        "customfield_10003": null,
+        "customfield_10004": null,
+        "customfield_10115": null,
+        "customfield_10236": null,
+        "customfield_10116": [],
+        "customfield_10237": null,
+        "environment": null,
+        "customfield_10117": null,
+        "customfield_10118": null,
+        "customfield_10119": null,
+        "duedate": null,
+        "comment": {
+          "comments": [
+            {
+              "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66648/comment/84940",
+              "id": "84940",
+              "author": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Bloqué, 1 raison."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "1) MAC-3 est au statut « To Do », attendu : À faire, En cours, En revue, Prêt pour la livraison. Amenez le ticket à un statut autorisé avant la fusion."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Détail et dérogation : carte « Merge avec contexte » à droite."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "mac-blocage:1umj0r2",
+                        "marks": [
+                          {
+                            "type": "code"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "updateAuthor": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "created": "2026-11-12T09:15:19.157-0500",
+              "updated": "2026-11-12T09:15:19.157-0500",
+              "jsdPublic": true
+            },
+            {
+              "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66648/comment/84942",
+              "id": "84942",
+              "author": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Bloqué, 1 raison."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "1) MAC-3 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison. Amenez le ticket à un statut autorisé avant la fusion."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Détail et dérogation : carte « Merge avec contexte » à droite."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "mac-blocage:wt0150",
+                        "marks": [
+                          {
+                            "type": "code"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "updateAuthor": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "created": "2026-11-12T09:21:09.899-0500",
+              "updated": "2026-11-12T09:21:09.899-0500",
+              "jsdPublic": true
+            }
+          ],
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66648/comment",
+          "maxResults": 2,
+          "total": 2,
+          "startAt": 0
+        },
+        "statuscategorychangedate": "2026-11-12T09:20:56.953-0500",
+        "customfield_10230": null,
+        "customfield_10231": null,
+        "fixVersions": [
+          {
+            "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/version/10103",
+            "id": "10103",
+            "name": "2.3",
+            "archived": false,
+            "released": true
+          }
+        ],
+        "customfield_10111": [],
+        "customfield_10232": null,
+        "customfield_10233": null,
+        "customfield_10112": null,
+        "customfield_10113": [],
+        "customfield_10234": null,
+        "customfield_10114": [],
+        "customfield_10235": null,
+        "customfield_10104": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/customFieldOption/10135",
+          "value": "Yes",
+          "id": "10135"
+        },
+        "customfield_10226": null,
+        "customfield_10106": [],
+        "customfield_10227": null,
+        "customfield_10228": null,
+        "customfield_10107": [],
+        "customfield_10108": [],
+        "customfield_10229": null,
+        "customfield_10109": [],
+        "priority": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/priority/10000",
+          "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/priorities/blocker_new.svg",
+          "name": "Critique",
+          "id": "10000"
+        },
+        "customfield_10101": [],
+        "customfield_10102": [],
+        "customfield_10103": [],
+        "customfield_10336": null,
+        "customfield_10337": null,
+        "customfield_10459": null,
+        "timeestimate": null,
+        "versions": [],
+        "status": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/status/3",
+          "description": "Ce ticket est en cours de traitement par la personne assignée.",
+          "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/statuses/inprogress.png",
+          "name": "En cours",
+          "id": "3",
+          "statusCategory": {
+            "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/statuscategory/4",
+            "id": 4,
+            "key": "indeterminate",
+            "colorName": "yellow",
+            "name": "En cours"
+          }
+        },
+        "customfield_10696": null,
+        "customfield_10328": null,
+        "aggregatetimeestimate": null,
+        "customfield_10329": null,
+        "creator": {
+          "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aba9bbe36-cf26-4e6a-8f5e-2369b742296b",
+          "accountId": "712020:ba9bbe36-cf26-4e6a-8f5e-2369b742296b",
+          "emailAddress": "baptiste.faisy@gmail.com",
+          "avatarUrls": {
+            "48x48": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "24x24": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "16x16": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png",
+            "32x32": "https://secure.gravatar.com/avatar/235b6ba6b4a52afdd7f4ff9ec05de8c8?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FBF-2.png"
+          },
+          "displayName": "Baptiste Faisy",
+          "active": true,
+          "timeZone": "America/New_York",
+          "accountType": "atlassian"
+        },
+        "aggregateprogress": {
+          "progress": 0,
+          "total": 0
+        },
+        "customfield_10561": null,
+        "timespent": null,
+        "aggregatetimespent": null,
+        "workratio": -1,
+        "created": "2026-11-12T09:02:51.591-0500",
+        "customfield_10663": null,
+        "customfield_10090": [],
+        "customfield_10091": [],
+        "customfield_10092": [],
+        "customfield_10093": [],
+        "customfield_10094": null,
+        "customfield_10095": null,
+        "customfield_10096": null,
+        "customfield_10098": [],
+        "customfield_10099": [],
+        "security": null,
+        "attachment": [],
+        "customfield_10080": null,
+        "customfield_10081": [],
+        "customfield_10082": [],
+        "customfield_10087": [],
+        "customfield_10088": [],
+        "customfield_10089": []
+      }
+    },
+    "resume": {
+      "cle": "MAC-3",
+      "resume": "Correctif incident checkout-api (preuve réelle)",
+      "statut": "En cours",
+      "composants": [
+        "checkout-api"
+      ],
+      "versions": [
+        "2.3"
+      ],
+      "cases": [
+        "Critères d'acceptation :",
+        "- [x] Correctif validé en préproduction",
+        "- [x] Plan de retour arrière joint"
+      ],
+      "liens": [
+        "Blocks:MAC-2>-"
+      ]
+    }
+  },
+  "preuve": {
+    "type": "ticket-jira",
+    "url": "https://one-atlas-cndz.atlassian.net/browse/MAC-3",
+    "cle": "MAC-3",
+    "attendu": "branche de PR : feature/MAC-3-correctif-incident (PR 9002)",
+    "lectureDirecte": "réponse JSON de l’API Jira (200)"
+  },
+  "empreinte": "sha256:ab8cbc0ee4470180c96993232a2c10af58f93407066f2f2f8ae069e1bd543d3e"
+}
