@@ -8,7 +8,7 @@ automatique qui revérifie cet élément sur le moment.
 | # | Étape | Élément de preuve | Capture | Contrôle automatique |
 |---|---|---|---|---|
 | 1 | Les tickets existent vraiment | `https://one-atlas-cndz.atlassian.net/browse/MAC-2` et `…/MAC-3`, avec la réponse JSON brute de l'API Jira | `captures/etape-1-ticket-mac-2.json`, `captures/etape-1-ticket-mac-3.json` | le ticket est relu sur le site et comparé champ par champ |
-| 2 | Le Cerveau lit le **vrai** Jira | le verdict cite la clé, les critères et le lien réels : « MAC-2 : 2 critère(s) d'acceptation non coché(s). », « MAC-2 est bloqué par MAC-3 (In Progress) » | `captures/etape-2-verdict-mac-2.json` | signature HMAC **recalculée** sur le corps enregistré + cas **rejoué** en direct |
+| 2 | Le Cerveau lit le **vrai** Jira | le verdict cite la clé, les critères et le lien réels : « Bloqué, 2 raisons. 1) MAC-2 : 2 critère(s) d'acceptation non coché(s). 2) MAC-2 est bloqué par MAC-3 (In Progress). » | `captures/etape-2-verdict-mac-2.json` | signature HMAC **recalculée** sur le corps enregistré + cas **rejoué** en direct |
 | 3 | Idem sur le ticket propre | le verdict sur `MAC-3`, avec l'avertissement de version | `captures/etape-2b-verdict-mac-3.json` | idem |
 | 4 | La carte expose les treize règles | corps de la réponse de la route `card` | `captures/etape-3-carte-13-regles.json` | route rejouée, compte des règles |
 | 5 | Sans signature, la porte reste close | HTTP 401 | `captures/etape-4-requete-non-signee.json` | requête rejouée sans signature |
@@ -71,11 +71,12 @@ MAC_BRIDGE_URL=<pont> MAC_SHARED_SECRET=<secret> npm run preuve:captures
 2. **Les écrans Jira de l'app ne se rendent pas** sur ce site provisionné (UI Kit) :
    la preuve passe donc par l'API, les journaux et les captures d'écran des tickets,
    pas par l'interface de l'app.
-3. **Le verdict de `MAC-3` reste « blocked »** tant que R-02 compare des noms de statut
-   localisés : l'app lit « In Progress », la liste blanche contient « En cours »
-   (corrigé en cours, voir `docs/PREUVE-REELLE.md` §4).
-4. **R-06 ne distingue pas le sens du lien** : le lien réel est « MAC-3 bloque MAC-2 »,
-   et la règle le voit dans les deux sens — `MAC-2` est bien bloquée (R-03 + R-06 ✓), mais
-   `MAC-3`, qui *bloque*, est signalée comme bloquée par `MAC-2` (faux positif). La lecture
-   Jira conserve pourtant l'information (`IssueLink.direction`) : c'est R-06 qui ne s'en
-   sert pas. Signalé, correction à faire.
+3. **L'app est jumelée au vrai espace Bitbucket** (`{b44dcce8-0f72-4e36-bf40-65aead14ce35}`)
+   : le jumelage de démonstration a été défait au démarrage, et avec lui les règles,
+   les gels, les dérogations et les correspondances de la démonstration. Les treize
+   règles du catalogue s'appliquent, avec leurs valeurs par défaut.
+4. **Ce que la donnée réelle a fait corriger** (tous corrigés, voir `docs/PREUVE-REELLE.md` §4) :
+   R-02 comparait des noms de statut localisés (tout ticket réel était bloqué à tort) ;
+   R-06 et R-13 ne distinguaient pas le sens du lien (un ticket qui en bloque un autre
+   était signalé comme bloqué par lui) ; R-01 se taisait quand la branche ne portait
+   aucune clé ; le journal ne s'écrivait plus (dérive de schéma).

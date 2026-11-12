@@ -69,7 +69,9 @@ async function verifierTicket(capture: Record<string, unknown>, config: Configur
     etape,
     preuve: `GET ${SITE}/rest/api/3/issue/${cle} → 200`,
     etat: identique ? 'OK' : 'KO',
-    detail: identique ? `${cases} case(s) d'acceptation, statut ${actuel?.statut}` : 'le ticket a changé depuis la capture',
+    detail: identique
+      ? `${cases} case(s) d'acceptation, statut ${actuel?.statutCategorie} (${actuel?.statutId})`
+      : 'le ticket a changé depuis la capture',
   };
 }
 
