@@ -92,6 +92,14 @@ export interface AcceptanceCriterion {
   done: boolean;
 }
 
+/**
+ * Catégorie Jira d'un statut : `toDo`, `inProgress` ou `done`.
+ *
+ * Elle ne dépend pas de la langue du site : c'est l'identifiant stable qui
+ * permet de comparer un statut d'un site à l'autre.
+ */
+export type StatusCategory = 'toDo' | 'inProgress' | 'done';
+
 /** Un lien de ticket Jira (bloqué par, dépend de…). */
 export interface IssueLink {
   /** Type de lien, tel que nommé dans le site Jira. */
@@ -100,6 +108,10 @@ export interface IssueLink {
   direction: 'inward' | 'outward';
   targetKey: string;
   targetStatus: string;
+  /** Identifiant du statut de la cible : stable, indépendant de la langue. */
+  targetStatusId?: string;
+  /** Catégorie Jira du statut de la cible : stable, indépendante de la langue. */
+  targetStatusCategory?: StatusCategory;
 }
 
 /** Une version cible du ticket. */
@@ -115,7 +127,9 @@ export interface IssueContext {
   /** Faux si la clé ne correspond à aucun ticket du site jumelé. */
   exists: boolean;
   status: string;
-  statusCategory?: 'toDo' | 'inProgress' | 'done';
+  /** Identifiant du statut dans le site : stable, indépendant de la langue. */
+  statusId?: string;
+  statusCategory?: StatusCategory;
   summary?: string;
   criteria: AcceptanceCriterion[];
   links: IssueLink[];
