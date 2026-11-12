@@ -28,7 +28,7 @@ granted, incident with the fix fast-path, unsigned request rejected).
 
 ```bash
 npm install
-MAC_BRIDGE_URL=<web trigger URL> MAC_SHARED_SECRET=<shared secret> npm run demo
+MAC_BRIDGE_URL=<web trigger URL> MAC_SHARED_SECRET=<shared secret> npm run demo   # real tickets (project MAC); fictional: npm run demo:fictif
 ```
 
 Real output, measured on the production deployment:

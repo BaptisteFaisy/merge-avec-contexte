@@ -43,14 +43,14 @@
     </p>
 
     <figure class="fenetre" aria-label="Exemple de message de blocage dans Bitbucket">
-      <figcaption><span class="points"><i></i><i></i><i></i></span> pull request #42 · <code>feature/PAY-123-limite-tentatives</code> → <code>main</code></figcaption>
+      <figcaption><span class="points"><i></i><i></i><i></i></span> pull request · <code>feature/MAC-2-limite-tentatives</code> → <code>main</code></figcaption>
       <pre class="message-blocage"><span data-fr>Bloqué, 2 raisons.
-1) PAY-123 : 2 critère(s) d’acceptation non cochés.
-2) Incident INC-52 ouvert sur checkout-api.
+1) MAC-2 : 2 critère(s) d’acceptation non coché(s).
+2) MAC-2 est bloqué par MAC-3 (In Progress).
 Détail et dérogation : carte « Merge avec contexte » à droite.</span><span data-en>Blocked, 2 reasons.
-1) PAY-123: 2 acceptance criteria not checked.
-2) Incident INC-52 open on checkout-api.
-Details and waiver: the &quot;Merge with context&quot; card on the right.</span></pre>
+1) MAC-2: 2 acceptance criteria not checked.
+2) MAC-2 is blocked by MAC-3 (In Progress).
+Details and waiver: the &amp;quot;Merge with context&amp;quot; card on the right.</span></pre>
       <p class="legende"><span data-fr="Sortie réelle de l'app déployée, pas une maquette." data-en="Real output from the deployed app, not a mock-up.">Sortie réelle de l'app déployée, pas une maquette.</span></p>
     </figure>
   </div>
@@ -144,35 +144,48 @@ Details and waiver: the &quot;Merge with context&quot; card on the right.</span>
   <div class="conteneur">
     <h2><span data-fr="Preuve en direct" data-en="Live proof">Preuve en direct</span></h2>
     <p class="chapo"><span data-fr="Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, dix-huit vérifications." data-en="This output is not a simulation: it comes from the deployed Forge app, called with real signed requests. One command, eighteen checks.">Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, dix-huit vérifications.</span></p>
-    <pre class="console"><code>OK   Dérogations précédentes neutralisées — 12 dérogation(s)
-OK   Le pont répond (172 ms)
-OK   PR #42 bloquée (640 ms) — verdict blocked
-        │ Bloqué, 2 raisons.
-        │ 1) PAY-123 : 2 critère(s) d’acceptation non coché(s).
-        │ 2) Incident INC-52 ouvert sur checkout-api.
-        │ Détail et dérogation : carte « Merge avec contexte » à droite.
-OK   Carte de PR détaillée (640 ms) — 13 règle(s) exposée(s)
-OK   Dérogation demandée (460 ms) — w-42-R-03-…
-OK   Dérogation accordée (381 ms) — par tech-lead, 2 h
-OK   La dérogation lève la règle visée (582 ms) — 1 blocage(s) restant(s)
-OK   Dérogation retirée, la règle rebloque (3042 ms) — verdict blocked
-OK   PR #43 bloquée par l’incident (606 ms)
-OK   Correctif lié à l’incident autorisé (565 ms) — Correctif d’incident INC-52
-OK   PR #45 sur release/1.4 bloquée par le gel actif (623 ms)
-OK   Règle bloquante en observation ne bloque plus (841 ms) — verdict allowed
-OK   L’observation est journalisée, pas affichée (788 ms)
-OK   R-06 bloque PAY-125 (PAY-126 non livré) (875 ms)
-OK   R-07 avertit PAY-130 (version 2.3.0 déjà publiée) (1129 ms)
-OK   R-02 bloque PAY-132 (statut interdit) (631 ms)
-OK   R-13 bloque PAY-133 (dépendance PAY-134 non livrée) (648 ms)
-OK   Requête non signée refusée (279 ms) — HTTP 401
+    <pre class="console"><code>Démonstration réelle — Merge avec contexte
 
-Démonstration réussie</code></pre>
+site Jira          : https://one-atlas-cndz.atlassian.net
+espace Bitbucket   : {b44dcce8-0f72-4e36-bf40-65aead14ce35}
+
+— 1 · MAC-2 — deux critères d'acceptation non cochés, et bloqué par MAC-3 —
+      ticket réel : https://one-atlas-cndz.atlassian.net/browse/MAC-2
+        │ Bloqué, 2 raisons.
+        │ 1) MAC-2 : 2 critère(s) d'acceptation non coché(s).
+        │ 2) MAC-2 est bloqué par MAC-3 (In Progress).
+        │ Détail et dérogation : carte « Merge avec contexte » à droite.
+OK   HTTP 200, requête signée — HTTP 200
+OK   Verdict blocked — verdict blocked
+OK   Les deux raisons réelles sont citées — R-03(blocking) R-06(blocking)
+
+— 2 · MAC-3 — critères cochés, version 2.3 déjà publiée —
+      ticket réel : https://one-atlas-cndz.atlassian.net/browse/MAC-3
+        │ Autorisé, 2 avertissements.
+        │ 1) La version 2.3 de MAC-3 est déjà publiée.
+        │ 2) Fusion sur main hors des heures autorisées (8 h – 18 h).
+        │ Détail et dérogation : carte « Merge avec contexte » à droite.
+OK   Verdict allowed — verdict allowed
+OK   Avertissement sur la version réellement publiée — R-07(warning)
+
+— 3 · clé inconnue du site, puis branche sans clé (R-01) —
+OK   R-01 signale une clé absente — R-01(warning)
+OK   R-01 signale l'absence de ticket — R-01(warning)
+
+— 4 · carte détaillée de la PR (treize règles) —
+OK   La carte expose les 13 règles — 13 règle(s)
+
+— 5 · requête non signée refusée —
+OK   HTTP 401 sans signature — HTTP 401
+
+Latences : 7 appels, médiane 1,3 s
+
+Démonstration réelle concluante</code></pre>
     <p class="note"><span data-fr="Sortie réelle de l'app déployée, en français : l'espace de démonstration et les tickets sont en français." data-en="Real output from the deployed app, in French: the demo workspace and its issues are in French.">Sortie réelle de l'app déployée, en français : l'espace de démonstration et les tickets sont en français.</span></p>
     <div class="grille-4">
-      <p class="chiffre"><strong>671</strong><span data-fr="tests automatisés" data-en="automated tests">tests automatisés</span></p>
-      <p class="chiffre"><strong>0,6 s</strong><span data-fr="médiane d'une évaluation" data-en="median evaluation time">médiane d'une évaluation</span></p>
-      <p class="chiffre"><strong>51</strong><span data-fr="PR mergées par la file, sans clic" data-en="PRs merged by the queue, no clicks">PR mergées par la file, sans clic</span></p>
+      <p class="chiffre"><strong>830</strong><span data-fr="tests automatisés" data-en="automated tests">tests automatisés</span></p>
+      <p class="chiffre"><strong>1,3 s</strong><span data-fr="médiane d'une évaluation" data-en="median evaluation time">médiane d'une évaluation</span></p>
+      <p class="chiffre"><strong>60</strong><span data-fr="PR mergées par la file, sans clic" data-en="PRs merged by the queue, no clicks">PR mergées par la file, sans clic</span></p>
       <p class="chiffre"><strong>0 €</strong><span data-fr="Forge, site de démo, base SQL" data-en="Forge, demo site, SQL storage">Forge, site de démo, base SQL</span></p>
     </div>
   </div>
@@ -187,8 +200,8 @@ Démonstration réussie</code></pre>
         <pre><code>git clone https://github.com/BaptisteFaisy/merge-avec-contexte.git
 cd merge-avec-contexte
 npm install
-npm test          # 671 tests
-npm run demo      # contre l'app déployée</code></pre>
+npm test          # 830 tests
+npm run demo      # vrais tickets, app déployée</code></pre>
       </article>
       <article class="carte">
         <h3><span data-fr="Sur votre propre site" data-en="On your own site">Sur votre propre site</span></h3>
