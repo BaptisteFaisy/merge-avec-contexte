@@ -34,6 +34,13 @@ export interface EntreeEncart {
   approbateurs?: string[];
   /** Identité de la personne qui regarde l'encart, vide si l'écran l'ignore. */
   utilisateur?: string;
+  /**
+   * Item 101 : aucune évaluation n'a encore eu lieu sur l'installation. Quand
+   * c'est vrai, l'encart affiche l'écran d'accueil (onboarding) au lieu du vide.
+   * Le resolver la calcule depuis le port de stockage ; le modèle ne fait que la
+   * reporter, ce qui le rend testable sans plateforme.
+   */
+  premierUsage?: boolean;
 }
 
 export interface VuePr {
@@ -107,6 +114,8 @@ export interface VueEncart {
   peutDecider: boolean;
   /** Motif de l'interdiction de trancher, `null` quand c'est possible. */
   motif: MotifDecision | null;
+  /** Item 101 : vrai tant qu'aucune évaluation n'a eu lieu — l'écran d'accueil s'affiche. */
+  onboarding: boolean;
 }
 
 /** Une PR et son évaluation, telle que l'encart la montre. */
@@ -221,5 +230,6 @@ export function vmEncart(entree: EntreeEncart): VueEncart {
     approbateurs: annuaire,
     peutDecider: droit.peutDecider,
     motif: droit.motif,
+    onboarding: Boolean(entree.premierUsage),
   };
 }

@@ -15,7 +15,7 @@
  */
 import React from 'react';
 import { useCallback, useEffect, useState } from '@forge/react';
-import { Box, SectionMessage, Spinner, Text } from '@forge/react';
+import { Box, Button, Heading, SectionMessage, Spinner, Stack, Text } from '@forge/react';
 import { invoke, view } from '@forge/bridge';
 
 const TEXTES = {
@@ -137,6 +137,59 @@ const TEXTES = {
   'journal.observation': { fr: 'Rapport d’observation', en: 'Observation report' },
   'journal.observed': { fr: 'Évaluations observées', en: 'Observed evaluations' },
   'journal.wouldHaveBlocked': { fr: 'Auraient été bloquées', en: 'Would have been blocked' },
+  // — Item 98 : états vides expliqués (dire quoi faire, pas une liste vide) —
+  'vide.prs.titre': { fr: 'Aucune pull request évaluée', en: 'No evaluated pull request' },
+  'vide.prs.texte': {
+    fr: 'Ce ticket n’a encore aucune PR évaluée. Reliez un dépôt à un service dans les réglages du projet (ou chargez le jeu de démonstration), puis ouvrez une PR qui cite ce ticket : le contrôle apparaîtra ici.',
+    en: 'No PR for this issue has been evaluated yet. Map a repository to a service in the project settings (or load the demo dataset), then open a PR citing this issue: the check will appear here.',
+  },
+  'vide.derogations.titre': { fr: 'Aucune dérogation en cours', en: 'No active waiver' },
+  'vide.demandes.titre': { fr: 'Aucune demande à trancher', en: 'No request to decide' },
+  'vide.demandes.texte': {
+    fr: 'Quand une PR est bloquée, son auteur peut demander une dérogation depuis cet encart : elle apparaîtra ici pour les approbateurs.',
+    en: 'When a PR is blocked, its author can request a waiver from this panel: it will show up here for approvers.',
+  },
+  // — Item 99 : confirmation avant une action qui change l’état —
+  'confirm.titre': { fr: 'Confirmer l’action', en: 'Confirm the action' },
+  'confirm.confirmer': { fr: 'Confirmer', en: 'Confirm' },
+  'confirm.accorder.consequence': {
+    fr: 'Vous accordez une dérogation : la règle cessera de bloquer les PR citant ce ticket jusqu’à l’échéance choisie. La décision est tracée.',
+    en: 'You are granting a waiver: the rule will stop blocking PRs citing this issue until the chosen expiry. The decision is recorded.',
+  },
+  'confirm.refuser.consequence': {
+    fr: 'Vous refusez la dérogation : la règle continuera de bloquer les PR citant ce ticket. La décision est tracée.',
+    en: 'You are refusing the waiver: the rule will keep blocking PRs citing this issue. The decision is recorded.',
+  },
+  'confirm.demander.consequence': {
+    fr: 'Vous envoyez une demande de dérogation : les approbateurs de l’annuaire seront notifiés pour la trancher.',
+    en: 'You are sending a waiver request: the approvers in the directory will be notified to decide on it.',
+  },
+  // — Item 101 : premier écran d’accueil (onboarding) —
+  'onboarding.titre': { fr: 'Bienvenue dans Merge avec contexte', en: 'Welcome to Merge with context' },
+  'onboarding.intro': {
+    fr: 'Aucune évaluation n’a encore eu lieu. Trois étapes pour activer le contrôle :',
+    en: 'No evaluation has run yet. Three steps to enable the check:',
+  },
+  'onboarding.etape1': {
+    fr: '1. Jumelez Bitbucket et Jira : générez un code dans les réglages du projet, puis saisissez-le côté Bitbucket.',
+    en: '1. Pair Bitbucket with Jira: generate a code in the project settings, then enter it in Bitbucket.',
+  },
+  'onboarding.etape2': {
+    fr: '2. Chargez le jeu de démonstration, ou reliez un dépôt à un service.',
+    en: '2. Load the demo dataset, or map a repository to a service.',
+  },
+  'onboarding.etape3': {
+    fr: '3. Réglez les règles (niveau, mode), puis ouvrez une PR : le contrôle s’affiche ici et sur la PR.',
+    en: '3. Tune the rules (level, mode), then open a PR: the check appears here and on the PR.',
+  },
+  // — Item 103 : ce qui bloque le plus —
+  'blocages.titre': { fr: 'Ce qui bloque le plus', en: 'What blocks the most' },
+  'blocages.fenetre': { fr: 'Sur la fenêtre courante (30 derniers jours).', en: 'Over the current window (last 30 days).' },
+  'blocages.vide': { fr: 'Aucun blocage sur la fenêtre courante.', en: 'No block over the current window.' },
+  'blocages.ligne': {
+    fr: '{code} — {titre} : {blocages} blocage(s), {tauxDerogation} % de dérogations accordées',
+    en: '{code} — {title}: {blocks} block(s), {waiverRate} % of waivers granted',
+  },
 };
 
 /** Langue par défaut quand le resolver n'en renvoie pas. */
@@ -212,10 +265,13 @@ export function useUtilisateur() {
 
 /** Bandeau d'avertissement affiché quand le resolver échoue. */
 export function Erreur({ detail, locale }) {
+  // Item 100 : `role="alert"` fait annoncer le bandeau par les lecteurs d’écran.
   return (
-    <SectionMessage appearance="warning" title={texte(locale, 'commun.erreur')}>
-      <Text>{texte(locale, 'commun.erreurDetail', { detail })}</Text>
-    </SectionMessage>
+    <Box role="alert">
+      <SectionMessage appearance="warning" title={texte(locale, 'commun.erreur')}>
+        <Text>{texte(locale, 'commun.erreurDetail', { detail })}</Text>
+      </SectionMessage>
+    </Box>
   );
 }
 
@@ -230,11 +286,124 @@ export function EtatEcran({ chargement, erreur, locale }) {
   }
   if (chargement) {
     return (
-      <Box>
+      <Box role="status">
         <Spinner />
         <Text>{texte(locale, 'commun.chargement')}</Text>
       </Box>
     );
   }
   return null;
+}
+
+/**
+ * Item 98 — état vide expliqué : au lieu d'une liste vide, un bloc qui dit quoi
+ * faire. `actionLabel`/`onAction` sont facultatifs (l'encart n'a pas de
+ * navigation ; la consigne reste alors dans le texte).
+ */
+export function EtatVide({ titre, texte: corps, actionLabel, onAction }) {
+  return (
+    <Box>
+      <Stack>
+        <Heading>{titre}</Heading>
+        <Text>{corps}</Text>
+        {actionLabel && onAction ? (
+          <Button appearance="primary" onClick={onAction}>
+            {actionLabel}
+          </Button>
+        ) : null}
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Item 100 — bandeau d'état accessible : le `SectionMessage` UI Kit 2 n'expose
+ * pas de rôle, on l'enveloppe dans un `Box` porteur du rôle ARIA (`status` pour
+ * une information, `alert` pour une erreur) et d'un texte d'annonce visible.
+ */
+export function BandeauStatut({ appearance, titre, role, children }) {
+  return (
+    <Box role={role ?? 'status'}>
+      <SectionMessage appearance={appearance} title={titre}>
+        {children}
+      </SectionMessage>
+    </Box>
+  );
+}
+
+/**
+ * Item 99 — confirmation explicite avant une action qui change l'état, avec le
+ * rappel de la conséquence. L'appelant décide d'afficher ce bloc (état local) ;
+ * `onConfirmer` exécute l'action, `onAnnuler` revient en arrière.
+ */
+export function Confirmation({ titre, consequence, confirmerLabel, onConfirmer, onAnnuler, locale }) {
+  return (
+    <Box role="alert">
+      <Stack>
+        <Heading>{titre ?? texte(locale, 'confirm.titre')}</Heading>
+        <Text>{consequence}</Text>
+        <Stack alignInline="start">
+          <Button appearance="primary" onClick={onConfirmer}>
+            {confirmerLabel ?? texte(locale, 'confirm.confirmer')}
+          </Button>
+          <Button appearance="subtle" onClick={onAnnuler}>
+            {texte(locale, 'commun.annuler')}
+          </Button>
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Item 101 — premier écran d'accueil : trois étapes pour activer le contrôle.
+ * Affiché tant qu'aucune évaluation n'a eu lieu (voir `VueEncart.onboarding`).
+ */
+export function Onboarding({ locale }) {
+  const etapes = ['onboarding.etape1', 'onboarding.etape2', 'onboarding.etape3'];
+  return (
+    <Box>
+      <Stack>
+        <Heading>{texte(locale, 'onboarding.titre')}</Heading>
+        <Text>{texte(locale, 'onboarding.intro')}</Text>
+        <Stack>
+          {etapes.map((cle) => (
+            <Text key={cle}>{texte(locale, cle)}</Text>
+          ))}
+        </Stack>
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Item 103 — « ce qui bloque le plus » : les trois règles qui ont le plus
+ * bloqué sur la fenêtre courante, avec leur taux de dérogation. Les données
+ * viennent de `VueReglages.blocages` (calcul pur dans `view-model-reglages`).
+ */
+export function SectionBlocages({ blocages, locale }) {
+  return (
+    <Box>
+      <Stack>
+        <Heading>{texte(locale, 'blocages.titre')}</Heading>
+        <Text size="small">{texte(locale, 'blocages.fenetre')}</Text>
+        {blocages.length === 0 ? (
+          <Text>{texte(locale, 'blocages.vide')}</Text>
+        ) : (
+          <Stack>
+            {blocages.map((ligne) => (
+              <Text key={ligne.code}>
+                {texte(locale, 'blocages.ligne', {
+                  code: ligne.code,
+                  titre: ligne.titre,
+                  blocages: ligne.blocages,
+                  tauxDerogation: ligne.tauxDerogation,
+                })}
+              </Text>
+            ))}
+          </Stack>
+        )}
+      </Stack>
+    </Box>
+  );
 }

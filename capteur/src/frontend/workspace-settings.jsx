@@ -105,9 +105,23 @@ function BlocChemins({ vm }) {
 
 function BandeauPont({ bandeau }) {
   return (
-    <SectionMessage appearance="warning" title={bandeau.titre}>
-      <Text>{bandeau.texte}</Text>
-    </SectionMessage>
+    <Box role="alert">
+      <SectionMessage appearance="warning" title={bandeau.titre}>
+        <Text>{bandeau.texte}</Text>
+      </SectionMessage>
+    </Box>
+  );
+}
+
+/** Item 98 : état vide expliqué — quoi faire quand l'espace n'est pas jumelé. */
+function EtatVide({ vide }) {
+  return (
+    <Box role="status">
+      <Stack space="space.050">
+        <Heading as="h4">{vide.titre}</Heading>
+        <Text>{vide.texte}</Text>
+      </Stack>
+    </Box>
   );
 }
 
@@ -116,6 +130,7 @@ function Reglages({ vm, retour, envoi, onEnregistrer }) {
     <Box padding="space.100">
       <Stack space="space.200">
         <Heading as="h3">Merge avec contexte</Heading>
+        {vm.etatVide ? <EtatVide vide={vm.etatVide} /> : null}
         {vm.pontInjoignable && vm.bandeauPont ? <BandeauPont bandeau={vm.bandeauPont} /> : null}
         <BlocLiaison liaison={vm.liaison} />
         <Form onSubmit={onEnregistrer}>
@@ -131,10 +146,38 @@ function Reglages({ vm, retour, envoi, onEnregistrer }) {
           </FormFooter>
         </Form>
         {retour ? (
-          <SectionMessage appearance={retour.type === 'ko' ? 'error' : 'success'}>
-            <Text>{retour.texte}</Text>
-          </SectionMessage>
+          <Box role={retour.type === 'ko' ? 'alert' : 'status'}>
+            <SectionMessage appearance={retour.type === 'ko' ? 'error' : 'success'}>
+              <Text>{retour.texte}</Text>
+            </SectionMessage>
+          </Box>
         ) : null}
+      </Stack>
+    </Box>
+  );
+}
+
+/**
+ * Item 99 : confirmation explicite avant l'enregistrement, avec le rappel de la
+ * conséquence (la politique de repli choisie et ce qu'elle implique).
+ */
+function ConfirmationEnregistrement({ vm, donnees, envoi, onConfirmer, onAnnuler }) {
+  const valeur = valeurDe(donnees.politique);
+  const option = vm.politique.options.find((o) => o.value === valeur) ?? vm.politique.options[0];
+  return (
+    <Box padding="space.100" role="alert">
+      <Stack space="space.200">
+        <Heading as="h3">Confirmer l’enregistrement</Heading>
+        <Text>{`Vous enregistrez les réglages de l’espace. Politique de repli choisie : ${option.label}.`}</Text>
+        <Text size="small">{`Conséquence : ${option.aide}`}</Text>
+        <Stack space="space.100" alignInline="start">
+          <Button appearance="primary" onClick={onConfirmer} isDisabled={envoi}>
+            {envoi ? 'Enregistrement…' : 'Confirmer'}
+          </Button>
+          <Button appearance="subtle" onClick={onAnnuler}>
+            Annuler
+          </Button>
+        </Stack>
       </Stack>
     </Box>
   );
@@ -150,6 +193,7 @@ export default function ReglagesEspace() {
   const [etat, setEtat] = useState({ statut: 'chargement' });
   const [retour, setRetour] = useState(undefined);
   const [envoi, setEnvoi] = useState(false);
+  const [confirmation, setConfirmation] = useState(null);
 
   async function charger() {
     setEtat({ statut: 'chargement' });
@@ -188,5 +232,28 @@ export default function ReglagesEspace() {
 
   if (etat.statut === 'chargement') return <Chargement />;
   if (etat.statut === 'erreur') return <Erreur message={etat.message} onRelancer={charger} />;
-  return <Reglages vm={etat.vm} retour={retour} envoi={envoi} onEnregistrer={enregistrer} />;
+  // Item 99 : l'enregistrement passe par une confirmation qui rappelle la conséquence.
+  if (confirmation) {
+    return (
+      <ConfirmationEnregistrement
+        vm={etat.vm}
+        donnees={confirmation}
+        envoi={envoi}
+        onConfirmer={() => {
+          const donnees = confirmation;
+          setConfirmation(null);
+          enregistrer(donnees);
+        }}
+        onAnnuler={() => setConfirmation(null)}
+      />
+    );
+  }
+  return (
+    <Reglages
+      vm={etat.vm}
+      retour={retour}
+      envoi={envoi}
+      onEnregistrer={(donnees) => setConfirmation(donnees ?? {})}
+    />
+  );
 }

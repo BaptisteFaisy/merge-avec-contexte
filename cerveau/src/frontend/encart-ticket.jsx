@@ -12,8 +12,17 @@
  */
 import React from 'react';
 import { useEffect, useState } from '@forge/react';
-import { Badge, Box, Button, Heading, SectionMessage, Stack, Text } from '@forge/react';
-import { EtatEcran, langueDe, texte, useResolver, useUtilisateur } from './composants/commun';
+import { Badge, Box, Button, Heading, Stack, Text } from '@forge/react';
+import {
+  BandeauStatut,
+  EtatEcran,
+  EtatVide,
+  langueDe,
+  Onboarding,
+  texte,
+  useResolver,
+  useUtilisateur,
+} from './composants/commun';
 import FormulaireDerogation, { FormulaireDecision } from './composants/formulaire-derogation';
 
 /** Dernière évaluation mise en avant : verdict, message exact et raisons. */
@@ -51,14 +60,17 @@ function BlocListes({ vue, locale }) {
   return (
     <Box>
       <Heading>{texte(locale, 'encart.prs')}</Heading>
-      {vue.prs.length === 0 ? <Text>{texte(locale, 'encart.aucunePr')}</Text> : null}
-      <Stack>
-        {vue.prs.map((pr) => (
-          <Text key={`${pr.depot}-${pr.prId}`}>
-            {pr.depot} #{pr.prId} : <Badge>{pr.verdictLabel}</Badge>
-          </Text>
-        ))}
-      </Stack>
+      {vue.prs.length === 0 ? (
+        <EtatVide titre={texte(locale, 'vide.prs.titre')} texte={texte(locale, 'vide.prs.texte')} />
+      ) : (
+        <Stack>
+          {vue.prs.map((pr) => (
+            <Text key={`${pr.depot}-${pr.prId}`}>
+              {pr.depot} #{pr.prId} : <Badge>{pr.verdictLabel}</Badge>
+            </Text>
+          ))}
+        </Stack>
+      )}
       <Heading>{texte(locale, 'encart.derogations')}</Heading>
       {vue.derogations.length === 0 ? <Text>{texte(locale, 'encart.aucuneDerogation')}</Text> : null}
       <Stack>
@@ -82,7 +94,9 @@ function BlocDemandes({ vue, locale, onDecider }) {
   return (
     <Box>
       <Heading>{texte(locale, 'encart.decider')}</Heading>
-      {vue.demandes.length === 0 ? <Text>{texte(locale, 'encart.aucuneDemande')}</Text> : null}
+      {vue.demandes.length === 0 ? (
+        <EtatVide titre={texte(locale, 'vide.demandes.titre')} texte={texte(locale, 'vide.demandes.texte')} />
+      ) : null}
       <Stack>
         {vue.demandes.map((demande) => (
           <Box key={demande.id}>
@@ -155,9 +169,13 @@ function BlocAvis({ avis, locale }) {
   if (!avis) return null;
   const applique = avis.code === 'accordee' || avis.code === 'refusee';
   return (
-    <SectionMessage appearance={applique ? 'success' : 'warning'} title={texte(locale, `encart.avis.${avis.code}`)}>
+    <BandeauStatut
+      appearance={applique ? 'success' : 'warning'}
+      role={applique ? 'status' : 'alert'}
+      titre={texte(locale, `encart.avis.${avis.code}`)}
+    >
       <Text>{avis.waiverId}</Text>
-    </SectionMessage>
+    </BandeauStatut>
   );
 }
 
@@ -179,6 +197,15 @@ export default function EncartTicket() {
     appeler({ method: 'demanderDerogation', utilisateur, ...payload });
   };
   const decider = (payload) => appeler({ method: 'deciderDerogation', utilisateur, ...payload });
+
+  // Item 101 : tant qu'aucune évaluation n'a eu lieu, l'encart affiche l'accueil.
+  if (vue.onboarding) {
+    return (
+      <Box>
+        <Onboarding locale={locale} />
+      </Box>
+    );
+  }
 
   return (
     <Box>
