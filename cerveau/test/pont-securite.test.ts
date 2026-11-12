@@ -438,7 +438,10 @@ describe('item 51 — health publique, diagnostic signé', () => {
     const { deps } = await banc();
     const reponse = await gererRequetePont({ body: CORPS_SANTE, headers: {} }, deps);
     expect(reponse.statusCode).toBe(200);
-    expect(corps(reponse)).toEqual({ status: 'ok', version: '0.1.0', date: MAINTENANT });
+    // `toMatchObject` et non `toEqual` : la route publique peut porter des
+    // champs non sensibles (l'empreinte du contrat partagé, publique par
+    // nature). Ce qui est interdit, c'est d'y révéler l'état du stockage.
+    expect(corps(reponse)).toMatchObject({ status: 'ok', version: '0.1.0', date: MAINTENANT });
     expect('stockage' in corps(reponse)).toBe(false);
   });
 
