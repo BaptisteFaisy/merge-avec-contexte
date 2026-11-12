@@ -138,3 +138,10 @@ code { font-family: var(--mono); font-size: 0.9em; background: rgba(9,30,66,0.06
   .hero { padding: 2.6rem 0 2rem; }
   .section { padding: 2.4rem 0; }
 }
+
+
+/* Preuve en temps réel : pastille verte et bloc discret. */
+#preuve-vivante { display: none; margin: 0.4rem 0 1rem; font-size: 0.95rem; color: var(--texte); }
+#preuve-vivante.visible { display: block; }
+.vivant-pastille { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #2fbf71; margin-right: 0.55em; box-shadow: 0 0 0 0 rgba(47, 191, 113, 0.5); animation: pulsation 1.8s infinite; }
+@keyframes pulsation { 0% { box-shadow: 0 0 0 0 rgba(47, 191, 113, 0.45); } 70% { box-shadow: 0 0 0 7px rgba(47, 191, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(47, 191, 113, 0); } }
