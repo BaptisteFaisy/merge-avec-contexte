@@ -192,6 +192,7 @@ function assurerMigrations(logger: LoggerCommun): Promise<void> {
       logger.info('migrations au démarrage', {
         mode: rapport.mode,
         appliquees: rapport.applied.length,
+        declarees: rapport.declared.length,
         echec: rapport.failure ?? '',
       });
     } catch (erreur) {

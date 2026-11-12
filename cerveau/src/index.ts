@@ -222,7 +222,12 @@ export async function migrerSchema(): Promise<void> {
   const { runMigrations } = await import('./storage/migrate');
   const rapport = await runMigrations();
   const cerveau = await cerveauProduction();
-  cerveau.logger.info('migrations', { mode: rapport.mode, appliquees: rapport.applied.length, echec: rapport.failure ?? '' });
+  cerveau.logger.info('migrations', {
+    mode: rapport.mode,
+    appliquees: rapport.applied.length,
+    declarees: rapport.declared.length,
+    echec: rapport.failure ?? '',
+  });
 }
 
 export type { BridgeEnvelope };
