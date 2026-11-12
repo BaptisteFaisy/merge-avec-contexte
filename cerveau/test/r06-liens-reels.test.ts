@@ -170,6 +170,18 @@ describe('R-06 — le ticket n’est pas bloqué par un ticket ouvert', () => {
     expect(outcomeOf('R-06', { issues: [parsed] }).status).toBe('fail');
   });
 
+  it('ne signale pas un ticket qui en bloque un autre', () => {
+    // Lien miroir : MAC-3 bloque MAC-2. Lu depuis MAC-3, la cible est du côté
+    // « inward » — ce n'est donc pas MAC-3 qui est bloqué, et la règle passe.
+    const parsed = parseIssue(TICKET_REEL);
+    const miroir = {
+      ...parsed,
+      key: 'MAC-3',
+      links: [{ ...parsed.links[0], direction: 'inward' as const }],
+    };
+    expect(outcomeOf('R-06', { issues: [miroir] }).status).toBe('pass');
+  });
+
   it('passe quand la cible du lien est livrée', () => {
     const parsed = parseIssue(TICKET_REEL);
     const livre = {

@@ -2,8 +2,12 @@
  * R-06 — le ticket n'est pas bloqué par un ticket ouvert.
  *
  * Seuls les types de liens réglés comptent (`linkTypes`) ; une cible dont le
- * statut vaut livraison ne bloque plus. Le sens du lien n'est pas distingué :
- * le type configuré porte déjà l'intention.
+ * statut vaut livraison ne bloque plus. Le **sens** du lien, lui, compte :
+ * pour un type bloquant (« Blocks »), la cible placée du côté « outward »
+ * bloque le ticket, celle placée du côté « inward » est au contraire le
+ * ticket bloqué par nous. Sans cette distinction, un ticket qui en bloque un
+ * autre était signalé comme bloqué par lui — faux positif relevé sur un
+ * vrai site, où les liens sont Lus dans les deux sens.
  *
  * Deux tolérances rendent la règle fiable sur un site réel :
  *
@@ -28,7 +32,9 @@ function evaluateIssue(input: RuleInput, issue: IssueContext): RuleOutcome {
   const livres = deliveredStatuses(input.config.params);
   const bloquants = issue.links.filter(
     (lien) =>
-      lienDeType(types, lien.type, 'bloquant') && !statutLivre(identifiantsLien(lien), livres),
+      lien.direction === 'outward' &&
+      lienDeType(types, lien.type, 'bloquant') &&
+      !statutLivre(identifiantsLien(lien), livres),
   );
   if (bloquants.length === 0) return { status: 'pass', reasons: [] };
   return {
