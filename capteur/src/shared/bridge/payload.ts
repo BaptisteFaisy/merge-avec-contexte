@@ -7,6 +7,7 @@
  */
 import type { RuleCode, Trigger } from '../types';
 import { isRuleCode } from '../rules/catalog';
+import type { DepotRule } from '../rules/depot';
 
 export type BridgeRoute =
   | 'health'
@@ -42,6 +43,12 @@ export interface EvaluatePayload {
   changedPaths?: string[];
   reviewers?: { accountId: string; state: string }[];
   mergeCommitMessage?: string;
+  /**
+   * Règles durcies lues dans `.merge-context.yml` du dépôt (MC-17, §23).
+   * Absent si le dépôt n'en versionne pas ; le Cerveau les compose avec les
+   * réglages de l'espace sans jamais s'affaiblir (voir `rules/depot.ts`).
+   */
+  depotRules?: DepotRule[];
 }
 
 /** Demande de jumelage par code à usage unique. */
@@ -146,6 +153,14 @@ function isStringList(valeur: unknown): valeur is string[] {
   return Array.isArray(valeur) && valeur.every((item) => typeof item === 'string');
 }
 
+/** Garde de forme des règles de dépôt : une liste d'objets portant un code. */
+function isDepotRuleList(valeur: unknown): valeur is DepotRule[] {
+  return (
+    Array.isArray(valeur) &&
+    valeur.every((item) => isRecord(item) && typeof item.code === 'string')
+  );
+}
+
 /** Analyse le corps JSON d'une requête du pont. */
 export function parseEnvelope(body: string): { ok: true; envelope: BridgeEnvelope } | { ok: false; reason: 'bad-json' | 'bad-shape' } {
   let brut: unknown;
@@ -173,7 +188,8 @@ export function isEvaluatePayload(valeur: unknown): valeur is EvaluatePayload {
     typeof valeur.targetBranch === 'string' &&
     (TRIGGERS as string[]).includes(String(valeur.trigger)) &&
     isStringList(valeur.issueKeys) &&
-    (valeur.changedPaths === undefined || isStringList(valeur.changedPaths))
+    (valeur.changedPaths === undefined || isStringList(valeur.changedPaths)) &&
+    (valeur.depotRules === undefined || isDepotRuleList(valeur.depotRules))
   );
 }
 
