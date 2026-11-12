@@ -12,12 +12,15 @@
  * publique, l'état de la base ne se dévoile pas à n'importe qui.
  */
 import {
+  composerReglesDepot,
+  EMPREINTE_CONTRAT,
   formatEvaluation,
   isEvaluatePayload,
   isPairPayload,
   isWaiverDecisionPayload,
   isWaiverRequestPayload,
   type BridgeRoute,
+  type EvaluatePayload,
   type Evaluation,
   type Waiver,
   type WaiverDecisionPayload,
@@ -75,6 +78,8 @@ export const routeHealth: RouteHandler = async (_payload, deps) => {
   return reponseJson(200, {
     status: 'ok',
     version: deps.config.version,
+    /** Empreinte du contrat partagé (audit 79) : rend visible un écart de version. */
+    contrat: EMPREINTE_CONTRAT,
     date: deps.clock(),
   });
 };
@@ -104,7 +109,15 @@ export const routePair: RouteHandler = async (payload, deps) => {
 /** Construit l'entrée d'évaluation ; `unpaired` si le site n'est pas jumelé. */
 async function entree(deps: BridgeDeps, payload: unknown): Promise<EvaluationInput> {
   exiger(payload, isEvaluatePayload, 'Demande d\'évaluation incomplète.');
-  return versEvaluationInput(payload as Parameters<typeof versEvaluationInput>[0], deps);
+  const demande = payload as EvaluatePayload;
+  const input = await versEvaluationInput(demande, deps);
+  // MC-17 (§23) : les règles du dépôt durcissent celles de l'espace, jamais
+  // l'inverse. La composition journalise tout affaiblissement ignoré.
+  input.configs = composerReglesDepot(demande.depotRules, input.configs, {
+    logger: deps.logger,
+    repositorySlug: demande.repositorySlug,
+  });
+  return input;
 }
 
 /** Route `evaluate` : le verdict, le message, les raisons, la durée. */

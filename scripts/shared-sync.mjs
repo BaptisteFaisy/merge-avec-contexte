@@ -10,8 +10,10 @@
  *
  * Il porte aussi deux garde-fous :
  *  - l'**empreinte du contrat** (audit 79) : `shared/CONTRACT.sha256`, somme
- *    SHA-256 de l'arborescence `shared/src/` (chemins + contenus, triés).
- *    `sync` la régénère, `check` la compare au contenu courant — la CI et le
+ *    SHA-256 de l'arborescence `shared/src/` (chemins + contenus, triés), le
+ *    module généré `rules/contrat.ts` excepté. `sync` la régénère et écrit ce
+ *    module (qui embarque l'empreinte pour le runtime des deux apps), `check`
+ *    la compare au contenu courant **et** au module embarqué — la CI et le
  *    script de déploiement s'appuient dessus pour garantir que les deux apps
  *    partent de la même version du contrat ;
  *  - le **hook pre-commit** (audit 76) : `hooks` installe un hook qui refuse un
@@ -38,6 +40,10 @@ const CIBLES = [
   join(RACINE, 'cerveau', 'src', 'shared'),
 ];
 export const CHEMIN_EMPREINTE = join(RACINE, 'shared', 'CONTRACT.sha256');
+/** Module généré embarquant l'empreinte pour le runtime des deux apps (audit 79). */
+export const CHEMIN_CONTRAT_TS = join(SOURCE, 'rules', 'contrat.ts');
+/** Chemin relatif (posix) du module généré, exclu de l'empreinte (sinon circulaire). */
+export const CONTRAT_TS_REL = 'rules/contrat.ts';
 const MARQUEUR_HOOK = '# merge-avec-contexte : garde du contrat partagé (scripts/shared-sync.mjs)';
 const CONTENU_HOOK = [
   '#!/bin/sh',
@@ -103,6 +109,9 @@ export function verifier(cible, source = SOURCE) {
 export function empreinte(source = SOURCE) {
   const hachoir = createHash('sha256');
   for (const fichier of lister(source)) {
+    // Le module généré qui porte l'empreinte est exclu : l'inclure rendrait
+    // l'empreinte circulaire (elle changerait dès qu'on l'y écrit).
+    if (posix(fichier) === CONTRAT_TS_REL) continue;
     hachoir.update(`${posix(fichier)}\n`);
     hachoir.update(readFileSync(join(source, fichier)));
     hachoir.update('\n');
@@ -125,6 +134,34 @@ export function lireEmpreinte(chemin = CHEMIN_EMPREINTE) {
   if (!existsSync(chemin)) return null;
   const trouve = readFileSync(chemin, 'utf8').match(/^[0-9a-f]{64}$/m);
   return trouve ? trouve[0] : null;
+}
+
+/** Écrit le module généré qui embarque l'empreinte pour le runtime des apps. */
+export function ecrireContratTs(valeur, chemin = CHEMIN_CONTRAT_TS) {
+  mkdirSync(dirname(chemin), { recursive: true });
+  writeFileSync(chemin, [
+    '/**',
+    ' * Empreinte du contrat partagé (audit 79), régénérée par `npm run shared:sync`.',
+    ' *',
+    ' * Somme SHA-256 de l’arborescence `shared/src/` (chemins + contenus, triés),',
+    ' * ce module lui-même excepté (sinon l’empreinte serait circulaire). Les deux',
+    ' * apps l’embarquent via leur copie générée : la route `health` du Cerveau et',
+    ' * le modèle des réglages du Capteur la renvoient, pour qu’un écart de version',
+    ' * de contrat entre les deux déploiements soit visible d’un coup d’œil.',
+    ' *',
+    ' * **Ne pas modifier à la main** : `scripts/shared-sync.mjs` l’écrit, et',
+    ' * `npm run shared:check` vérifie qu’elle correspond au contenu courant.',
+    ' */',
+    `export const EMPREINTE_CONTRAT = '${valeur}';`,
+    '',
+  ].join('\n'));
+}
+
+/** Empreinte embarquée dans le module généré, ou `null`. */
+export function lireEmpreinteTs(chemin = CHEMIN_CONTRAT_TS) {
+  if (!existsSync(chemin)) return null;
+  const trouve = readFileSync(chemin, 'utf8').match(/['"]([0-9a-f]{64})['"]/);
+  return trouve ? trouve[1] : null;
 }
 
 /** Dossier des hooks git du dépôt (core.hooksPath sinon .git/hooks), ou `null`. */
@@ -159,13 +196,18 @@ export function installerHook(base = RACINE, dossier = null) {
   return chemin;
 }
 
-/** Mode `check` : copies + empreinte ; rend les dérives. */
+/** Mode `check` : copies + empreinte + module embarqué ; rend les dérives. */
 function controler() {
   const derives = CIBLES.flatMap((cible) => verifier(cible));
   const attendue = empreinte();
   const enregistree = lireEmpreinte();
   if (enregistree !== attendue) {
     derives.push(`shared/CONTRACT.sha256 : ${enregistree === null ? 'absente' : 'périmée'}`
+      + ` (empreinte courante ${attendue.slice(0, 12)}…) — lancez npm run shared:sync`);
+  }
+  const embarquee = lireEmpreinteTs();
+  if (embarquee !== attendue) {
+    derives.push(`shared/src/rules/contrat.ts : ${embarquee === null ? 'absente' : 'périmée'}`
       + ` (empreinte courante ${attendue.slice(0, 12)}…) — lancez npm run shared:sync`);
   }
   return derives;
@@ -175,12 +217,15 @@ function main() {
   const mode = process.argv[2];
   const silencieux = process.argv.includes('--quiet');
   if (mode === 'sync') {
+    // Empreinte calculée avant d'écrire le module généré (qui en est exclu).
+    const valeur = empreinte();
+    ecrireContratTs(valeur);
     for (const cible of CIBLES) {
       const nombre = synchroniser(cible);
       console.log(`${posix(relative(RACINE, cible))} : ${nombre} fichier(s) recopié(s)`);
     }
-    ecrireEmpreinte(empreinte());
-    console.log(`shared/CONTRACT.sha256 : ${lireEmpreinte()?.slice(0, 12)}…`);
+    ecrireEmpreinte(valeur);
+    console.log(`shared/CONTRACT.sha256 : ${valeur.slice(0, 12)}…`);
   } else if (mode === 'check') {
     const derives = controler();
     if (derives.length > 0) {

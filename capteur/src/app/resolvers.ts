@@ -24,7 +24,7 @@ import type {
   Verdict,
   Waiver,
 } from '../shared';
-import { extractIssueKeys, fallbackEvaluation, isPairingCodeFormat, isRuleCode } from '../shared';
+import { extractIssueKeys, fallbackEvaluation, isPairingCodeFormat, isRuleCode, EMPREINTE_CONTRAT } from '../shared';
 import { declencheurDepuisBitbucket, versPrContext } from '../bitbucket/pr';
 import type { LecturePr } from '../bitbucket/api';
 import type { PRCheckEvent } from '../bitbucket/types';
@@ -339,7 +339,7 @@ export async function handleWorkspaceSettings(
   context: BitbucketUiContext,
   payload: Record<string, unknown> | undefined,
   deps: ResolverDeps,
-): Promise<ReglagesVm> {
+): Promise<ReglagesVm & { empreinteContrat: string }> {
   const { workspaceUuid } = uuidsDepuis(context);
   if (payload?.action === 'save') {
     const politique = payload.politique === 'closed' ? 'closed' : 'open';
@@ -357,10 +357,14 @@ export async function handleWorkspaceSettings(
     envoiDesChemins: DEFAUT_ENVOI_CHEMINS,
   }));
   const coupe = await pontInjoignable(pairing?.bridgeUrl, deps);
-  return vmReglagesEspace({
-    jumelage: { jumele: Boolean(pairing), site: pairing?.siteUrl, depuis: pairing?.pairedAt },
-    politique: settings.fallbackPolicy,
-    envoyerChemins: settings.envoiDesChemins,
-    pontInjoignable: coupe,
-  });
+  return {
+    ...vmReglagesEspace({
+      jumelage: { jumele: Boolean(pairing), site: pairing?.siteUrl, depuis: pairing?.pairedAt },
+      politique: settings.fallbackPolicy,
+      envoyerChemins: settings.envoiDesChemins,
+      pontInjoignable: coupe,
+    }),
+    /** Empreinte du contrat partagé (audit 79) : visible pour repérer un écart de version. */
+    empreinteContrat: EMPREINTE_CONTRAT,
+  };
 }
