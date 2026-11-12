@@ -8,7 +8,7 @@ automatique qui revérifie cet élément sur le moment.
 | # | Étape | Élément de preuve | Capture | Contrôle automatique |
 |---|---|---|---|---|
 | 1 | Les tickets existent vraiment | `https://one-atlas-cndz.atlassian.net/browse/MAC-2` et `…/MAC-3`, avec la réponse JSON brute de l'API Jira | `captures/etape-1-ticket-mac-2.json`, `captures/etape-1-ticket-mac-3.json` | le ticket est relu sur le site et comparé champ par champ |
-| 2 | Le Cerveau lit le **vrai** Jira | le verdict cite la clé et les critères du ticket réel : « MAC-2 : 2 critère(s) d'acceptation non coché(s). » | `captures/etape-2-verdict-mac-2.json` | signature HMAC **recalculée** sur le corps enregistré + cas **rejoué** en direct |
+| 2 | Le Cerveau lit le **vrai** Jira | le verdict cite la clé, les critères et le lien réels : « MAC-2 : 2 critère(s) d'acceptation non coché(s). », « MAC-2 est bloqué par MAC-3 (In Progress) » | `captures/etape-2-verdict-mac-2.json` | signature HMAC **recalculée** sur le corps enregistré + cas **rejoué** en direct |
 | 3 | Idem sur le ticket propre | le verdict sur `MAC-3`, avec l'avertissement de version | `captures/etape-2b-verdict-mac-3.json` | idem |
 | 4 | La carte expose les treize règles | corps de la réponse de la route `card` | `captures/etape-3-carte-13-regles.json` | route rejouée, compte des règles |
 | 5 | Sans signature, la porte reste close | HTTP 401 | `captures/etape-4-requete-non-signee.json` | requête rejouée sans signature |
@@ -74,3 +74,8 @@ MAC_BRIDGE_URL=<pont> MAC_SHARED_SECRET=<secret> npm run preuve:captures
 3. **Le verdict de `MAC-3` reste « blocked »** tant que R-02 compare des noms de statut
    localisés : l'app lit « In Progress », la liste blanche contient « En cours »
    (corrigé en cours, voir `docs/PREUVE-REELLE.md` §4).
+4. **R-06 ne distingue pas le sens du lien** : le lien réel est « MAC-3 bloque MAC-2 »,
+   et la règle le voit dans les deux sens — `MAC-2` est bien bloquée (R-03 + R-06 ✓), mais
+   `MAC-3`, qui *bloque*, est signalée comme bloquée par `MAC-2` (faux positif). La lecture
+   Jira conserve pourtant l'information (`IssueLink.direction`) : c'est R-06 qui ne s'en
+   sert pas. Signalé, correction à faire.
