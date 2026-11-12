@@ -33,9 +33,11 @@ function Chargement() {
 function Erreur({ message, onRelancer }) {
   return (
     <Stack space="space.100">
-      <SectionMessage appearance="error" title="Contexte indisponible">
-        <Text>{message}</Text>
-      </SectionMessage>
+      <Box role="alert">
+        <SectionMessage appearance="error" title="Contexte indisponible">
+          <Text>{message}</Text>
+        </SectionMessage>
+      </Box>
       <Button appearance="default" onClick={onRelancer}>
         Réessayer
       </Button>
@@ -65,7 +67,16 @@ function BlocRegles({ regles }) {
       {regles && regles.length > 0 ? (
         regles.map((regle) => <LigneRegle key={regle.code} regle={regle} />)
       ) : (
-        <Text size="small">Aucune règle configurée pour ce dépôt.</Text>
+        // Item 98 : état vide expliqué — dire quoi faire plutôt qu'une liste vide.
+        <Box role="status">
+          <Stack space="space.050">
+            <Text weight="medium">Aucune règle configurée pour ce dépôt</Text>
+            <Text size="small">
+              Reliez ce dépôt à un service dans les réglages du projet Jira pour que les règles
+              s’appliquent à ses pull requests.
+            </Text>
+          </Stack>
+        </Box>
       )}
     </Stack>
   );
@@ -130,9 +141,11 @@ function Panneau({ vm, onRelancer }) {
         </Stack>
         <BlocRaisons raisons={vm.raisons} />
         {vm.marcheASuivre ? (
-          <SectionMessage appearance="warning" title={vm.marcheASuivre.titre}>
-            <Text>{vm.marcheASuivre.texte}</Text>
-          </SectionMessage>
+          <Box role="status">
+            <SectionMessage appearance="warning" title={vm.marcheASuivre.titre}>
+              <Text>{vm.marcheASuivre.texte}</Text>
+            </SectionMessage>
+          </Box>
         ) : null}
         <BlocRegles regles={vm.regles} />
         <BlocHistorique vm={vm} />

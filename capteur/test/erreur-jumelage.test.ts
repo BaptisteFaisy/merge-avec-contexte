@@ -10,6 +10,7 @@ import {
   marcheASuivreVm,
   vmCarte,
 } from '../src/ui/view-models';
+import { messageErreurCapteur } from '../src/ui/ux';
 import { handlePrCard, type ResolverDeps } from '../src/app/resolvers';
 import type { Evaluation, FallbackCause } from '../src/shared/types';
 import type { LecturePr } from '../src/bitbucket/api';
@@ -137,5 +138,58 @@ describe('resolvers — la carte distingue les deux situations', () => {
     expect(appels).toBe(0);
     expect(vm.marcheASuivre?.titre).toBe('Espace non jumelé');
     expect(vm.jumelage.jumele).toBe(false);
+  });
+});
+
+describe('resolvers — item 102, les trois situations sont nommées', () => {
+  const CTX = {
+    workspace: { uuid: WS },
+    repository: { uuid: '{c9d8e7f6-5a4b-3c2d-1e0f-fedcba987654}' },
+    pullRequest: { id: 17 },
+  };
+
+  it('les trois messages d’erreur sont distincts et donnent la marche à suivre', () => {
+    const nonJumele = messageErreurCapteur('non-jumele');
+    const injoignable = messageErreurCapteur('injoignable');
+    const baseHs = messageErreurCapteur('base-indisponible');
+    expect(new Set([nonJumele, injoignable, baseHs]).size).toBe(3);
+    expect(nonJumele).toContain('Espace non jumelé');
+    expect(injoignable).toContain('Cerveau injoignable');
+    expect(baseHs).toContain('Base indisponible');
+    // Chacun porte une marche à suivre.
+    expect(messageErreurCapteur('non-jumele', 'en')).toContain('Workspace not paired');
+    expect(messageErreurCapteur('injoignable', 'en')).toContain('Brain unreachable');
+    expect(messageErreurCapteur('base-indisponible', 'en')).toContain('Storage unavailable');
+  });
+
+  it('une demande de dérogation dit « non jumelé » quand rien n’est jumelé', async () => {
+    const d = await deps(async () => {
+      throw new Error('ne doit pas être appelé');
+    }, false);
+    await expect(handlePrCard(CTX, { action: 'request-waiver' }, d)).rejects.toThrow(/Espace non jumelé/);
+  });
+
+  it('une demande de dérogation dit « Cerveau injoignable » quand le pont ne répond pas', async () => {
+    const muet: FetchPont = async () => {
+      throw new Error('ECONNREFUSED');
+    };
+    await expect(handlePrCard(CTX, { action: 'request-waiver' }, await deps(muet))).rejects.toThrow(
+      /Cerveau injoignable/,
+    );
+  });
+
+  it('la carte dit « base indisponible » quand le stockage échoue, sans fuir l’erreur brute', async () => {
+    const pairingStore = new MemoryPairingStore();
+    pairingStore.getPairing = async () => {
+      throw new Error('Storage quota exceeded');
+    };
+    const d: ResolverDeps = {
+      pairingStore,
+      settingsStore: new MemorySettingsStore(),
+      lirePr: async () => LECTURE,
+      now: () => NOW,
+    };
+    await expect(handlePrCard(CTX, undefined, d)).rejects.toThrow(/Base indisponible/);
+    await expect(handlePrCard(CTX, undefined, d)).rejects.not.toThrow(/quota/);
   });
 });

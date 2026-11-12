@@ -13,6 +13,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { appelsInvoke, bouchonInvoke, reinitialiserInvoke } from '../../tools/test-stubs/forge-bridge';
 import { activerEnvironnementReact, promesseRetardee } from '../../tools/test-stubs/rendu';
 import { vmConsole, vmEncart, vmJournal, vmReglages } from '../src/ui/view-models';
+import { SectionBlocages } from '../src/frontend/composants/commun';
 import ReglagesProjet from '../src/frontend/reglages-projet';
 import EncartTicket from '../src/frontend/encart-ticket';
 import ConsoleJournal from '../src/frontend/console-journal';
@@ -130,6 +131,9 @@ describe('Cerveau — encart ticket (encart-ticket)', () => {
     const motif = screen.getAllByRole('textbox')[0];
     fireEvent.change(motif, { target: { value: 'gel urgent' } });
     fireEvent.click(screen.getByText('Envoyer la demande'));
+    // Item 99 : une confirmation explicite rappelle la conséquence avant l'envoi.
+    await screen.findByText(/Vous envoyez une demande de dérogation/);
+    fireEvent.click(screen.getByText('Envoyer la demande'));
     await act(async () => {});
     const appels = appelsInvoke();
     const dernier = appels[appels.length - 1];
@@ -179,5 +183,133 @@ describe('Cerveau — console et journal (console-journal)', () => {
       resolver: 'resolverConsole',
       payload: { method: 'simuler', ticket: 'PAY-123', brancheCible: 'main', depot: 'checkout-api' },
     });
+  });
+});
+
+/** Dérogation en attente de décision, demandée deux heures avant l'instant figé. */
+function demandeEnAttente() {
+  return {
+    id: 'w-encart-1',
+    prId: 42,
+    repositoryUuid: 'checkout-api',
+    rule: 'R-04',
+    requestedBy: 'lea',
+    reason: 'gel urgent',
+    requestedAt: '2026-11-27T14:00:00.000Z',
+    expiresAt: '2026-11-27T16:00:00.000Z',
+    status: 'requested',
+    issueKeys: ['PAY-123'],
+  };
+}
+
+describe('Cerveau — expérience utilisateur et accessibilité (items 98-103)', () => {
+  it('item 101 — affiche l’accueil en trois étapes tant qu’aucune évaluation n’a eu lieu', async () => {
+    const vue = vmEncart({ locale: 'fr', premierUsage: true });
+    bouchonInvoke(() => Promise.resolve({ locale: 'fr', vue }));
+    render(<EncartTicket />);
+    await screen.findByText('Bienvenue dans Merge avec contexte');
+    expect(screen.getByText(/Jumelez Bitbucket et Jira/)).toBeTruthy();
+    expect(screen.getByText(/Chargez le jeu de démonstration/)).toBeTruthy();
+    expect(screen.getByText(/Réglez les règles/)).toBeTruthy();
+  });
+
+  it('item 101 — masque l’accueil dès qu’une évaluation existe', async () => {
+    bouchonInvoke(() => Promise.resolve(REPONSE_ENCARTE));
+    render(<EncartTicket />);
+    await screen.findByText('checkout-api #42 — Bloqué');
+    expect(screen.queryByText('Bienvenue dans Merge avec contexte')).toBeNull();
+  });
+
+  it('item 98 — état vide expliqué quand le ticket n’a aucune PR', async () => {
+    const vue = vmEncart({ locale: 'fr', prs: [], configs: [CONFIG_R03] });
+    bouchonInvoke(() => Promise.resolve({ locale: 'fr', vue }));
+    render(<EncartTicket />);
+    await screen.findByText('Aucune pull request évaluée');
+    expect(screen.getByText(/Reliez un dépôt à un service/)).toBeTruthy();
+  });
+
+  it('item 99 — accorder une dérogation demande une confirmation qui rappelle la conséquence', async () => {
+    const vue = vmEncart({
+      locale: 'fr',
+      maintenant: MAINTENANT,
+      waivers: [demandeEnAttente()],
+      approbateurs: ['tech-lead'],
+      utilisateur: 'tech-lead',
+    });
+    bouchonInvoke(() => Promise.resolve({ locale: 'fr', vue }));
+    render(<EncartTicket />);
+    await screen.findByText('Accorder');
+    fireEvent.click(screen.getByText('Accorder'));
+    // La conséquence est rappelée avant l'application ; rien n'est encore envoyé.
+    await screen.findByText(/Vous accordez une dérogation/);
+    expect(appelsInvoke().every((appel) => appel.payload?.method !== 'deciderDerogation')).toBe(true);
+    fireEvent.click(screen.getByText('Annuler'));
+    await screen.findByText('Accorder');
+  });
+
+  it('item 99 — confirmer l’accord envoie bien la décision', async () => {
+    const vue = vmEncart({
+      locale: 'fr',
+      maintenant: MAINTENANT,
+      waivers: [demandeEnAttente()],
+      approbateurs: ['tech-lead'],
+      utilisateur: 'tech-lead',
+    });
+    bouchonInvoke(() => Promise.resolve({ locale: 'fr', vue }));
+    render(<EncartTicket />);
+    await screen.findByText('Accorder');
+    fireEvent.click(screen.getByText('Accorder'));
+    await screen.findByText(/Vous accordez une dérogation/);
+    fireEvent.click(screen.getByText('Accorder'));
+    await act(async () => {});
+    const dernier = appelsInvoke()[appelsInvoke().length - 1];
+    expect(dernier?.payload).toMatchObject({ method: 'deciderDerogation', decision: 'granted', hours: 2 });
+  });
+
+  it('item 100 — les champs du formulaire de dérogation ont un libellé associé', async () => {
+    bouchonInvoke(() => Promise.resolve(REPONSE_ENCARTE));
+    const { container } = render(<EncartTicket />);
+    await screen.findByText('Demander une dérogation');
+    fireEvent.click(screen.getByText('Demander une dérogation'));
+    await screen.findByText('Motif');
+    // Chaque <Label labelFor> pointe vers l'identifiant du champ correspondant.
+    for (const id of ['derogation-regle', 'derogation-motif', 'derogation-heures']) {
+      expect(container.querySelector(`label[for="${id}"]`)).toBeTruthy();
+      expect(container.querySelector(`#${id}`)).toBeTruthy();
+    }
+  });
+
+  it('item 100 — les boutons portent un texte visible (nom accessible)', async () => {
+    bouchonInvoke(() => Promise.resolve(REPONSE_ENCARTE));
+    render(<EncartTicket />);
+    await screen.findByText('Demander une dérogation');
+    // Un bouton sans texte n'aurait pas de nom accessible ; ici getByRole le retrouve par son texte.
+    expect(screen.getByRole('button', { name: 'Demander une dérogation' })).toBeTruthy();
+  });
+
+  it('item 103 — SectionBlocages liste les règles qui bloquent le plus avec leur taux de dérogation', () => {
+    const vue = vmReglages({
+      locale: 'fr',
+      evaluations: [
+        { verdict: 'blocked', reasons: [{ rule: 'R-04', level: 'blocking', text: 'gel' }] },
+        { verdict: 'blocked', reasons: [{ rule: 'R-04', level: 'blocking', text: 'gel' }] },
+        { verdict: 'blocked', reasons: [{ rule: 'R-03', level: 'blocking', text: 'critères' }] },
+        { verdict: 'allowed', reasons: [{ rule: 'R-05', level: 'blocking', text: 'non bloquant ici' }] },
+      ],
+      waivers: [{ rule: 'R-04', status: 'granted' }],
+    });
+    render(<SectionBlocages blocages={vue.blocages} locale="fr" />);
+    expect(screen.getByText('Ce qui bloque le plus')).toBeTruthy();
+    // R-04 : 2 blocages, 1 dérogation accordée → 50 %. R-03 : 1 blocage, 0 dérogation.
+    expect(screen.getByText(/R-04 .*2 blocage\(s\), 50 % de dérogations accordées/)).toBeTruthy();
+    expect(screen.getByText(/R-03 .*1 blocage\(s\), 0 % de dérogations accordées/)).toBeTruthy();
+    // Un verdict « allowed » ne compte pas comme blocage.
+    expect(screen.queryByText(/R-05/)).toBeNull();
+  });
+
+  it('item 103 — SectionBlocages explique l’absence de blocage sur la fenêtre', () => {
+    const vue = vmReglages({ locale: 'fr', evaluations: [], waivers: [] });
+    render(<SectionBlocages blocages={vue.blocages} locale="fr" />);
+    expect(screen.getByText('Aucun blocage sur la fenêtre courante.')).toBeTruthy();
   });
 });

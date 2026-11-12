@@ -31,9 +31,11 @@ function Chargement() {
 function Erreur({ message, onRelancer }) {
   return (
     <Stack space="space.100">
-      <SectionMessage appearance="error" title="Contexte indisponible">
-        <Text>{message}</Text>
-      </SectionMessage>
+      <Box role="alert">
+        <SectionMessage appearance="error" title="Contexte indisponible">
+          <Text>{message}</Text>
+        </SectionMessage>
+      </Box>
       <Button appearance="default" onClick={onRelancer}>
         Réessayer
       </Button>
@@ -95,9 +97,11 @@ function BlocDerogation({ derogation, onDerogation, envoi, retour }) {
         <Text size="small">{derogation.motif}</Text>
       )}
       {retour ? (
-        <SectionMessage appearance={retour.type === 'ko' ? 'error' : 'success'}>
-          <Text>{retour.texte}</Text>
-        </SectionMessage>
+        <Box role={retour.type === 'ko' ? 'alert' : 'status'}>
+          <SectionMessage appearance={retour.type === 'ko' ? 'error' : 'success'}>
+            <Text>{retour.texte}</Text>
+          </SectionMessage>
+        </Box>
       ) : null}
     </Stack>
   );
@@ -114,9 +118,11 @@ function Carte({ vm, retour, envoi, onDerogation, onRelancer }) {
         <BlocTicket ticket={vm.ticket} />
         <BlocRaisons raisons={vm.raisons} />
         {vm.marcheASuivre ? (
-          <SectionMessage appearance="warning" title={vm.marcheASuivre.titre}>
-            <Text>{vm.marcheASuivre.texte}</Text>
-          </SectionMessage>
+          <Box role="status">
+            <SectionMessage appearance="warning" title={vm.marcheASuivre.titre}>
+              <Text>{vm.marcheASuivre.texte}</Text>
+            </SectionMessage>
+          </Box>
         ) : null}
         <BlocDerogation
           derogation={vm.derogation}

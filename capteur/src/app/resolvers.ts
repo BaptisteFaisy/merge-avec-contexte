@@ -29,11 +29,19 @@ import { declencheurDepuisBitbucket, versPrContext } from '../bitbucket/pr';
 import type { LecturePr } from '../bitbucket/api';
 import type { PRCheckEvent } from '../bitbucket/types';
 import { unwrapUuid } from '../bitbucket/types';
-import { appelerPont, sonderSantePont, type BridgeErrorKind, type FetchPont } from '../bridge/client';
+import { appelerPont, sonderSantePont, type BridgeErrorKind, type BridgeResponse, type FetchPont } from '../bridge/client';
 import type { PairingStore } from '../pairing/store';
 import type { SettingsStore } from '../policy/settings';
 import { DEFAUT_ENVOI_CHEMINS, DEFAUT_REPLI } from '../policy/settings';
-import { vmCarte, vmPanneau, vmReglagesEspace, type CarteVm, type PanneauVm, type ReglagesVm } from '../ui/view-models';
+import {
+  vmCarte,
+  vmPanneau,
+  vmReglagesEspace,
+  type CarteVm,
+  type PanneauVm,
+  type ReglagesVm,
+} from '../ui/view-models';
+import { messageErreurCapteur, type EspeceErreurCapteur } from '../ui/ux';
 
 /** Contexte d'extension reçu par les modules d'interface Bitbucket. */
 export interface BitbucketUiContext {
@@ -146,6 +154,27 @@ function causeDepuis(kind: BridgeErrorKind): FallbackCause {
   return kind === 'http' || kind === 'bad-response' ? 'error' : 'unreachable';
 }
 
+/**
+ * Item 102 : traduit un motif d'échec du pont en situation nommable. Seul
+ * « unpaired » est distinct ; un pont muet, lent ou en erreur vaut « injoignable ».
+ */
+function especeErreurDepuis(kind: BridgeErrorKind): EspeceErreurCapteur {
+  return kind === 'unpaired' ? 'non-jumele' : 'injoignable';
+}
+
+/**
+ * Item 102 : une lecture du stockage qui échoue vaut « base indisponible ».
+ * L'erreur brute de Forge Storage n'est pas lisible ; on la remplace par la
+ * marche à suivre. Toute autre erreur (logique) n'est pas masquée.
+ */
+async function lireStockage<T>(lecture: () => Promise<T>): Promise<T> {
+  try {
+    return await lecture();
+  } catch {
+    throw new Error(messageErreurCapteur('base-indisponible'));
+  }
+}
+
 function instant(deps: ResolverDeps): string {
   return new Date((deps.now ?? Date.now)()).toISOString();
 }
@@ -201,8 +230,8 @@ function payloadCarte(pr: ReturnType<typeof versPrContext>, pullRequestId: numbe
 /** Lit la PR, appelle la route `card`, et retombe sur le repli en cas d'échec. */
 async function chargerCarte(context: BitbucketUiContext, deps: ResolverDeps): Promise<CarteChargee> {
   const { workspaceUuid, repositoryUuid, pullRequestId } = uuidsDepuis(context);
-  const pairing = await deps.pairingStore.getPairing(workspaceUuid);
-  const settings = await deps.settingsStore.getSettings(workspaceUuid);
+  const pairing = await lireStockage(() => deps.pairingStore.getPairing(workspaceUuid));
+  const settings = await lireStockage(() => deps.settingsStore.getSettings(workspaceUuid));
   const lecture = await deps.lirePr(evenementDe(context));
   const pr = versPrContext(lecture.pr, lecture.commits, lecture.diffstat, {
     workspaceUuid,
@@ -242,21 +271,21 @@ async function chargerCarte(context: BitbucketUiContext, deps: ResolverDeps): Pr
   };
 }
 
-/** Envoie une demande de dérogation au pont ; silencieux si non jumelé. */
+/** Envoie une demande de dérogation au pont ; rend le résultat pour que l'écran dise un échec. */
 async function demanderDerogation(
   workspaceUuid: string,
   repositoryUuid: string,
   pullRequestId: number,
   payload: Record<string, unknown>,
   deps: ResolverDeps,
-): Promise<void> {
+): Promise<BridgeResponse<unknown>> {
   const rule = typeof payload.rule === 'string' ? payload.rule : 'R-04';
   const reason = typeof payload.reason === 'string' && payload.reason.trim() !== ''
     ? payload.reason.trim()
     : 'Dérogation demandée depuis la carte de PR.';
   const hours = typeof payload.hours === 'number' && payload.hours > 0 ? payload.hours : 2;
   const requestedBy = typeof payload.requestedBy === 'string' ? payload.requestedBy : 'bitbucket-user';
-  await appelerPont(
+  return appelerPont(
     { route: 'waiver.request', payload: { prId: pullRequestId, repositoryUuid, rule, reason, hours, requestedBy } },
     { workspaceUuid, store: deps.pairingStore, fetch: deps.fetch, now: deps.now },
   );
@@ -270,7 +299,9 @@ export async function handlePrCard(
 ): Promise<CarteVm> {
   if (payload?.action === 'request-waiver') {
     const { workspaceUuid, repositoryUuid, pullRequestId } = uuidsDepuis(context);
-    await demanderDerogation(workspaceUuid, repositoryUuid, pullRequestId, payload, deps);
+    const reponse = await demanderDerogation(workspaceUuid, repositoryUuid, pullRequestId, payload, deps);
+    // Item 102 : un échec de la demande est nommé (« non jumelé » vs « injoignable »).
+    if (!reponse.ok) throw new Error(messageErreurCapteur(especeErreurDepuis(reponse.error.kind)));
   }
   const carte = await chargerCarte(context, deps);
   return vmCarte({

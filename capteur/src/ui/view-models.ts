@@ -26,6 +26,7 @@ import { formatEvaluation, visibleReasons } from '../shared/message/format';
 import { RULE_CATALOG } from '../shared/rules/catalog';
 import { t } from '../shared/message/strings';
 import { formatDayAndHour } from '../shared/time/moment';
+import { etatVideReglages } from './ux';
 
 /** Les trois verdicts, tels que les écrans les nomment. */
 export type VerdictVm = 'bloque' | 'autorise' | 'nonConcluant';
@@ -158,6 +159,7 @@ export interface ReglagesVm {
   pontInjoignable: boolean;
   /** Bandeau d'alerte rendu seulement quand `pontInjoignable` est vrai. */
   bandeauPont?: MarcheASuivreVm;
+  etatVide?: MarcheASuivreVm; // Item 98 : état vide expliqué si espace non jumelé.
 }
 
 export interface ReglagesEntree {
@@ -490,5 +492,8 @@ export function vmReglagesEspace(entree: ReglagesEntree): ReglagesVm {
   if (vm.pontInjoignable) {
     vm.bandeauPont = { titre: tx(locale, 'pont.bandeau.titre'), texte: tx(locale, 'pont.bandeau.texte') };
   }
+  // Item 98 : sans jumelage, la page explique quoi faire (état vide).
+  const vide = etatVideReglages(entree.jumelage.jumele, locale);
+  if (vide) vm.etatVide = vide;
   return vm;
 }
