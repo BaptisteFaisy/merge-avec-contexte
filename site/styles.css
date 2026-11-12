@@ -27,9 +27,12 @@ body {
 
 .conteneur { width: min(1080px, 92vw); margin: 0 auto; }
 
-/* --- bascule de langue : un seul idiome visible à la fois --- */
+/* --- bascule de langue ---
+   Les éléments bilingues (data-fr ET data-en) sont toujours visibles : c'est le
+   script qui remplace leur contenu. Seuls les éléments exclusifs d'un idiome
+   sont masqués — sinon le texte anglais disparaît avec son conteneur. */
 html[data-lang="fr"] [data-en]:not([data-fr]) { display: none; }
-html[data-lang="en"] [data-fr] { display: none; }
+html[data-lang="en"] [data-fr]:not([data-en]) { display: none; }
 
 /* --- en-tête --- */
 .entete {
