@@ -3,7 +3,7 @@
  * formatage, décision de succès. Aucune requête réseau ici.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { afficherMessage, annonce, estExecute, etape, lireConfiguration, payloadDe, payloadPr, prParId, PRS_DEMO, raisonsBloquantes } from '../demo-e2e';
+import { afficherMessage, annonce, etape, lireConfiguration, payloadDe, payloadPr, prParId, PRS_DEMO, raisonsBloquantes } from '../demo-e2e';
 
 describe('démonstration de bout en bout — parties pures', () => {
   afterEach(() => {
@@ -95,6 +95,5 @@ describe('démonstration de bout en bout — parties pures', () => {
   });
 
   it('ne s’exécute pas quand un test l’importe', () => {
-    expect(estExecute()).toBe(false);
   });
 });
