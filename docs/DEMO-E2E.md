@@ -1,4 +1,10 @@
-# Démonstration de bout en bout, gratuite
+# Démonstration de bout en bout
+
+> **`npm run demo` joue désormais la démonstration réelle** (vrais tickets du
+> projet `MAC`, vrai espace Bitbucket) — voir `docs/PREUVE-REELLE.md`. Ce qui est
+> décrit ci-dessous est le scénario **fictif** de la démonstration gratuite,
+> toujours jouable via `npm run demo:fictif`.
+
 
 Objectif : montrer le produit en fonctionnement réel — règles évaluées, message
 imposé, dérogation, parcours de l'astreinte pendant un incident, les trois

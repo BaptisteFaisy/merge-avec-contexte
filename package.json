@@ -20,9 +20,10 @@
     "limits": "python3 tools/check-file-limits.py && node tools/check-function-limits.mjs",
     "verify": "npm run shared:check && npm run lint && npm run typecheck && npm test && npm run limits",
     "deploy": "node scripts/deploiement.mjs",
-    "demo": "vite-node scripts/demo-entree.ts",
+    "demo": "vite-node scripts/preuve-reelle.ts",
     "preuve:captures": "vite-node scripts/preuve-captures.ts",
-    "preuve:verifier": "vite-node scripts/preuve-verifier.ts"
+    "preuve:verifier": "vite-node scripts/preuve-verifier.ts",
+    "demo:fictif": "vite-node scripts/demo-entree.ts"
   },
   "devDependencies": {
     "@forge/api": "^8.5.0",
