@@ -46,6 +46,12 @@ export const LISTE_CHAMPS_INCIDENT = CHAMPS_INCIDENT.join(',');
 /** Champs lus sur une sous-tâche (R-03 : critères portés par les sous-tâches). */
 export const CHAMPS_SOUS_TACHE = ['summary', 'status'] as const;
 
+/** Liste prête pour le paramètre `fields=` d'une recherche de sous-tâches. */
+export const LISTE_CHAMPS_SOUS_TACHE = CHAMPS_SOUS_TACHE.join(',');
+
+/** Nombre de sous-tâches ramenées par recherche : au-delà, la liste est tronquée. */
+export const MAX_SOUS_TACHES = 100;
+
 /** Nombre d'incidents ramenés par recherche : au-delà, l'information est noyée. */
 export const MAX_INCIDENTS = 50;
 

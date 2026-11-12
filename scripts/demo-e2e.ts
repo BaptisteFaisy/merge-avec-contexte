@@ -6,11 +6,14 @@
  * (`shared/src/bridge/sign.ts`) et les envoie au web trigger du Cerveau, qui
  * évalue réellement les règles, lit ses données et répond. Il joue le parcours
  * du cahier des charges : PR bloquée avec le message imposé du §9, carte
- * détaillée, dérogation demandée puis accordée, incident ouvert avec voie
- * rapide pour le correctif lié, gel de branche réellement actif (§18 sc. 2),
- * mode observation (§7.3), R-06/R-07 (blocage par un autre ticket, version
- * publiée), R-02 (statut interdit) et R-13 (dépendance amont non livrée),
- * puis contrôle qu'une requête non signée est refusée.
+ * détaillée, dérogation demandée puis accordée, parcours de l'astreinte
+ * (incident ouvert : rien ne part sur le service, sauf le correctif lié, §3 et
+ * §7.2), les trois déclencheurs du contrôle (MC-02) avec le déclencheur de
+ * fusion qui rattrape un contexte changé entre le push et la fusion (§13.2,
+ * §17 cas 4), gel de branche réellement actif (§18 sc. 2), mode observation
+ * (§7.3), R-06/R-07 (blocage par un autre ticket, version publiée),
+ * R-02 (statut interdit) et R-13 (dépendance amont non livrée), puis contrôle
+ * qu'une requête non signée est refusée.
  *
  * Usage :
  *   MAC_BRIDGE_URL=https://… MAC_SHARED_SECRET=… npm run demo
@@ -157,6 +160,11 @@ export function etape(nom: string, reussie: boolean, detail: string, ms = 0): vo
   console.log(`${reussi(reussie)} ${nom}${duree}${detail ? ` — ${detail}` : ''}`);
 }
 
+/** Annonce un parcours : une ligne de récit avant ses étapes. */
+export function annonce(titre: string): void {
+  console.log(`\n— ${titre} —`);
+}
+
 /** Vrai si le message contient chacun des mots demandés. */
 function contient(message: string, ...mots: string[]): boolean {
   return mots.every((mot) => message.includes(mot));
@@ -187,6 +195,74 @@ export async function remettreAZero(config: Configuration): Promise<number> {
     }
   }
   return neutralisees;
+}
+
+/**
+ * §3 et §7.2, parcours de l'astreinte : l'incident INC-52 est ouvert sur
+ * `checkout-api`. Deux PR visent ce service pendant l'incident : #43 (PAY-124,
+ * sans lien avec l'incident) ne part pas ; #44 (PAY-140, correctif lié à
+ * INC-52) passe, avec la mention « correctif d'incident ».
+ */
+async function jouerAstreinte(config: Configuration, verifier: Verifier): Promise<void> {
+  annonce('Parcours de l’astreinte (§3, §7.2) : incident INC-52 ouvert sur checkout-api, deux PR visent le service');
+  const horsIncident = await appeler(config, 'evaluate', payloadDe(config, prParId(43)));
+  verifier(
+    'Astreinte : la PR sans lien avec l’incident ne part pas (#43, PAY-124)',
+    verdictDe(horsIncident.corps) === 'blocked' && contient(messageDe(horsIncident.corps), 'INC-52', 'checkout-api'),
+    messageDe(horsIncident.corps).split('\n')[1] ?? '',
+    horsIncident.ms,
+  );
+  const correctif = await appeler(config, 'evaluate', payloadDe(config, prParId(44)));
+  verifier(
+    'Astreinte : seul le correctif lié à l’incident passe (#44, PAY-140)',
+    verdictDe(correctif.corps) === 'allowed' && contient(messageDe(correctif.corps), 'Correctif d’incident INC-52'),
+    messageDe(correctif.corps).split('\n')[0],
+    correctif.ms,
+  );
+}
+
+/**
+ * MC-02 : le contrôle s'exécute aux trois déclencheurs — push, changement
+ * d'avis d'un relecteur, tentative de fusion (§13.2). Le dernier prouve sa
+ * raison d'être : il rattrape un contexte changé entre le push et la fusion
+ * (§17 cas 4). Le changement est posé via une dérogation accordée entre les
+ * deux évaluations : c'est la seule écriture que le pont signé expose ; un gel
+ * qui commence ou un incident qui s'ouvre entre-temps serait rattrapé de même.
+ * PR #47 (PAY-125, pricing-api) : R-06 la bloque seule, verdict déterministe.
+ */
+async function jouerDeclencheurs(config: Configuration, verifier: Verifier): Promise<void> {
+  annonce('Les trois déclencheurs du contrôle (MC-02, §13.2) — PR #47 bloquée par R-06 (PAY-126 non livré)');
+  const pr = prParId(47);
+  const push = await appeler(config, 'evaluate', payloadDe(config, pr, 'on-code-pushed'));
+  verifier(
+    'Déclencheur push : PR #47 contrôlée et bloquée',
+    verdictDe(push.corps) === 'blocked',
+    `verdict ${verdictDe(push.corps)}`,
+    push.ms,
+  );
+  const relecteur = await appeler(config, 'evaluate', payloadDe(config, pr, 'on-reviewer-status-changed'));
+  verifier(
+    'Déclencheur changement d’avis d’un relecteur : contrôle rejoué',
+    verdictDe(relecteur.corps) === 'blocked',
+    `verdict ${verdictDe(relecteur.corps)}`,
+    relecteur.ms,
+  );
+  // Contexte changé entre le push et la fusion : PAY-126 est livré « pour de
+  // vrai » dans la foulée ; en attendant, une dérogation R-06 de 2 h le simule.
+  const demande = await appeler(config, 'waiver.request', {
+    prId: pr.id, repositoryUuid: pr.depot, rule: 'R-06', hours: 2,
+    reason: 'PAY-126 livré dans la foulée', requestedBy: 'lea', issueKey: pr.cle,
+  });
+  const waiverId = String((demande.corps as { id?: string })?.id ?? '');
+  const accord = await appeler(config, 'waiver.decide', { waiverId, decision: 'granted', decidedBy: 'tech-lead', hours: 2 });
+  const fusion = await appeler(config, 'evaluate', payloadDe(config, pr, 'on-merge'));
+  verifier(
+    'Déclencheur fusion : le contexte changé entre le push et la fusion est rattrapé (§17 cas 4)',
+    accord.status === 200 && verdictDe(fusion.corps) === 'allowed',
+    `push ${verdictDe(push.corps)} → fusion ${verdictDe(fusion.corps)}`,
+    fusion.ms,
+  );
+  await appeler(config, 'waiver.decide', { waiverId, decision: 'refused', decidedBy: 'demo' });
 }
 
 /** §18 scénario 2 : un gel court, actif à l'instant, bloque la branche release. */
@@ -329,11 +405,7 @@ export async function demonstration(config: Configuration): Promise<number> {
     apresRemise.ms,
   );
 
-  const p43 = await appeler(config, 'evaluate', payloadDe(config, prParId(43)));
-  verifier('PR #43 bloquée par l’incident', verdictDe(p43.corps) === 'blocked', messageDe(p43.corps).split('\n')[1] ?? '', p43.ms);
-
-  const p44 = await appeler(config, 'evaluate', payloadDe(config, prParId(44)));
-  verifier('Correctif lié à l’incident autorisé', verdictDe(p44.corps) === 'allowed', messageDe(p44.corps).split('\n')[0], p44.ms);
+  await jouerAstreinte(config, verifier);
 
   await jouerGelActif(config, verifier);
   await jouerObservation(config, verifier);
@@ -341,6 +413,7 @@ export async function demonstration(config: Configuration): Promise<number> {
   await jouerR07(config, verifier);
   await jouerR02(config, verifier);
   await jouerR13(config, verifier);
+  await jouerDeclencheurs(config, verifier);
 
   const nue = await appeler(config, 'evaluate', payloadDe(config, prParId(42)), false);
   verifier('Requête non signée refusée', nue.status === 401, `HTTP ${nue.status}`, nue.ms);

@@ -15,7 +15,9 @@
 import Resolver from '@forge/resolver';
 import { invaliderPourEvenement } from './app/cache-adaptateurs';
 import { actionsRovo, cerveauProduction, resolversUi, traiterPont } from './app/compose';
-import type { BridgeEnvelope } from './shared';
+import { notifieurJira } from './notify/notifieur-jira';
+import { creerServiceNotification, type ServiceNotification } from './notify/notifier';
+import type { BridgeEnvelope, Evaluation, Reason, Trigger, Verdict } from './shared';
 
 /** Requête reçue par un web trigger Forge. */
 export interface WebTriggerRequest {
@@ -49,6 +51,67 @@ export function aplatirHeaders(headers: Record<string, string[]> | undefined): R
   return plat;
 }
 
+/** Service de notification des blocages : singleton par conteneur (dédup). */
+let notification: ServiceNotification | undefined;
+
+/** Construit (une fois) le service de notification branché sur Jira. */
+function serviceNotification(cerveau: Awaited<ReturnType<typeof cerveauProduction>>): ServiceNotification {
+  notification ??= creerServiceNotification({ notifieur: notifieurJira(), logger: cerveau.logger });
+  return notification;
+}
+
+/** Route annoncée dans le corps du pont ; `undefined` si illisible. */
+function routeDuCorps(body: string): string | undefined {
+  try {
+    return (JSON.parse(body) as { route?: unknown }).route as string | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Évaluation minimale reconstruite depuis le corps d'une réponse `evaluate`. */
+function evaluationDepuisCorps(corps: string): Evaluation | undefined {
+  try {
+    const brut = JSON.parse(corps) as {
+      verdict?: Verdict;
+      reasons?: Reason[];
+      issueKeys?: string[];
+      evaluatedAt?: string;
+      durationMs?: number;
+      observedOnly?: boolean;
+    };
+    if (brut.verdict !== 'blocked') return undefined;
+    return {
+      verdict: brut.verdict,
+      reasons: brut.reasons ?? [],
+      issueKeys: brut.issueKeys ?? [],
+      trigger: 'on-code-pushed' as Trigger,
+      evaluatedAt: brut.evaluatedAt ?? '',
+      durationMs: brut.durationMs ?? 0,
+      observedOnly: brut.observedOnly,
+    };
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Notifie les tickets d'un contrôle `evaluate` bloqué (audit item 18).
+ *
+ * Effet de bord non bloquant : lancé sans `await` pour ne pas ajouter de
+ * latence au merge check (§13.4), le service ne lève jamais et la réponse du
+ * pont est déjà rendue. Le garde-fou (empreinte par ticket + ensemble de
+ * raisons) empêche toute duplication aux relances.
+ */
+function notifierSiBlocage(cerveau: Awaited<ReturnType<typeof cerveauProduction>>, body: string, corpsReponse: string): void {
+  if (routeDuCorps(body) !== 'evaluate') return;
+  const evaluation = evaluationDepuisCorps(corpsReponse);
+  if (!evaluation) return;
+  void serviceNotification(cerveau)
+    .notifierBlocage(evaluation, cerveau.config.locale)
+    .catch((erreur) => cerveau.logger.warn('notification de blocage : échec inattendu', { erreur: String(erreur) }));
+}
+
 /** Pont signé : vérification, routage, évaluation, réponse JSON. */
 export async function gererPont(request: WebTriggerRequest): Promise<WebTriggerResponse> {
   const cerveau = await cerveauProduction();
@@ -56,6 +119,7 @@ export async function gererPont(request: WebTriggerRequest): Promise<WebTriggerR
     body: request.body ?? '',
     headers: aplatirHeaders(request.headers),
   });
+  notifierSiBlocage(cerveau, request.body ?? '', reponse.body);
   const headers: Record<string, string[]> = {};
   for (const [cle, valeur] of Object.entries(reponse.headers)) headers[cle] = [valeur];
   return { statusCode: reponse.statusCode, headers, body: reponse.body };
