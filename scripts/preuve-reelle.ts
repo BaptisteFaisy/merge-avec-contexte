@@ -17,6 +17,8 @@
  *
  * Sortie : 0 si tous les cas réels donnent le verdict attendu, 1 sinon.
  */
+import { writeFileSync } from 'node:fs';
+
 import {
   afficherMessage,
   annonce,
@@ -47,10 +49,12 @@ type Regle = { rule?: string; level?: string };
 
 let echecs = 0;
 const durees: number[] = [];
+const etapes: Array<{ nom: string; ok: boolean; detail: string; ms: number }> = [];
 
 function verifier(nom: string, condition: boolean, detail: string, ms = 0): void {
   if (!condition) echecs += 1;
   if (ms > 0) durees.push(ms);
+  etapes.push({ nom, ok: condition, detail, ms });
   etape(nom, condition, detail, ms);
 }
 
@@ -160,6 +164,22 @@ async function main(): Promise<void> {
   console.log(`  ${resteAProuver()}\n`);
 
   console.log(`${echecs === 0 ? 'Démonstration réelle concluante' : `${echecs} cas en échec`}\n`);
+  if (process.env.MAC_DEMO_JSON === '1') {
+    const triees = [...durees].sort((a, b) => a - b);
+    const rapport = {
+      horodatage: new Date().toISOString(),
+      site: SITE,
+      espace: config.workspace,
+      echecs,
+      medianeMs: triees.length ? triees[Math.floor(triees.length / 2)] : null,
+      etapes,
+    };
+    if (process.env.MAC_DEMO_JSON_PATH) {
+      writeFileSync(process.env.MAC_DEMO_JSON_PATH, JSON.stringify(rapport, null, 2) + '\n');
+    } else {
+      console.log(`__DEMO_JSON__${JSON.stringify(rapport)}`);
+    }
+  }
   process.exit(echecs === 0 ? 0 : 1);
 }
 

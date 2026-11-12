@@ -143,7 +143,8 @@ Details and waiver: the &amp;quot;Merge with context&amp;quot; card on the right
 <section id="preuve" class="section section-alt">
   <div class="conteneur">
     <h2><span data-fr="Preuve en direct" data-en="Live proof">Preuve en direct</span></h2>
-    <p class="chapo"><span data-fr="Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, dix-huit vérifications." data-en="This output is not a simulation: it comes from the deployed Forge app, called with real signed requests. One command, eighteen checks.">Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, dix-huit vérifications.</span></p>
+    <p id="preuve-vivante" class="note vivante" data-fr="Interrogation de l’app déployée…" data-en="Querying the deployed app…"></p>
+    <p class="chapo"><span data-fr="Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, rejouée à la demande et « en temps réel »." data-en="This output is not a simulation: it comes from the deployed Forge app, called with real signed requests. One command, replayed on demand and live.">Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, rejouée à la demande et « en temps réel ».</span></p>
     <pre class="console"><code>Démonstration réelle — Merge avec contexte
 
 site Jira          : https://one-atlas-cndz.atlassian.net
@@ -244,5 +245,6 @@ forge install -e production -p jira  # puis jumelage</code></pre>
   </div>
 </footer>
 <script src="app.js"></script>
+  <script src="temps-reel.js" defer></script>
 </body>
 </html>
