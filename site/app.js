@@ -10,8 +10,11 @@
     bouton.textContent = langue === 'fr' ? 'EN' : 'FR';
     bouton.setAttribute('aria-label', langue === 'fr' ? 'Switch to English' : 'Passer en français');
     document.querySelectorAll('[data-fr],[data-en]').forEach(function (el) {
+      // Attribut nu (`data-fr` sans valeur) : il ne porte pas de texte, il ne
+      // fait que masquer l'autre langue. Un attribut vide effacerait le
+      // contenu : on ne remplace donc que par une valeur non vide.
       const texte = el.getAttribute('data-' + langue);
-      if (texte !== null) el.innerHTML = texte;
+      if (texte) el.innerHTML = texte;
     });
     try { localStorage.setItem(CLE, langue); } catch (e) { /* stockage indisponible */ }
   }
