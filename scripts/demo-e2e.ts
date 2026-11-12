@@ -443,15 +443,10 @@ async function main(): Promise<void> {
 }
 
 /**
- * Vrai si le fichier est exécuté (et non importé par un test).
+ * Point d'entrée de la démonstration.
  *
- * Sous `vite-node`, `process.argv[1]` est le binaire du lanceur, pas le
- * script : on compare donc le module à lui-même par son URL.
+ * L'appel se fait depuis `scripts/demo-entree.ts` : importer ce module (par un
+ * test, ou par `scripts/preuve-reelle.ts`) ne lance jamais la démonstration —
+ * c'était le défaut corrigé ici, l'import déclenchait la démonstration entière.
  */
-export function estExecute(): boolean {
-  if (process.env.VITEST) return false;
-  return process.argv[1]?.endsWith('demo-e2e.ts') === true
-    || import.meta.url.endsWith('/scripts/demo-e2e.ts');
-}
-
-if (estExecute()) main();
+export { main as lancerDemonstration };
