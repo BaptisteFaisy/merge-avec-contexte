@@ -1,7 +1,7 @@
 {
   "etape": "etape-5-capteur-installe",
   "titre": "Capteur installé sur l’espace Bitbucket réel",
-  "horodatage": "2026-11-12T15:50:57.562Z",
+  "horodatage": "2026-11-12T18:11:29.880Z",
   "requete": {
     "commande": "forge install list -e production",
     "espace": "one-atlas-cndz"
@@ -60,5 +60,5 @@
     "uuid": "{b44dcce8-0f72-4e36-bf40-65aead14ce35}",
     "installation": "Showing all the current installations and connections for your app.\n\u001b[90m┌──────────────────────────────────────\u001b[39m\u001b[90m┬─────────────\u001b[39m\u001b[90m┬──────────────\u001b[39m\u001b[90m┬──────────────────────────────────────────────────\u001b[39m\u001b[90m┬─────────\u001b[39m\u001b[90m┬────────────┐\u001b[39m\n\u001b[90m│\u001b[39m Installation ID                      \u001b[90m│\u001b[39m Environment \u001b[90m│\u001b[39m Installed in \u001b[90m│\u001b[39m Connected to                                     \u001b[90m│\u001b[39m Version \u001b[90m│\u001b[39m Status     \u001b[90m│\u001b[39m\n\u001b[90m├──────────────────────────────────────\u001b[39m\u001b[90m┼─────────────\u001b[39m\u001b[90m┼──────────────\u001b[39m\u001b[90m┼──────────────────────────────────────────────────\u001b[39m\u001b[90m┼─────────\u001b[39m\u001b[90m┼────────────┤\u001b[39m\n\u001b[90m│\u001b[39m 2e2b050c-6f22-4820-8bf7-064ea67fdc08 \u001b[90m│\u001b[39m production  \u001b[90m│\u001b[39m Site         \u001b[90m│\u001b[39m https://bitbucket.org/one-atlas-cndz/: Bitbucket \u001b[90m│\u001b[39m 2       \u001b[90m│\u001b[39m Up-to-date \u001b[90m│\u001b[39m\n\u001b[90m└──────────────────────────────────────\u001b[39m\u001b[90m┴─────────────\u001b[39m\u001b[90m┴──────────────\u001b[39m\u001b[90m┴──────────────────────────────────────────────────\u001b[39m\u001b[90m┴─────────\u001b[39m\u001b[90m┴────────────┘\u001b[39m\n\nView the full list in the developer console: https://developer.atlassian.com/console/myapps/0777c25e-2be7-44fc-aa99-6d82fd3789c1/monitoring/installations"
   },
-  "empreinte": "sha256:b6df16d1ac222b80d1b5b49dd91cd72757671fc393d50c97d2e8197acad07169"
+  "empreinte": "sha256:93600127dab01ed5602d23bd5f83a74bfef308bafc804ddcaf9d5b80cb07b26b"
 }

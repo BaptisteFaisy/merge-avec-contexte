@@ -1,7 +1,7 @@
 {
   "etape": "etape-1-ticket-mac-2",
   "titre": "Ticket réel MAC-2 sur le site Jira",
-  "horodatage": "2026-11-12T15:50:50.901Z",
+  "horodatage": "2026-11-12T18:11:26.645Z",
   "requete": {
     "site": "https://one-atlas-cndz.atlassian.net",
     "cle": "MAC-2",
@@ -27,10 +27,11 @@
           "id": 4,
           "key": "indeterminate",
           "colorName": "yellow",
-          "name": "En cours"
+          "name": "In Progress"
         },
         "resolution": null,
         "customfield_10871": null,
+        "customfield_10872": null,
         "customfield_10630": null,
         "customfield_10864": null,
         "customfield_10865": null,
@@ -78,30 +79,30 @@
                 "summary": "Correctif incident checkout-api (preuve réelle)",
                 "status": {
                   "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/status/3",
-                  "description": "Ce ticket est en cours de traitement par la personne assignée.",
+                  "description": "This work item is being actively worked on at the moment by the assignee.",
                   "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/statuses/inprogress.png",
-                  "name": "En cours",
+                  "name": "In Progress",
                   "id": "3",
                   "statusCategory": {
                     "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/statuscategory/4",
                     "id": 4,
                     "key": "indeterminate",
                     "colorName": "yellow",
-                    "name": "En cours"
+                    "name": "In Progress"
                   }
                 },
                 "priority": {
                   "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/priority/10000",
                   "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/priorities/blocker_new.svg",
-                  "name": "Critique",
+                  "name": "Critical",
                   "id": "10000"
                 },
                 "issuetype": {
                   "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issuetype/10002",
                   "id": "10002",
-                  "description": "Une tâche distincte.",
+                  "description": "A small, distinct piece of work.",
                   "iconUrl": "https://one-atlas-cndz.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
-                  "name": "Tâche",
+                  "name": "Task",
                   "subtask": false,
                   "avatarId": 10318,
                   "hierarchyLevel": 0
@@ -211,9 +212,9 @@
         "issuetype": {
           "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issuetype/10002",
           "id": "10002",
-          "description": "Une tâche distincte.",
+          "description": "A small, distinct piece of work.",
           "iconUrl": "https://one-atlas-cndz.atlassian.net/rest/api/2/universal_avatar/view/type/issuetype/avatar/10318?size=medium",
-          "name": "Tâche",
+          "name": "Task",
           "subtask": false,
           "avatarId": 10318,
           "hierarchyLevel": 0
@@ -307,7 +308,7 @@
         "customfield_10817": null,
         "customfield_10818": [],
         "customfield_10819": [],
-        "updated": "2026-11-12T09:21:09.021-0500",
+        "updated": "2026-11-12T11:57:27.223-0500",
         "timeoriginalestimate": null,
         "customfield_10492": [],
         "description": {
@@ -589,11 +590,202 @@
               "created": "2026-11-12T09:21:09.021-0500",
               "updated": "2026-11-12T09:21:09.021-0500",
               "jsdPublic": true
+            },
+            {
+              "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66645/comment/84974",
+              "id": "84974",
+              "author": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Bloqué, 3 raisons."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "1) MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison. Amenez le ticket à un statut autorisé avant la fusion."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "2) MAC-2 : 2 critère(s) d’acceptation non coché(s). Cochez dans le ticket les critères vraiment validés."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "3) MAC-2 est bloqué par MAC-3 (In Progress). Livrez d’abord MAC-3, ou demandez une dérogation."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Détail et dérogation : carte « Merge avec contexte » à droite."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "mac-blocage:fofgdt",
+                        "marks": [
+                          {
+                            "type": "code"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "updateAuthor": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "created": "2026-11-12T10:50:55.188-0500",
+              "updated": "2026-11-12T10:50:55.188-0500",
+              "jsdPublic": true
+            },
+            {
+              "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66645/comment/84990",
+              "id": "84990",
+              "author": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "body": {
+                "type": "doc",
+                "version": 1,
+                "content": [
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Bloqué, 2 raisons."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "1) MAC-2 : 2 critère(s) d’acceptation non coché(s). Cochez dans le ticket les critères vraiment validés."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "2) MAC-2 est bloqué par MAC-3 (In Progress). Livrez d’abord MAC-3, ou demandez une dérogation."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "Détail et dérogation : carte « Merge avec contexte » à droite."
+                      }
+                    ]
+                  },
+                  {
+                    "type": "paragraph",
+                    "content": [
+                      {
+                        "type": "text",
+                        "text": "mac-blocage:12d72fh",
+                        "marks": [
+                          {
+                            "type": "code"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              },
+              "updateAuthor": {
+                "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/user?accountId=712020%3Aa32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "accountId": "712020:a32079c8-81bb-48fd-a86a-cf5df8aab51e",
+                "avatarUrls": {
+                  "48x48": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "24x24": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "16x16": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png",
+                  "32x32": "https://secure.gravatar.com/avatar/15f7212b8d5f5b318124b49752a8ed65?d=https%3A%2F%2Favatar-management--avatars.us-west-2.prod.public.atl-paas.net%2Finitials%2FMC-0.png"
+                },
+                "displayName": "Merge avec contexte Cerveau",
+                "active": true,
+                "timeZone": "America/New_York",
+                "accountType": "app"
+              },
+              "created": "2026-11-12T11:57:27.223-0500",
+              "updated": "2026-11-12T11:57:27.223-0500",
+              "jsdPublic": true
             }
           ],
           "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/issue/66645/comment",
-          "maxResults": 2,
-          "total": 2,
+          "maxResults": 4,
+          "total": 4,
           "startAt": 0
         },
         "statuscategorychangedate": "2026-11-12T09:20:56.148-0500",
@@ -632,7 +824,7 @@
         "priority": {
           "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/priority/10000",
           "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/priorities/blocker_new.svg",
-          "name": "Critique",
+          "name": "Critical",
           "id": "10000"
         },
         "customfield_10101": [],
@@ -645,16 +837,16 @@
         "versions": [],
         "status": {
           "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/status/3",
-          "description": "Ce ticket est en cours de traitement par la personne assignée.",
+          "description": "This work item is being actively worked on at the moment by the assignee.",
           "iconUrl": "https://one-atlas-cndz.atlassian.net/images/icons/statuses/inprogress.png",
-          "name": "En cours",
+          "name": "In Progress",
           "id": "3",
           "statusCategory": {
             "self": "https://one-atlas-cndz.atlassian.net/rest/api/3/statuscategory/4",
             "id": 4,
             "key": "indeterminate",
             "colorName": "yellow",
-            "name": "En cours"
+            "name": "In Progress"
           }
         },
         "customfield_10696": null,
@@ -708,7 +900,8 @@
     "resume": {
       "cle": "MAC-2",
       "resume": "Limiter les tentatives de paiement (preuve réelle)",
-      "statut": "En cours",
+      "statutId": "3",
+      "statutCategorie": "indeterminate",
       "composants": [
         "checkout-api"
       ],
@@ -733,5 +926,5 @@
     "attendu": "branche de PR : feature/MAC-2-limite-tentatives (PR 9001)",
     "lectureDirecte": "réponse JSON de l’API Jira (200)"
   },
-  "empreinte": "sha256:d3cef6a274f6e5bd036736ec23598f5bdfcb88983ccdaf79e392fa56735cb561"
+  "empreinte": "sha256:7ebe5e5668b5c991934497a6b17d14b11e0d6d3d6a4bb7cc97de444cdfdaeb06"
 }
