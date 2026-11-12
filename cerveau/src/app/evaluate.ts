@@ -8,6 +8,9 @@
  * Les tickets sont chargés en concurrence bornée (§57), et la chaîne est
  * instrumentée : chaque étape (Jira, base, règles) est chronométrée (horloge
  * injectée) pour exposer la décomposition des durées dans le journal (§58).
+ * Chaque contrôle porte en plus un **identifiant de corrélation** (item 60) :
+ * né avant la première lecture, il est journalisé à chaque étape puis rangé avec
+ * l'évaluation, ce qui relie les lignes de `forge logs` à une PR précise.
  */
 import { incidentsDuService } from '../cache/service-cache';
 import { lireTicket } from '../cache/issue-cache';
@@ -71,12 +74,14 @@ async function journaliser(
   deps: DepsEvaluate,
   entree: EntreePont,
   evaluation: Evaluation,
+  correlationId: string,
   decomposition?: DecompositionDurees,
 ): Promise<void> {
   try {
     const ligne: StoredEvaluationMesure = {
       ...evaluation,
       id: identifiant('ev', entree.pr.pullRequestId, Date.parse(evaluation.evaluatedAt)),
+      correlationId,
       workspaceUuid: entree.pr.workspaceUuid,
       repositoryUuid: entree.pr.repositoryUuid,
       pullRequestId: entree.pr.pullRequestId,
@@ -85,7 +90,7 @@ async function journaliser(
     };
     await deps.store.evaluations.record(ligne);
   } catch (erreur) {
-    deps.logger.error('journal : écriture impossible', { erreur: String(erreur) });
+    deps.logger.error('journal : écriture impossible', { correlationId, erreur: String(erreur) });
   }
 }
 
@@ -113,45 +118,80 @@ async function chargerContexte(entree: EntreePont, deps: DepsEvaluate) {
   return { issues, incidents, jiraMs, baseMs };
 }
 
+/**
+ * Identifiant de corrélation du contrôle (item 60).
+ *
+ * Né avant toute lecture, il porte chaque ligne de `forge logs` de cette
+ * évaluation et la ligne du journal qui la conclut : une PR se suit de bout en
+ * bout d'un simple filtre sur cet identifiant. Déterministe (PR + horloge
+ * injectée), il n'invente aucune donnée.
+ */
+function identifiantCorrelation(entree: EntreePont, now: string): string {
+  return identifiant('corr', entree.pr.pullRequestId, Date.parse(now));
+}
+
+/** Chemin nominal : contexte, moteur de règles, décomposition des durées. */
+async function evaluerAvecMesures(entree: EntreePont, deps: DepsEvaluate, correlationId: string) {
+  const { issues, incidents, jiraMs, baseMs } = await chargerContexte(entree, deps);
+  const moteur: EntreeMoteur = {
+    pr: entree.pr,
+    issues,
+    freezes: entree.freezes,
+    incidents,
+    waivers: entree.waivers,
+    service: entree.service,
+    configs: entree.configs,
+    now: entree.now,
+    locale: entree.locale,
+  };
+  const { valeur: evaluation, ms: reglesMs } = appliquerRegles(moteur, deps);
+  const decomposition: DecompositionDurees = { jiraMs, baseMs, reglesMs, totalMs: jiraMs + baseMs + reglesMs };
+  deps.logger.info('évaluation : décomposition des durées', {
+    correlationId,
+    prId: entree.pr.pullRequestId,
+    ...decomposition,
+  });
+  return { evaluation, decomposition };
+}
+
+/** Repli (§13.5) : journalisé sous le même identifiant de corrélation. */
+async function evaluerEnRepli(
+  entree: EntreePont,
+  deps: DepsEvaluate,
+  correlationId: string,
+  erreur: unknown,
+): Promise<Evaluation> {
+  deps.logger.error('évaluation en échec : repli appliqué', { correlationId, erreur: String(erreur) });
+  const repli = fallbackEvaluation({
+    policy: entree.fallbackPolicy,
+    cause: 'error',
+    trigger: entree.pr.trigger,
+    now: deps.clock(),
+    issueKeys: entree.issueKeys,
+  });
+  await journaliser(deps, entree, repli, correlationId);
+  return repli;
+}
+
 /** Fabrique le `EvaluateService` injecté dans le pont. */
 export function createEvaluateService(deps: DepsEvaluate): EvaluateService {
   const compte = compteursPartages();
   return async (entree) => {
+    const correlationId = identifiantCorrelation(entree, deps.clock());
     compte.incrementer('evaluations');
+    deps.logger.info('évaluation : début', {
+      correlationId,
+      prId: entree.pr.pullRequestId,
+      depot: entree.pr.repositoryUuid,
+    });
     try {
-      const { issues, incidents, jiraMs, baseMs } = await chargerContexte(entree, deps);
-      const moteur: EntreeMoteur = {
-        pr: entree.pr,
-        issues,
-        freezes: entree.freezes,
-        incidents,
-        waivers: entree.waivers,
-        service: entree.service,
-        configs: entree.configs,
-        now: entree.now,
-        locale: entree.locale,
-      };
-      const { valeur: evaluation, ms: reglesMs } = appliquerRegles(moteur, deps);
-      const decomposition: DecompositionDurees = { jiraMs, baseMs, reglesMs, totalMs: jiraMs + baseMs + reglesMs };
-      deps.logger.info('évaluation : décomposition des durées', {
-        prId: entree.pr.pullRequestId,
-        ...decomposition,
-      });
+      const { evaluation, decomposition } = await evaluerAvecMesures(entree, deps, correlationId);
       if (evaluation.verdict === 'blocked') compte.incrementer('blocages');
-      await journaliser(deps, entree, evaluation, decomposition);
+      await journaliser(deps, entree, evaluation, correlationId, decomposition);
       return evaluation;
     } catch (erreur) {
-      deps.logger.error('évaluation en échec : repli appliqué', { erreur: String(erreur) });
       compte.incrementer('replis');
-      const repli = fallbackEvaluation({
-        policy: entree.fallbackPolicy,
-        cause: 'error',
-        trigger: entree.pr.trigger,
-        now: deps.clock(),
-        issueKeys: entree.issueKeys,
-      });
-      await journaliser(deps, entree, repli);
-      return repli;
+      return evaluerEnRepli(entree, deps, correlationId, erreur);
     }
   };
 }

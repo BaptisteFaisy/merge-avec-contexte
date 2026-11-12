@@ -12,6 +12,7 @@
 import type { FallbackPolicy, Freeze, Incident, RuleConfig } from '../shared/types';
 import type { PairingOffer } from '../shared/bridge/pairing';
 import type { WaiverAuditEntry } from '../shared/bridge/payload';
+import { dureeMaximale, percentileDurees } from './ports';
 import type {
   EvaluationRepository,
   EvaluationStats,
@@ -56,7 +57,7 @@ function parDateDesc(a: StoredEvaluation, b: StoredEvaluation): number {
   return Date.parse(b.evaluatedAt) - Date.parse(a.evaluatedAt);
 }
 
-/** Comptages et durée moyenne d'une liste déjà filtrée. */
+/** Comptages, durée moyenne, P95 et maximum d'une liste déjà filtrée. */
 function compter(evaluations: StoredEvaluation[], since: string, until?: string): EvaluationStats {
   const durees = evaluations.map((e) => e.durationMs);
   const somme = durees.reduce((total, d) => total + d, 0);
@@ -69,6 +70,8 @@ function compter(evaluations: StoredEvaluation[], since: string, until?: string)
     inconclusive: evaluations.filter((e) => e.verdict === 'inconclusive').length,
     fallbacks: evaluations.filter((e) => e.fallback !== undefined).length,
     averageDurationMs: durees.length === 0 ? 0 : Math.round(somme / durees.length),
+    p95DurationMs: percentileDurees(durees, 95),
+    maxDurationMs: dureeMaximale(durees),
   };
 }
 
@@ -131,10 +134,20 @@ function creerFreezeStore(map: Map<string, Freeze>): FreezeRepository {
   };
 }
 
+/** Les demandes les plus récentes d'abord : l'ordre de tous les listings. */
+function recentes(liste: StoredWaiver[]): StoredWaiver[] {
+  return liste.sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+}
+
+/** Dérogations d'une PR, copiées et triées. */
+function parPr(map: Map<string, StoredWaiver>, repositoryUuid: string, prId: number): StoredWaiver[] {
+  return recentes(
+    [...map.values()].filter((w) => w.repositoryUuid === repositoryUuid && w.prId === prId).map(copie),
+  );
+}
+
 /** Magasin des dérogations. */
 function creerWaiverStore(map: Map<string, StoredWaiver>): WaiverRepository {
-  const parPr = (repositoryUuid: string, prId: number) =>
-    [...map.values()].filter((w) => w.repositoryUuid === repositoryUuid && w.prId === prId).map(copie);
   const basculer = (id: string, change: (w: StoredWaiver) => StoredWaiver) => {
     const trouve = map.get(id);
     if (!trouve) return undefined;
@@ -157,13 +170,15 @@ function creerWaiverStore(map: Map<string, StoredWaiver>): WaiverRepository {
       return basculer(id, (w) => ({ ...w, grantedBy: decidedBy, status: 'refused' }));
     },
     async listByPullRequest(repositoryUuid, prId) {
-      return parPr(repositoryUuid, prId).sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+      return parPr(map, repositoryUuid, prId);
     },
     async listByIssue(issueKey) {
-      return [...map.values()]
-        .filter((w) => w.issueKeys.includes(issueKey))
-        .map(copie)
-        .sort((a, b) => Date.parse(b.requestedAt) - Date.parse(a.requestedAt));
+      return recentes([...map.values()].filter((w) => w.issueKeys.includes(issueKey)).map(copie));
+    },
+    async listSince(since, until) {
+      return recentes(
+        [...map.values()].filter((w) => dansPeriode(w.requestedAt, since, until)).map(copie),
+      );
     },
     async expire(now) {
       const instant = Date.parse(now);

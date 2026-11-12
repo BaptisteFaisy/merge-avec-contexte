@@ -15,6 +15,7 @@
  */
 import type { FallbackPolicy, Freeze, Incident, RuleCode, RuleConfig, Waiver } from '../shared/types';
 import type { PairingOffer } from '../shared/bridge/pairing';
+import { dureeMaximale, percentileDurees } from './ports';
 import type {
   EvaluationRepository, EvaluationStats, FreezeRepository, IncidentRepository, IssueCacheEntry,
   IssueCacheRepository, NonceStore, ObservedBlock, PairingRecord, PairingRepository, PageEvaluation,
@@ -47,11 +48,12 @@ const parametreCle = (cle: string): string => `%,${cle},%`;
 interface ConfigRow { project_id: string; rule_code: string; level: string; mode: string; scope_json: string | null; params_json: string | null }
 interface FreezeRow { id: string; name: string; starts_at: string; ends_at: string; branches: string | null; services: string | null; recurrence: string | null; timezone: string | null; created_by: string | null }
 interface WaiverRow { id: string; pr_id: number; repo_uuid: string; rule_code: string; requested_by: string; granted_by: string | null; reason: string; requested_at: string; expires_at: string | null; status: string; issue_keys: string | null }
-interface EvaluationRow { id: string; workspace_uuid: string; repo_uuid: string; pr_id: number; issue_keys: string; trigger: string; verdict: string; reasons_json: string | null; evaluated_at: string; duration_ms: number; fallback: string | null; cause: string | null; observed_only: number; service: string | null; project_id: string | null }
+interface EvaluationRow { id: string; workspace_uuid: string; repo_uuid: string; pr_id: number; issue_keys: string; trigger: string; verdict: string; reasons_json: string | null; evaluated_at: string; duration_ms: number; fallback: string | null; cause: string | null; observed_only: number; service: string | null; project_id: string | null; correlation_id: string | null }
 interface RepoServiceRow { workspace_uuid: string; repo_uuid: string; service: string; jira_component: string | null }
 interface CacheRow { issue_key: string; updated_at: string; snapshot_json: string | null }
 interface IncidentRow { service: string; incident_key: string; opened_at: string; resolved_at: string | null }
 interface StatsRow { total: number; autorisees: number | null; bloquees: number | null; non_concluantes: number | null; replis: number | null; duree_moyenne: number | null }
+interface DureeRow { duration_ms: number | null }
 interface PairingRow { id: string; workspace_uuid: string | null; secret_ref: string | null; paired_at: string | null; paired_by: string | null; fallback_policy: string | null; offer_code: string | null; offer_site_url: string | null; offer_created_by: string | null; offer_issued_at: string | null; offer_expires_at: string | null; offer_used: number | null }
 
 // --- Lignes → domaine ----------------------------------------------------
@@ -81,7 +83,7 @@ const evaluationDepuisLigne = (l: EvaluationRow): StoredEvaluation => ({
   evaluatedAt: l.evaluated_at, durationMs: Number(l.duration_ms), observedOnly: Number(l.observed_only) === 1,
   fallback: (l.fallback ?? undefined) as FallbackPolicy | undefined,
   cause: (l.cause ?? undefined) as StoredEvaluation['cause'], service: l.service ?? undefined,
-  projectId: l.project_id ?? undefined,
+  projectId: l.project_id ?? undefined, correlationId: l.correlation_id ?? undefined,
 });
 
 const incidentDepuisLigne = (l: IncidentRow): Incident => ({
@@ -115,12 +117,13 @@ function entierPagination(valeur: number | undefined): number | undefined {
   return Number.isSafeInteger(borne) && borne >= 0 ? borne : undefined;
 }
 
-/** Ligne d'agrégats → statistiques de période. */
-function statistiques(ligne: StatsRow | undefined, since: string, until?: string): EvaluationStats {
+/** Ligne d'agrégats + durées de la période → statistiques (moyenne, P95, maximum). */
+function statistiques(ligne: StatsRow | undefined, since: string, until: string | undefined, durees: number[]): EvaluationStats {
   const nombre = (valeur: number | null | undefined) => Number(valeur ?? 0);
   return { since, until, total: nombre(ligne?.total), allowed: nombre(ligne?.autorisees),
     blocked: nombre(ligne?.bloquees), inconclusive: nombre(ligne?.non_concluantes),
-    fallbacks: nombre(ligne?.replis), averageDurationMs: Math.round(nombre(ligne?.duree_moyenne)) };
+    fallbacks: nombre(ligne?.replis), averageDurationMs: Math.round(nombre(ligne?.duree_moyenne)),
+    p95DurationMs: percentileDurees(durees, 95), maxDurationMs: dureeMaximale(durees) };
 }
 
 // --- Réglages des règles --------------------------------------------------
@@ -201,6 +204,11 @@ export function creerWaiverStore(): WaiverRepository {
       [repositoryUuid, prId], derogationDepuisLigne),
     listByIssue: (issueKey) => lire(`SELECT * FROM waiver WHERE ${CONDITION_CLE} ORDER BY requested_at DESC`,
       [parametreCle(issueKey)], derogationDepuisLigne),
+    listSince: (since, until) => {
+      const filtre = periodeSur('requested_at', since, until);
+      return lire(`SELECT * FROM waiver WHERE ${filtre.clause} ORDER BY requested_at DESC`,
+        filtre.params, derogationDepuisLigne);
+    },
     expire: (now) => ecrire(
       "UPDATE waiver SET status = 'expired' WHERE status = 'granted' AND expires_at IS NOT NULL AND expires_at <= ?",
       [now]),
@@ -211,7 +219,8 @@ export function creerWaiverStore(): WaiverRepository {
 
 const ecrireEvaluation = upsert('evaluation',
   ['id', 'workspace_uuid', 'repo_uuid', 'pr_id', 'issue_keys', '`trigger`', 'verdict', 'reasons_json',
-    'evaluated_at', 'duration_ms', 'fallback', 'cause', 'observed_only', 'service', 'project_id'],
+    'evaluated_at', 'duration_ms', 'fallback', 'cause', 'observed_only', 'service', 'project_id',
+    'correlation_id'],
   ['id']);
 
 const REQUETE_STATS = `SELECT COUNT(*) AS total,
@@ -220,6 +229,13 @@ const REQUETE_STATS = `SELECT COUNT(*) AS total,
   SUM(CASE WHEN verdict = 'inconclusive' THEN 1 ELSE 0 END) AS non_concluantes,
   SUM(CASE WHEN fallback IS NULL THEN 0 ELSE 1 END) AS replis,
   AVG(duration_ms) AS duree_moyenne FROM evaluation WHERE `;
+
+/**
+ * Durées de la période, lues séparément : Forge SQL n'a pas de fonction de
+ * percentile portable, le P95 et le maximum sont donc calculés ici par les
+ * fonctions pures du contrat (`ports.ts`), les mêmes que le magasin mémoire.
+ */
+const REQUETE_DUREES = 'SELECT duration_ms FROM evaluation WHERE ';
 
 /** `evaluation` : une ligne par contrôle, et les comptages de la console. */
 export function creerEvaluationStore(): EvaluationRepository {
@@ -231,7 +247,7 @@ export function creerEvaluationStore(): EvaluationRepository {
         evaluation.pullRequestId, enListe(evaluation.issueKeys), evaluation.trigger, evaluation.verdict,
         json(evaluation.reasons), evaluation.evaluatedAt, evaluation.durationMs, evaluation.fallback ?? null,
         evaluation.cause ?? null, evaluation.observedOnly === true ? 1 : 0, evaluation.service ?? null,
-        evaluation.projectId ?? null]);
+        evaluation.projectId ?? null, evaluation.correlationId ?? null]);
     },
     find: (id) => lireUne('SELECT * FROM evaluation WHERE id = ?', [id], evaluationDepuisLigne),
     latestByPullRequest: (repositoryUuid, prId) => derniere('repo_uuid = ? AND pr_id = ?', [repositoryUuid, prId]),
@@ -252,7 +268,9 @@ export function creerEvaluationStore(): EvaluationRepository {
     async stats(since, until) {
       const filtre = periode(since, until);
       const ligne = (await lignes<StatsRow>(REQUETE_STATS + filtre.clause, filtre.params))[0];
-      return statistiques(ligne, since, until);
+      const durees = (await lignes<DureeRow>(REQUETE_DUREES + filtre.clause, filtre.params))
+        .map((d) => Number(d.duration_ms ?? 0));
+      return statistiques(ligne, since, until, durees);
     },
     async observedBlocks(since, until) {
       const filtre = periode(since, until);
