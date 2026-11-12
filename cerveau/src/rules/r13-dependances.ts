@@ -19,7 +19,9 @@ function evaluateIssue(input: RuleInput, issue: IssueContext): RuleOutcome {
   const livres = deliveredStatuses(input.config.params);
   const enAttente = issue.links.filter(
     (lien) =>
-      lienDeType(types, lien.type, 'dependance') && !statutLivre(identifiantsLien(lien), livres),
+      lien.direction === 'outward' &&
+      lienDeType(types, lien.type, 'dependance') &&
+      !statutLivre(identifiantsLien(lien), livres),
   );
   if (enAttente.length === 0) return { status: 'pass', reasons: [] };
   return {

@@ -219,7 +219,16 @@ describe('R-05 — aucun incident ouvert sur le service touché', () => {
 });
 
 describe('R-06 — le ticket n’est pas bloqué par un ticket ouvert', () => {
-  const lien = { type: 'Blocks', direction: 'inward' as const, targetKey: 'PAY-100', targetStatus: 'In Progress' };
+  // La cible placée du côté « outward » est celle qui bloque : PAY-100 bloque
+  // PAY-123. Du côté « inward », c'est l'inverse — PAY-123 bloque PAY-100.
+  const lien = { type: 'Blocks', direction: 'outward' as const, targetKey: 'PAY-100', targetStatus: 'In Progress' };
+
+  it('passe quand c’est ce ticket qui bloque la cible', () => {
+    const outcome = outcomeOf('R-06', {
+      issues: [issue({ links: [{ ...lien, direction: 'inward' as const }] })],
+    });
+    expect(outcome.status).toBe('pass');
+  });
 
   it('passe quand la cible du lien est livrée', () => {
     const outcome = outcomeOf('R-06', {
