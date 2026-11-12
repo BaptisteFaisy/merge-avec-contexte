@@ -23,6 +23,7 @@
     "demo": "vite-node scripts/preuve-reelle.ts",
     "preuve:captures": "vite-node scripts/preuve-captures.ts",
     "preuve:verifier": "vite-node scripts/preuve-verifier.ts",
+    "preuve:bitbucket": "vite-node scripts/preuve-bitbucket.ts",
     "demo:fictif": "vite-node scripts/demo-entree.ts"
   },
   "devDependencies": {
