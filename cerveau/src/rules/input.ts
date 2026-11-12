@@ -60,6 +60,23 @@ export function issuesForKeys(issues: IssueContext[], keys: string[]): IssueCont
   return issues.filter((issue) => keys.includes(issue.key));
 }
 
+/**
+ * Clés de tickets exploitables : chaînes non vides, nettoyées et sans doublon.
+ *
+ * Un Capteur peut annoncer une clé vide (aucun ticket reconnu dans la PR) :
+ * une telle clé ne désigne aucun ticket et ne doit jamais être demandée à
+ * Jira — la lecture échouerait et ferait tomber l'évaluation en repli.
+ */
+export function clesExploitables(cles: string[]): string[] {
+  const uniques: string[] = [];
+  for (const cle of cles) {
+    const propre = cle.trim();
+    if (propre.length === 0 || uniques.includes(propre)) continue;
+    uniques.push(propre);
+  }
+  return uniques;
+}
+
 /** Tickets qui existent réellement sur le site jumelé. */
 export function existingIssues(issues: IssueContext[]): IssueContext[] {
   return issues.filter((issue) => issue.exists);

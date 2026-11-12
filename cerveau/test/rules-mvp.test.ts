@@ -81,7 +81,9 @@ const gel: Freeze = {
 
 describe('R-01 — la PR est reliée à un ticket Jira existant', () => {
   it('passe quand la branche porte une clé de ticket connue', () => {
-    expect(outcomeOf('R-01').status).toBe('pass');
+    const outcome = outcomeOf('R-01');
+    expect(outcome.status).toBe('pass');
+    expect(outcome.reasons).toEqual([]);
   });
 
   it('échoue sans aucune clé de ticket', () => {
@@ -98,7 +100,38 @@ describe('R-01 — la PR est reliée à un ticket Jira existant', () => {
       pr: pr({ sourceBranch: 'feature/PAY-404', title: 'Fantôme' }),
       issues: [issue({ key: 'PAY-404', exists: false })],
     });
+    expect(outcome.reasons).toHaveLength(1);
     expect(outcome.reasons[0]?.text).toBe('La clé PAY-404 ne correspond à aucun ticket du site jumelé.');
+  });
+
+  it('signale une PR sans aucun ticket une fois et une seule', () => {
+    const outcome = outcomeOf('R-01', {
+      pr: pr({ sourceBranch: 'feature/migration-sans-ticket', title: 'Migration' }),
+      issues: [],
+    });
+    expect(outcome.status).toBe('fail');
+    expect(outcome.reasons).toHaveLength(1);
+    expect(outcome.reasons[0]?.text).toContain('Aucun ticket Jira reconnu');
+    expect(outcome.reasons[0]?.action).toBe('Nommez la branche ou le titre avec la clé du ticket (ex. PAY-123).');
+    expect(outcome.reasons[0]?.level).toBe('warning');
+  });
+
+  it('ne répète pas sa raison quand plusieurs clés sont inconnues', () => {
+    const outcome = outcomeOf('R-01', {
+      pr: pr({ sourceBranch: 'feature/PAY-404', title: 'PAY-405' }),
+      issues: [issue({ key: 'PAY-404', exists: false }), issue({ key: 'PAY-405', exists: false })],
+    });
+    expect(outcome.reasons).toHaveLength(1);
+    expect(outcome.reasons[0]?.text).toContain('correspond à aucun ticket');
+  });
+
+  it('cite le ticket fautif quand une clé est inconnue parmi d’autres', () => {
+    const outcome = outcomeOf('R-01', {
+      pr: pr({ sourceBranch: 'feature/PAY-123', title: 'PAY-404' }),
+      issues: [issue({ key: 'PAY-123' }), issue({ key: 'PAY-404', exists: false })],
+    });
+    expect(outcome.reasons).toHaveLength(1);
+    expect(outcome.reasons[0]?.issueKey).toBe('PAY-404');
   });
 });
 

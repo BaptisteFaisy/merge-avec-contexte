@@ -54,6 +54,13 @@ aucun push direct sur `main`.
   passage sans rien jouer annonçait quand même « dix migrations appliquées »).
 - `docs/DEPANNAGE.md` : section « Le journal ne s'écrit plus » (symptôme,
   cause, remède).
+- R-01 signale enfin une PR sans aucun ticket : la clé vide annoncée par le
+  Capteur partait vers Jira, la lecture échouait et l'évaluation tombait en
+  repli — muette, comme si la PR était conforme. La clé vide est écartée à la
+  frontière du pont, R-01 émet `r01.missing` (avertissement) avec son action, et
+  la règle parle une fois et une seule : plusieurs clés inconnues ne produisent
+  plus de doublon, et le ticket fautif est cité quand une clé est inconnue
+  parmi d'autres.
 
 ## [0.1.0] — 2026-11-11
 

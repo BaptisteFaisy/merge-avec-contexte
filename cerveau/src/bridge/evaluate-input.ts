@@ -16,6 +16,7 @@ import {
   type Reviewer,
   type Waiver,
 } from '../shared';
+import { clesExploitables } from '../rules/input';
 import type { BridgeDeps, EvaluationInput } from './deps';
 import { erreurPont } from './errors';
 
@@ -118,9 +119,14 @@ export async function versEvaluationInput(
 /**
  * Clés de tickets de la PR : celles envoyées par le Capteur, ou, à défaut,
  * celles reconnues dans le nom de la branche source.
+ *
+ * Une clé vide ne désigne aucun ticket : elle est écartée pour que le pont
+ * n'interroge jamais Jira avec elle (la lecture échouerait et l'évaluation
+ * tomberait en repli, sans aucune raison).
  */
 function clesTickets(payload: EvaluatePayload): string[] {
-  if (payload.issueKeys.length > 0) return payload.issueKeys;
+  const annoncees = clesExploitables(payload.issueKeys);
+  if (annoncees.length > 0) return annoncees;
   return extractIssueKeys({
     sourceBranch: payload.sourceBranch,
     title: '',
