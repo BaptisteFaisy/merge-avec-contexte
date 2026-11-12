@@ -115,6 +115,18 @@ async function casNonSigne(config: Configuration): Promise<void> {
   verifier('HTTP 401 sans signature', nue.status === 401, `HTTP ${nue.status}`, nue.ms);
 }
 
+/** Côté Bitbucket : l'app y est installée ; l'écriture y est encore bloquée. */
+async function casBitbucket(): Promise<void> {
+  annonce('6 · côté Bitbucket — l’app y est installée, l’écriture y est bloquée');
+  const espace = await fetch(`https://api.bitbucket.org/2.0/workspaces/${ESPACE_BITBUCKET}`).then((r) => r.json());
+  const uuid = (espace as { uuid?: string }).uuid ?? '?';
+  verifier('L’espace Bitbucket existe et a le bon uuid', uuid === ESPACE_BITBUCKET, uuid);
+  const depots = await fetch(`https://api.bitbucket.org/2.0/repositories/${ESPACE_BITBUCKET}`).then((r) => r.json());
+  const nombre = ((depots as { values?: unknown[] })?.values ?? []).length;
+  console.log(`      dépôts dans l’espace : ${nombre} (le contrôle se déclenche sur une pull request réelle)`);
+  console.log('      à lever : l’allowlist IP de l’espace — « To access this workspace, an admin must whitelist your IP. »');
+}
+
 function resumer(): void {
   if (durees.length === 0) return;
   const triees = [...durees].sort((a, b) => a - b);
@@ -150,6 +162,7 @@ async function main(): Promise<void> {
   await casCle(config);
   await casCarte(config);
   await casNonSigne(config);
+  await casBitbucket();
   resumer();
 
   console.log('\n— Ce que prouvent ces étapes —');
