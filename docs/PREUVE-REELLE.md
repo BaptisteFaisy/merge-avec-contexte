@@ -85,6 +85,14 @@ Ces quatre points n'étaient pas visibles avec le jeu de démonstration :
   d'allowlist n'est visible dans `admin.atlassian.com` (Atlassian Guard : « aucune
   politique n'a été créée »), et l'API REST Bitbucket n'expose pas ce réglage.
 
+## 5 bis. Une preuve vérifiable par étape
+
+Le dossier `docs/preuve/` associe à chaque étape un **élément** qui prouve qu'elle a
+fonctionné (clé Jira, signature HMAC, identifiant d'installation, capture d'écran) et un
+contrôle automatique qui le revérifie : `npm run preuve:verifier` relit les tickets sur le
+site, recalcule les signatures, rejoue chaque cas et sort un tableau
+« étape / preuve / état ». Détail dans `docs/preuve/00-synthese.md`.
+
 ## 6. Reproduire
 
 ```bash

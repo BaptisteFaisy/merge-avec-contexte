@@ -1,0 +1,72 @@
+{
+  "etape": "etape-2-verdict-mac-2",
+  "titre": "Verdict réel sur MAC-2",
+  "horodatage": "2026-11-12T15:37:56.202Z",
+  "requete": {
+    "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
+    "methode": "POST",
+    "entetes": {
+      "content-type": "application/json",
+      "x-mac-version": "v1",
+      "x-mac-timestamp": "1794497874804",
+      "x-mac-nonce": "a2278a38-4a6d-455f-9225-c72170ebc5ec",
+      "x-mac-signature": "2a837586cdb730a7e4a12acb06ebdf46880a77049547ec553faad306fc409474"
+    },
+    "corps": {
+      "route": "evaluate",
+      "payload": {
+        "workspaceUuid": "ws-demo",
+        "repositoryUuid": "checkout-api",
+        "repositorySlug": "checkout-api",
+        "pullRequestId": 9001,
+        "trigger": "on-code-pushed",
+        "issueKeys": [
+          "MAC-2"
+        ],
+        "sourceBranch": "feature/MAC-2-limite-tentatives",
+        "targetBranch": "main"
+      }
+    },
+    "corpsTexte": "{\"route\":\"evaluate\",\"payload\":{\"workspaceUuid\":\"ws-demo\",\"repositoryUuid\":\"checkout-api\",\"repositorySlug\":\"checkout-api\",\"pullRequestId\":9001,\"trigger\":\"on-code-pushed\",\"issueKeys\":[\"MAC-2\"],\"sourceBranch\":\"feature/MAC-2-limite-tentatives\",\"targetBranch\":\"main\"}}"
+  },
+  "reponse": {
+    "statut": 200,
+    "corps": {
+      "verdict": "blocked",
+      "message": "Bloqué, 2 raisons.\n1) MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison.\n2) MAC-2 : 2 critère(s) d’acceptation non coché(s).\nDétail et dérogation : carte « Merge avec contexte » à droite.",
+      "reasons": [
+        {
+          "rule": "R-02",
+          "level": "blocking",
+          "text": "MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison.",
+          "action": "Amenez le ticket à un statut autorisé avant la fusion.",
+          "issueKey": "MAC-2"
+        },
+        {
+          "rule": "R-03",
+          "level": "blocking",
+          "text": "MAC-2 : 2 critère(s) d’acceptation non coché(s).",
+          "action": "Cochez dans le ticket les critères vraiment validés.",
+          "issueKey": "MAC-2"
+        }
+      ],
+      "issueKeys": [
+        "MAC-2"
+      ],
+      "durationMs": 0,
+      "evaluatedAt": "2026-11-12T15:37:55.430Z"
+    },
+    "dureeMs": 1398
+  },
+  "preuve": {
+    "type": "evaluation-signee",
+    "signature": "2a837586cdb730a7e4a12acb06ebdf46880a77049547ec553faad306fc409474",
+    "horodatageSignature": "1794497874804",
+    "nonce": "a2278a38-4a6d-455f-9225-c72170ebc5ec",
+    "ticket": "MAC-2",
+    "urlJira": "https://one-atlas-cndz.atlassian.net/browse/MAC-2",
+    "verdict": "blocked",
+    "correlationId": null
+  },
+  "empreinte": "sha256:c51357b424b06cd281914cad7bac9ec2d542876cc1f03ba1221933e8b6b39a3f"
+}

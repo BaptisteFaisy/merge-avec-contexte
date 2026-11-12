@@ -1,0 +1,36 @@
+{
+  "etape": "etape-4-requete-non-signee",
+  "titre": "Requête non signée refusée (401)",
+  "horodatage": "2026-11-12T15:37:58.833Z",
+  "requete": {
+    "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
+    "entetes": {
+      "content-type": "application/json"
+    },
+    "corps": {
+      "route": "evaluate",
+      "payload": {
+        "workspaceUuid": "ws-demo",
+        "repositoryUuid": "checkout-api",
+        "repositorySlug": "checkout-api",
+        "pullRequestId": 9001,
+        "trigger": "on-code-pushed",
+        "issueKeys": [
+          "MAC-2"
+        ],
+        "sourceBranch": "feature/MAC-2-limite-tentatives",
+        "targetBranch": "main"
+      }
+    },
+    "corpsTexte": "{\"route\":\"evaluate\",\"payload\":{\"workspaceUuid\":\"ws-demo\",\"repositoryUuid\":\"checkout-api\",\"repositorySlug\":\"checkout-api\",\"pullRequestId\":9001,\"trigger\":\"on-code-pushed\",\"issueKeys\":[\"MAC-2\"],\"sourceBranch\":\"feature/MAC-2-limite-tentatives\",\"targetBranch\":\"main\"}}"
+  },
+  "reponse": {
+    "statut": 401,
+    "corps": "{\"error\":\"unauthorized\",\"message\":\"Signature absente, invalide, périmée ou déjà vue.\"}"
+  },
+  "preuve": {
+    "type": "refus",
+    "statutAttendu": 401
+  },
+  "empreinte": "sha256:65abd986241ad471adc577f8800bf9d18332681a69dcf63c0a648a4ce481bb65"
+}

@@ -1,0 +1,136 @@
+{
+  "etape": "etape-3-carte-13-regles",
+  "titre": "Carte de PR détaillée (13 règles)",
+  "horodatage": "2026-11-12T15:37:58.372Z",
+  "requete": {
+    "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
+    "entetes": {
+      "content-type": "application/json",
+      "x-mac-version": "v1",
+      "x-mac-timestamp": "1794497877216",
+      "x-mac-nonce": "2cecb91b-6df9-4417-a3a8-5cb3e4ea6c02",
+      "x-mac-signature": "33f275323113ce809ee7e9f3ecc1cbaf3efb989a06ac79d206398b636a34a8cc"
+    },
+    "corps": {
+      "route": "card",
+      "payload": {
+        "workspaceUuid": "ws-demo",
+        "repositoryUuid": "checkout-api",
+        "repositorySlug": "checkout-api",
+        "pullRequestId": 9001,
+        "trigger": "on-code-pushed",
+        "issueKeys": [
+          "MAC-2"
+        ],
+        "sourceBranch": "feature/MAC-2-limite-tentatives",
+        "targetBranch": "main"
+      }
+    },
+    "corpsTexte": "{\"route\":\"card\",\"payload\":{\"workspaceUuid\":\"ws-demo\",\"repositoryUuid\":\"checkout-api\",\"repositorySlug\":\"checkout-api\",\"pullRequestId\":9001,\"trigger\":\"on-code-pushed\",\"issueKeys\":[\"MAC-2\"],\"sourceBranch\":\"feature/MAC-2-limite-tentatives\",\"targetBranch\":\"main\"}}"
+  },
+  "reponse": {
+    "statut": 200,
+    "corps": {
+      "verdict": "blocked",
+      "message": "Bloqué, 2 raisons.\n1) MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison. Amenez le ticket à un statut autorisé avant la fusion.\n2) MAC-2 : 2 critère(s) d’acceptation non coché(s). Cochez dans le ticket les critères vraiment validés.\nDétail et dérogation : carte « Merge avec contexte » à droite.",
+      "reasons": [
+        {
+          "rule": "R-02",
+          "level": "blocking",
+          "text": "MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison.",
+          "action": "Amenez le ticket à un statut autorisé avant la fusion.",
+          "issueKey": "MAC-2"
+        },
+        {
+          "rule": "R-03",
+          "level": "blocking",
+          "text": "MAC-2 : 2 critère(s) d’acceptation non coché(s).",
+          "action": "Cochez dans le ticket les critères vraiment validés.",
+          "issueKey": "MAC-2"
+        }
+      ],
+      "issueKeys": [
+        "MAC-2"
+      ],
+      "evaluatedAt": "2026-11-12T15:37:57.767Z",
+      "durationMs": 0,
+      "service": "checkout-api",
+      "siteUrl": "https://one-atlas-cndz.atlassian.net",
+      "rules": [
+        {
+          "rule": "R-01",
+          "level": "warning",
+          "mode": "active"
+        },
+        {
+          "rule": "R-02",
+          "level": "blocking",
+          "mode": "active"
+        },
+        {
+          "rule": "R-03",
+          "level": "blocking",
+          "mode": "active"
+        },
+        {
+          "rule": "R-04",
+          "level": "blocking",
+          "mode": "active"
+        },
+        {
+          "rule": "R-05",
+          "level": "blocking",
+          "mode": "active"
+        },
+        {
+          "rule": "R-06",
+          "level": "blocking",
+          "mode": "active"
+        },
+        {
+          "rule": "R-07",
+          "level": "warning",
+          "mode": "active"
+        },
+        {
+          "rule": "R-08",
+          "level": "warning",
+          "mode": "active"
+        },
+        {
+          "rule": "R-09",
+          "level": "blocking",
+          "mode": "observe"
+        },
+        {
+          "rule": "R-10",
+          "level": "warning",
+          "mode": "active"
+        },
+        {
+          "rule": "R-11",
+          "level": "information",
+          "mode": "active"
+        },
+        {
+          "rule": "R-12",
+          "level": "warning",
+          "mode": "active"
+        },
+        {
+          "rule": "R-13",
+          "level": "blocking",
+          "mode": "active"
+        }
+      ],
+      "waivers": []
+    },
+    "dureeMs": 1156
+  },
+  "preuve": {
+    "type": "carte-pr",
+    "nombreRegles": 13,
+    "ticket": "MAC-2"
+  },
+  "empreinte": "sha256:a93ee667826f9fd467c2e08074144619c7813b0ecc2e9be3ee19257a079a664e"
+}

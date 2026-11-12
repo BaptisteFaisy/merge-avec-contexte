@@ -32,6 +32,8 @@ Exemples : `01-bitbucket-resultat-controle.png`, `04-jira-reglages-projet.png`,
 | `09-terminal-client-mcp.png` | appel MCP (bonus) | à capturer si possible |
 | `10-site-accueil-en.png` | 10 — site public (accueil, anglais) | capturé |
 | `10b-site-accueil-fr.png` | 10 — site public (accueil, français) | capturé |
+| `11-jira-ticket-mac2.png` | 11 — ticket réel MAC-2 (critères, composant, lien) | capturé |
+| `11b-jira-ticket-mac3.png` | 11 — ticket réel MAC-3 (critères cochés) | capturé |
 
 ## Consignes
 
