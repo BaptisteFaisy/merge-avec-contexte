@@ -57,17 +57,38 @@ Ces quatre points n'étaient pas visibles avec le jeu de démonstration :
 
 1. **R-02 compare des noms de statut localisés.** L'app reçoit `In Progress`
    (anglais) alors que la liste blanche mémorisée contient `En cours` (français) :
-   tout ticket réel est bloqué à tort. La comparaison doit porter sur l'identifiant
-   ou la catégorie de statut, pas sur le nom traduit.
-2. **R-06 ne voit pas le lien réel.** Le lien `Blocks` existe bien dans Jira
-   (`inwardIssue: null`, `outwardIssue: MAC-3`) et le type par défaut de la règle
-   est `['Blocks', 'bloque']` ; la règle ne se déclenche pas — à instruire (config
-   mémorisée, ou lecture du statut de la cible).
+   tout ticket réel est bloqué à tort. La comparaison porte désormais sur la
+   **catégorie Jira** du statut, son identifiant et son nom : un réglage peut
+   désigner un statut par sa catégorie (`indeterminate`, `done`) et rester
+   valable quelle que soit la langue du site. La liste blanche par défaut reste
+   une décision de politique (des statuts nommés) : c'est à l'administrateur de
+   la fixer, l'app ne peut pas deviner quels statuts ouvrent une fusion.
+2. **R-06 ne voyait pas le lien réel — cause trouvée, corrigée.** Le lien
+   `Blocks` existait bien dans Jira (`inwardIssue: null`, `outwardIssue: MAC-3`),
+   la lecture des liens le remontait bien jusqu'à la règle, et le sens du lien
+   était correctement calculé. La cause était la **configuration mémorisée** :
+   le jeu de démonstration écrit neuf réglages de règles
+   (`cerveau/src/seed/dataset.ts`), dont celui de R-06 avec
+   `linkTypes: ['bloque par']`. Ce réglage *remplace* les défauts du catalogue
+   (`['Blocks', 'bloque']`) — et « Blocks », le nom que porte le lien sur un
+   site anglais, ne correspondait à rien : le lien était ignoré, R-06 muette.
+   Deux tolérances corrigent le tir : le type de lien est reconnu par **famille**
+   (un réglage qui parle de blocage reconnaît « Blocks », « bloque » et
+   « bloque par »), et la livraison se compare par **catégorie de statut**
+   (`done`), identifiant ou nom normalisé — une cible livrée reste livrée sur
+   un site dont la langue n'est pas celle du réglage.
 3. **R-01 se tait quand la branche ne porte aucune clé.** L'issue est explicitement
    absente des faits : la branche `feature/migration-sans-ticket` ne produit aucune
    raison, alors que la chaîne `r01.missing` existe.
 4. **Le journal ne s'écrit plus en production** : `journal : écriture impossible —
-   ForgeSQLError: Unknown SQL execution error` (les dix migrations passent pourtant).
+   ForgeSQLError: Unknown SQL execution error` (les dix migrations passent
+   pourtant). Cause trouvée et corrigée : la colonne `correlation_id` de la
+   table `evaluation` a été déclarée après la création de la table, et
+   `CREATE TABLE IF NOT EXISTS` ne complète jamais une table déjà créée — les
+   installations en place n'ont donc pas la colonne, que l'insertion citait.
+   Le correctif ajoute une instruction d'alignement (`ALTER TABLE … ADD
+   COLUMN IF NOT EXISTS`) sous un nom de migration neuf, rejouée là où la
+   table existe déjà ; il attend un redéploiement pour se voir en production.
 
 ## 5. Côté Bitbucket : ce qui est fait, ce qui bloque
 

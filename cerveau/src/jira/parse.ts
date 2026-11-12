@@ -11,8 +11,11 @@ import type {
   FixVersion,
   Incident,
   IssueContext,
-  IssueLink,
 } from '../shared';
+import { cleIncident, parseLiens, statutLu } from './liens';
+
+/** `cleIncident` reste exporté d'ici : ce module est la façade de l'analyse Jira. */
+export { cleIncident };
 
 /** Case à cocher markdown en début de ligne : `- [x]`, `* [ ]`, `1. [x]`, `+ [X]`. */
 const CASE_A_COCHER = /^\s*(?:[-*+]|\d{1,3}[.)])\s+\[([ xX])\]\s*(.*)$/;
@@ -255,78 +258,6 @@ export function parseCriteresDepuisSousTaches(sousTaches: ValeurJira): Acceptanc
   return criteres;
 }
 
-/** Catégorie Jira (`new` / `indeterminate` / `done`) ramenée au contrat. */
-function categorieStatut(brut: unknown): IssueContext['statusCategory'] {
-  const cle = (brut as { statusCategory?: { key?: unknown } } | undefined)?.statusCategory?.key;
-  if (cle === 'new') return 'toDo';
-  if (cle === 'indeterminate') return 'inProgress';
-  if (cle === 'done') return 'done';
-  return undefined;
-}
-
-/** Nom de type de lien qui désigne un incident : « Incident », « is caused by ». */
-const MOTIF_INCIDENT = /incident|caused by/i;
-
-/** Cible d'un lien Jira : clé, statut, type d'incident éventuel. */
-interface CibleLien {
-  key: string;
-  status: string;
-  type?: string;
-}
-
-/** Cible d'un lien (`inwardIssue` / `outwardIssue`), quelle que soit sa forme. */
-function cibleDuLien(lien: Record<string, unknown>): CibleLien | undefined {
-  const brute = (lien.outwardIssue ?? lien.inwardIssue) as
-    | { key?: unknown; fields?: { status?: { name?: unknown }; issuetype?: { name?: unknown } } }
-    | undefined;
-  if (!brute || typeof brute.key !== 'string') return undefined;
-  return {
-    key: brute.key,
-    status: typeof brute.fields?.status?.name === 'string' ? brute.fields.status.name : '',
-    type: typeof brute.fields?.issuetype?.name === 'string' ? brute.fields.issuetype.name : undefined,
-  };
-}
-
-/**
- * Clé de l'incident JSM porté par un lien, s'il y en a un.
- *
- * Un lien désigne un incident quand sa cible est de type « Incident » ou quand
- * le type de lien le dit (« is caused by », « incident »).
- */
-export function cleIncident(lien: unknown): string | undefined {
-  if (!lien || typeof lien !== 'object') return undefined;
-  const brut = lien as Record<string, unknown>;
-  const cible = cibleDuLien(brut);
-  if (!cible) return undefined;
-  const type = brut.type as { name?: unknown; inward?: unknown; outward?: unknown } | undefined;
-  const nomme = [type?.name, type?.inward, type?.outward].filter(
-    (v): v is string => typeof v === 'string',
-  );
-  const parleIncident = nomme.some((nom) => MOTIF_INCIDENT.test(nom));
-  const estIncident = typeof cible.type === 'string' && MOTIF_INCIDENT.test(cible.type);
-  return parleIncident || estIncident ? cible.key : undefined;
-}
-
-/** Liens du ticket, dans les deux sens, avec la cible et son statut. */
-function parseLiens(issuelinks: unknown): IssueLink[] {
-  if (!Array.isArray(issuelinks)) return [];
-  const liens: IssueLink[] = [];
-  for (const brute of issuelinks) {
-    if (!brute || typeof brute !== 'object') continue;
-    const lien = brute as Record<string, unknown>;
-    const cible = cibleDuLien(lien);
-    if (!cible) continue;
-    const type = lien.type as { name?: unknown } | undefined;
-    liens.push({
-      type: typeof type?.name === 'string' ? type.name : '',
-      direction: lien.outwardIssue !== undefined ? 'outward' : 'inward',
-      targetKey: cible.key,
-      targetStatus: cible.status,
-    });
-  }
-  return liens;
-}
-
 /** Versions cibles, avec leur état de publication (R-07). */
 function parseVersions(fixVersions: unknown): FixVersion[] {
   if (!Array.isArray(fixVersions)) return [];
@@ -409,7 +340,7 @@ export function parseIssue(brut: unknown, options: ParseIssueOptions = {}): Issu
   };
   const champs = (issue.fields ?? {}) as Record<string, unknown>;
   const cle = typeof issue.key === 'string' ? issue.key : '';
-  const statut = champs.status as { name?: unknown } | undefined;
+  const statut = statutLu(champs.status);
   const liens = parseLiens(champs.issuelinks);
   const etiquette = options.etiquetteRevueSecurite;
   const labels = nomsDe(champs.labels);
@@ -421,8 +352,9 @@ export function parseIssue(brut: unknown, options: ParseIssueOptions = {}): Issu
     key: cle,
     id: typeof issue.id === 'string' ? issue.id : String(issue.id ?? ''),
     exists: true,
-    status: typeof statut?.name === 'string' ? statut.name : '',
-    statusCategory: categorieStatut(champs.status),
+    status: statut.nom,
+    statusId: statut.id,
+    statusCategory: statut.categorie,
     summary: typeof champs.summary === 'string' ? champs.summary : undefined,
     criteria: criteresDuTicket(champs.description, champs, options),
     links: liens,
