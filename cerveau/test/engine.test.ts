@@ -120,7 +120,10 @@ describe('evaluateAll — mode observation', () => {
 
   it('n’annonce observedOnly que si tout ce qui échouait était observé', () => {
     const evaluation = evaluateAll(input({
-      issues: [issue({ ...nonCoches, status: 'To Do' })],
+      // « Done » n'est pas un statut autorisé (la liste par défaut n'admet
+      // que l'ouvert et l'en cours) : une raison bloquante survit à
+      // l'observation de R-03, le verdict n'est donc pas « observedOnly ».
+      issues: [issue({ ...nonCoches, status: 'Done', statusCategory: 'done' })],
       configs: configs({ 'R-03': { mode: 'observe' } }),
     }));
     expect(evaluation.verdict).toBe('blocked');

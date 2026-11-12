@@ -10,4 +10,4 @@
  * **Ne pas modifier à la main** : `scripts/shared-sync.mjs` l’écrit, et
  * `npm run shared:check` vérifie qu’elle correspond au contenu courant.
  */
-export const EMPREINTE_CONTRAT = '9ba079a18f4f05914b1c10de2ae1014a0ee66feb1a3f34ad6fd4db7a7f65e3b0';
+export const EMPREINTE_CONTRAT = 'c7f2722418b7d8a79f6b3eb8f041bc435416dfa25fb32fe968987359137fdc3c';
