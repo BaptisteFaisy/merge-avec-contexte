@@ -20,6 +20,21 @@ const CASE_A_COCHER = /^\s*(?:[-*+]|\d{1,3}[.)])\s+\[([ xX])\]\s*(.*)$/;
 /** Titre markdown ou ADF converti : `# Critères d'acceptation`. */
 const TITRE = /^\s{0,3}#{1,6}\s+\S/;
 
+/**
+ * Où R-03 lit les critères (§8, paramètre `source` de la règle).
+ *
+ * - `description-checkboxes` : les cases à cocher de la description ;
+ * - `customfield` : le champ personnalisé `champs.criteres` ;
+ * - `subtasks` : les sous-tâches du ticket (une sous-tâche « Done » = critère
+ *   coché).
+ *
+ * Quand la source est imposée, on ne lit qu'elle : pas de repli silencieux sur
+ * une autre source, qui masquerait un réglage incohérent. Sans source imposée
+ * (`undefined`), on conserve la cascade historique description → champ →
+ * sous-tâches.
+ */
+export type SourceCriteres = 'description-checkboxes' | 'customfield' | 'subtasks';
+
 /** Options de lecture des critères d'acceptation. */
 export interface OptionsCriteres {
   /** Ne garder que les cases situées sous un titre contenant ce texte. */
@@ -50,6 +65,16 @@ export interface ParseIssueOptions {
   etiquetteRevueSecurite?: string;
   /** Base du site (`https://exemple.atlassian.net`) pour construire `url`. */
   baseUrl?: string;
+  /**
+   * Source imposée par R-03 (paramètre `source`). Absente : cascade historique
+   * description → champ → sous-tâches. Présente : on ne lit que cette source.
+   */
+  sourceCriteres?: SourceCriteres;
+  /**
+   * Sous-tâches déjà requêtées par le lecteur (source `subtasks`). Prime sur le
+   * champ `subtasks` éventuellement présent dans l'instantané du ticket.
+   */
+  sousTaches?: ValeurJira;
 }
 
 /** Une valeur Jira qui porte du texte : chaîne, ADF, `{ value }` ou `{ name }`. */
@@ -202,11 +227,19 @@ export function parseCriteresDepuisChamp(valeur: ValeurJira): AcceptanceCriterio
   return [];
 }
 
-/** Critères lus dans les sous-tâches : libellé = résumé, fait = catégorie `done`. */
+/**
+ * Critères lus dans les sous-tâches : libellé = résumé, fait = catégorie `done`.
+ *
+ * Accepte une liste brute de sous-tâches ou une réponse de recherche JQL
+ * (`{ issues: [...] }`) : le lecteur passe le corps tel quel, l'analyse extrait.
+ */
 export function parseCriteresDepuisSousTaches(sousTaches: ValeurJira): AcceptanceCriterion[] {
-  if (!Array.isArray(sousTaches)) return [];
+  const brutes = Array.isArray(sousTaches)
+    ? sousTaches
+    : ((sousTaches as { issues?: unknown } | undefined)?.issues ?? undefined);
+  if (!Array.isArray(brutes)) return [];
   const criteres: AcceptanceCriterion[] = [];
-  for (const brute of sousTaches) {
+  for (const brute of brutes) {
     if (!brute || typeof brute !== 'object') continue;
     const tache = brute as {
       summary?: unknown;
@@ -321,18 +354,27 @@ function nomsDe(valeur: unknown): string[] {
   return noms;
 }
 
-/** Critères du ticket : description, puis champ personnalisé, puis sous-tâches. */
+/** Critères du ticket : source imposée par R-03, ou cascade historique. */
 function criteresDuTicket(
   description: unknown,
   champs: Record<string, unknown>,
   options: ParseIssueOptions,
 ): AcceptanceCriterion[] {
+  const idChamp = options.champs?.criteres;
+  const depuisSousTaches = () => parseCriteresDepuisSousTaches(options.sousTaches ?? champs.subtasks);
+  switch (options.sourceCriteres) {
+    case 'description-checkboxes':
+      return parseCriteres(description);
+    case 'customfield':
+      return idChamp ? parseCriteresDepuisChamp(champs[idChamp]) : [];
+    case 'subtasks':
+      return depuisSousTaches();
+  }
   const depuisDescription = parseCriteres(description);
   if (depuisDescription.length > 0) return depuisDescription;
-  const idChamp = options.champs?.criteres;
   const depuisChamp = idChamp ? parseCriteresDepuisChamp(champs[idChamp]) : [];
   if (depuisChamp.length > 0) return depuisChamp;
-  return parseCriteresDepuisSousTaches(champs.subtasks);
+  return depuisSousTaches();
 }
 
 /** Ticket absent du site jumelé : le contrat veut `exists: false`, pas une erreur. */

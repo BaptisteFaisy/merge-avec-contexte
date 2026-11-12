@@ -136,6 +136,13 @@ describe('parseCriteresDepuisSousTaches', () => {
     ]);
   });
 
+  it('accepte une réponse de recherche JQL ({ issues })', () => {
+    const reponse = {
+      issues: [{ key: 'ABC-2', fields: { summary: 'Migrer la table', status: { statusCategory: { key: 'done' } } } }],
+    };
+    expect(parseCriteresDepuisSousTaches(reponse)).toEqual([{ text: 'Migrer la table', done: true }]);
+  });
+
   it('ignore les sous-tâches sans résumé et les formes inattendues', () => {
     expect(parseCriteresDepuisSousTaches([{ key: 'ABC-4' }, 'texte'])).toEqual([]);
     expect(parseCriteresDepuisSousTaches(undefined)).toEqual([]);
@@ -252,6 +259,36 @@ describe('parseIssue', () => {
       { champs: { criteres: 'customfield_10200' } },
     );
     expect(avecChamp.criteria).toEqual([{ text: 'Champ', done: true }]);
+  });
+
+  it('respecte une source imposée par R-03 (paramètre `source`)', () => {
+    const champs = { criteres: 'customfield_10200' };
+    const sousTaches = [
+      { key: 'ABC-2', fields: { summary: 'Sous-tâche', status: { statusCategory: { key: 'done' } } } },
+    ];
+    const base = {
+      ...TICKET,
+      fields: { ...TICKET.fields, customfield_10200: [{ texte: 'Champ', fait: true }] },
+    };
+    // Source « subtasks » : ni la description, ni le champ ne comptent.
+    expect(parseIssue(base, { champs, sourceCriteres: 'subtasks', sousTaches }).criteria).toEqual([
+      { text: 'Sous-tâche', done: true },
+    ]);
+    // Source « customfield » : la description (pourtant cochée) est ignorée.
+    expect(parseIssue(base, { champs, sourceCriteres: 'customfield' }).criteria).toEqual([
+      { text: 'Champ', done: true },
+    ]);
+    // Source « description-checkboxes » : seules les cases de la description.
+    expect(parseIssue(base, { champs, sourceCriteres: 'description-checkboxes' }).criteria).toEqual([
+      { text: 'Le paiement fractionné marche', done: true },
+      { text: 'La relance est testée', done: false },
+    ]);
+  });
+
+  it('une source imposée ne retombe pas sur une autre source', () => {
+    // « subtasks » imposée mais aucune sous-tâche : critères vides, pas de repli.
+    const sansSousTache = { ...TICKET, fields: { ...TICKET.fields, subtasks: undefined } };
+    expect(parseIssue(sansSousTache, { sourceCriteres: 'subtasks' }).criteria).toEqual([]);
   });
 
   it('décrit un ticket inexistant sans lever', () => {

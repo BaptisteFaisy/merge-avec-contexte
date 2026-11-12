@@ -1,9 +1,11 @@
 # Démonstration de bout en bout, gratuite
 
 Objectif : montrer le produit en fonctionnement réel — règles évaluées, message
-imposé, dérogation, incident, gel de branche actif, mode observation, lien
-bloquant et dépendance amont — **sans navigateur, sans espace de travail
-Bitbucket et sans rien payer**. Une commande, dix-sept vérifications.
+imposé, dérogation, parcours de l'astreinte pendant un incident, les trois
+déclencheurs du contrôle avec rattrapage d'un contexte changé à la fusion, gel
+de branche actif, mode observation, lien bloquant et dépendance amont —
+**sans navigateur, sans espace de travail Bitbucket et sans rien payer**.
+Une commande, vingt vérifications.
 
 ## Ce qu'il faut (et ce qu'il ne faut pas)
 
@@ -46,10 +48,14 @@ MAC_BRIDGE_URL=<adresse du pont> \
 MAC_SHARED_SECRET=<secret> npm run demo
 ```
 
-**Sortie attendue** (non rejouée ici : le rédacteur n'a pas eu accès au pont
-déployé ; le script reste rejouable à l'identique et sort `0` si conforme).
-Sortie réellement obtenue le 2026-11-12 à 00:18 UTC, dix-huit vérifications
-vertes, latences de 0,2 à 2,9 s (la première inclut le démarrage à froid) :
+**Sortie attendue**. Les dix-sept vérifications d'origine ont été réellement
+obtenues le 2026-11-12 à 00:18 UTC (latences de 0,2 à 2,9 s, la première inclut
+le démarrage à froid). Les trois vérifications des déclencheurs (MC-02) et le
+cadrage du parcours de l'astreinte n'ont **pas été rejoués contre le pont
+déployé** (pas d'accès au site depuis l'environnement de travail) : les lignes
+correspondantes sont la sortie attendue, produite par les mêmes chemins de code
+— le script reste rejouable à l'identique et sort `0` si conforme, `1` sinon,
+`2` si la configuration manque.
 
 ```
 Démonstration « Merge avec contexte » — <horodatage>
@@ -65,8 +71,10 @@ OK   Dérogation demandée — dérogation w-42-R-03-…
 OK   Dérogation accordée — par tech-lead, 2 h
 OK   La dérogation lève la règle visée — 1 blocage(s) restant(s)
 OK   Dérogation retirée, la règle rebloque — verdict blocked
-OK   PR #43 bloquée par l’incident — 1) Incident INC-52 ouvert sur checkout-api.
-OK   Correctif lié à l’incident autorisé — Correctif d’incident INC-52…
+
+— Parcours de l’astreinte (§3, §7.2) : incident INC-52 ouvert sur checkout-api, deux PR visent le service —
+OK   Astreinte : la PR sans lien avec l’incident ne part pas (#43, PAY-124) — 1) Incident INC-52 ouvert sur checkout-api.
+OK   Astreinte : seul le correctif lié à l’incident passe (#44, PAY-140) — Autorisé, 1 avertissement : Correctif d’incident INC-52 : la fusion reste autorisée.
 OK   PR #45 sur release/1.4 bloquée par le gel actif — 1) Gel « Fenêtre release » sur release/1.4 jusqu’au <fin>.
 OK   Règle bloquante en observation ne bloque plus (PAY-131) — verdict allowed
 OK   L’observation est journalisée, pas affichée — R-09 observée, 2 raison(s) exposée(s)
@@ -74,6 +82,11 @@ OK   R-06 bloque PAY-125 (PAY-126 non livré) — 1) PAY-125 est bloqué par PAY
 OK   R-07 avertit PAY-130 (version 2.3.0 déjà publiée) — Autorisé, 2 avertissements.
 OK   R-02 bloque PAY-132 (statut interdit) — 1) PAY-132 est au statut « Suspendu », attendu : …
 OK   R-13 bloque PAY-133 (dépendance PAY-134 non livrée) — Dépendance amont non livrée : PAY-134 (En cours).
+
+— Les trois déclencheurs du contrôle (MC-02, §13.2) — PR #47 bloquée par R-06 (PAY-126 non livré) —
+OK   Déclencheur push : PR #47 contrôlée et bloquée — verdict blocked
+OK   Déclencheur changement d’avis d’un relecteur : contrôle rejoué — verdict blocked
+OK   Déclencheur fusion : le contexte changé entre le push et la fusion est rattrapé (§17 cas 4) — push blocked → fusion allowed
 OK   Requête non signée refusée — HTTP 401
 Démonstration réussie
 ```
@@ -104,8 +117,8 @@ aurait été bloqué » de l'observation ne prend son sens que sur l'historique.
 | Dérogation demandée puis accordée | MC-07 : motif, demandeur, approbateur, échéance |
 | La dérogation lève la règle visée | §7.1 : la dérogation couvre une règle, pas la PR entière |
 | Dérogation retirée, la règle rebloque | §17 : une dérogation expirée ou retirée ne protège plus |
-| PR #43 bloquée par l'incident | §7.2 : rien ne part sur un service en incident |
-| Correctif lié à l'incident autorisé | MC-12 : voie rapide des correctifs, avec trace |
+| Astreinte : la PR sans lien avec l'incident ne part pas | §3, §7.2 : pendant un incident, rien ne part sur le service en panne |
+| Astreinte : seul le correctif lié à l'incident passe | §7.2, MC-12 : voie rapide du correctif, avec la mention « correctif d'incident » |
 | PR #45 bloquée par le gel actif | §18 sc. 2 : gel réellement actif, nom et fin affichés |
 | Règle en observation ne bloque plus | §7.3 : une règle bloquante en observation n'arrête rien |
 | L'observation est journalisée, pas affichée | §7.3 : la raison reste visible sur la carte, absente du message |
@@ -113,6 +126,9 @@ aurait été bloqué » de l'observation ne prend son sens que sur l'historique.
 | R-07 (version 2.3.0 de PAY-130 publiée) | §8 : une fusion sans effet est signalée |
 | R-02 (PAY-132 au statut interdit) | §8 : un statut hors liste bloque la fusion |
 | R-13 (PAY-133 dépend de PAY-134) | §8 : une dépendance amont non livrée bloque la fusion |
+| Déclencheur push | MC-02 : le contrôle s'exécute au push de code |
+| Déclencheur changement d'avis d'un relecteur | MC-02 : le contrôle est rejoué quand un relecteur change d'avis |
+| Déclencheur fusion : contexte changé rattrapé | §13.2, §17 cas 4 : la tentative de fusion réévalue à frais — une dérogation accordée après le push (ici) est vue ; un gel qui commence ou un incident qui s'ouvre entre-temps le serait de même |
 | Requête non signée refusée | §13.3 : un web trigger n'a aucune authentification par défaut |
 
 ## Honnêteté sur les limites
@@ -131,6 +147,14 @@ aurait été bloqué » de l'observation ne prend son sens que sur l'historique.
   par la console de test (écran 7, §10), pas par une route du pont ; la démo le
   montre autrement, via la carte (raison journalisée en observation) et
   l'absence de blocage.
+- **La notification de blocage (commentaire Jira, audit item 18) n'est pas
+  prouvée en direct par la démo.** Les tickets du jeu d'exemple n'existent pas
+  sur le site de démonstration : le Cerveau tente le commentaire, échoue et le
+  journalise, sans aucun effet sur le verdict ni sur la latence (l'envoi ne
+  bloque pas la réponse du pont). Les garde-fous — au plus un commentaire par
+  ticket et par ensemble de raisons, jamais de commentaire en mode observation
+  ni sur un repli, aucune duplication aux relances — sont testés dans
+  `cerveau/test/notify.test.ts`.
 - **Le jeu de démonstration est daté relativement à l'instant du chargement** :
   le gel long est dans trois jours, le **gel court est centré sur l'instant**,
   l'incident ouvert depuis huit heures, la dérogation valable

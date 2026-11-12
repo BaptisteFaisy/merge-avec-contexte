@@ -2,19 +2,29 @@
  * Lecteur Jira du Cerveau — le seul module de ce lot qui touche à Forge.
  *
  * Un appel REST par ticket (`GET /rest/api/3/issue/{key}`), un par service
- * (`GET /rest/api/3/search/jql`). Le mapping vit dans `parse.ts` : ce fichier
- * ne fait que poser la requête, vérifier la réponse et déléguer.
+ * (`GET /rest/api/3/search/jql`), et — quand R-03 lit les critères dans les
+ * sous-tâches (paramètre `source`) — une recherche dédiée des sous-tâches du
+ * ticket. Le mapping vit dans `parse.ts` : ce fichier ne fait que poser la
+ * requête, vérifier la réponse et déléguer.
  */
 import api, { route } from '@forge/api';
 import type { Route } from '@forge/api';
-import type { Incident, IssueContext } from '../shared';
-import type { ChampsPersonnalises } from './parse';
-import { issueInexistante, parseIncidents, parseIssue } from './parse';
+import type { AcceptanceCriterion, Incident, IssueContext } from '../shared';
+import type { ChampsPersonnalises, SourceCriteres } from './parse';
+import {
+  issueInexistante,
+  parseCriteresDepuisSousTaches,
+  parseIncidents,
+  parseIssue,
+} from './parse';
 import {
   LISTE_CHAMPS_INCIDENT,
+  LISTE_CHAMPS_SOUS_TACHE,
   LISTE_CHAMPS_TICKET,
   MAX_INCIDENTS,
+  MAX_SOUS_TACHES,
   jqlIncidentsOuverts,
+  jqlSousTaches,
 } from './queries';
 
 /** Réponse REST minimale : ce que le lecteur sait exploiter. */
@@ -36,6 +46,12 @@ export interface IssueReader {
   lire(cle: string): Promise<IssueContext>;
   /** Incidents JSM non résolus d'un service. */
   incidentsOuverts(service: string): Promise<Incident[]>;
+  /**
+   * Critères d'acceptation portés par les sous-tâches d'un ticket (R-03,
+   * source `subtasks`) : une sous-tâche « Done » vaut critère coché. Facultatif
+   * pour ne pas imposer la requête aux lecteurs qui n'en ont pas l'usage.
+   */
+  sousTaches?(cle: string): Promise<AcceptanceCriterion[]>;
 }
 
 /** Dépendances du lecteur : tout ce qui sort de la machine est injecté. */
@@ -50,6 +66,12 @@ export interface DepsLecteurJira {
   etiquetteRevueSecurite?: string;
   /** Projets JSM surveillés (R-05) ; vide = tous. */
   projetsIncidents?: string[];
+  /**
+   * Source des critères d'acceptation imposée par R-03 (paramètre `source`).
+   * Sur `subtasks`, `lire` requiert les sous-tâches du ticket et n'en lit pas
+   * d'autre source.
+   */
+  sourceCriteres?: SourceCriteres;
 }
 
 /** Requête REST par défaut : l'app elle-même, jamais l'utilisateur. */
@@ -66,6 +88,24 @@ export class ErreurJira extends Error {
   }
 }
 
+/**
+ * Sous-tâches d'un ticket, requêtées par JQL (`parent = <clé>`).
+ *
+ * L'instantané du ticket (`fields.subtasks`) ne porte pas toujours le statut de
+ * chaque sous-tâche : la recherche dédiée demande `summary` et `status`, seuls
+ * champs dont R-03 a besoin pour décider qu'une sous-tâche « Done » est un
+ * critère coché. Rend le corps brut ; l'analyse vit dans `parse.ts`.
+ */
+async function requeteSousTaches(requete: RequeteJira, cle: string): Promise<unknown> {
+  const jql = jqlSousTaches(cle);
+  const chemin = route`/rest/api/3/search/jql?jql=${jql}&fields=${LISTE_CHAMPS_SOUS_TACHE}&maxResults=${MAX_SOUS_TACHES}`;
+  const reponse = await requete(chemin);
+  if (!reponse.ok) {
+    throw new ErreurJira(`recherche des sous-tâches de ${cle} refusée (HTTP ${reponse.status})`, reponse.status);
+  }
+  return reponse.json();
+}
+
 /** Lit un ticket et le mappe ; 404 = ticket inexistant, pas une panne. */
 async function lireTicket(
   requete: RequeteJira,
@@ -77,7 +117,11 @@ async function lireTicket(
   if (!reponse.ok) {
     throw new ErreurJira(`lecture du ticket ${cle} refusée (HTTP ${reponse.status})`, reponse.status);
   }
-  return parseIssue(await reponse.json(), options);
+  const brut = await reponse.json();
+  const sousTaches = options?.sourceCriteres === 'subtasks'
+    ? await requeteSousTaches(requete, cle)
+    : undefined;
+  return parseIssue(brut, { ...options, sousTaches });
 }
 
 /** Lit les incidents ouverts d'un service ; le service demandé fait foi. */
@@ -108,9 +152,11 @@ export function createJiraReader(deps: DepsLecteurJira = {}): IssueReader {
     champs: deps.champs,
     etiquetteRevueSecurite: deps.etiquetteRevueSecurite,
     baseUrl: deps.baseUrl,
+    sourceCriteres: deps.sourceCriteres,
   };
   return {
     lire: (cle) => lireTicket(requete, cle, options),
     incidentsOuverts: (service) => lireIncidents(requete, service, deps),
+    sousTaches: async (cle) => parseCriteresDepuisSousTaches(await requeteSousTaches(requete, cle)),
   };
 }

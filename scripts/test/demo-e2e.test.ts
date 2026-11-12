@@ -3,7 +3,7 @@
  * formatage, décision de succès. Aucune requête réseau ici.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { afficherMessage, estExecute, etape, lireConfiguration, payloadDe, payloadPr, prParId, PRS_DEMO, raisonsBloquantes } from '../demo-e2e';
+import { afficherMessage, annonce, estExecute, etape, lireConfiguration, payloadDe, payloadPr, prParId, PRS_DEMO, raisonsBloquantes } from '../demo-e2e';
 
 describe('démonstration de bout en bout — parties pures', () => {
   afterEach(() => {
@@ -67,6 +67,12 @@ describe('démonstration de bout en bout — parties pures', () => {
     etape('Étape ratée', false, 'raison');
     expect(lignes.mock.calls[0]?.[0]).toBe('OK   Le pont répond (474 ms) — stockage ok');
     expect(lignes.mock.calls[1]?.[0]).toBe('ÉCHEC Étape ratée — raison');
+  });
+
+  it('annonce un parcours par une ligne de récit', () => {
+    const lignes = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    annonce('Parcours de l’astreinte (§3, §7.2)');
+    expect(lignes.mock.calls[0]?.[0]).toBe('\n— Parcours de l’astreinte (§3, §7.2) —');
   });
 
   it('décrit une PR de démonstration complète à partir de son numéro', () => {
