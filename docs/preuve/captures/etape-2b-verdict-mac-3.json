@@ -1,0 +1,79 @@
+{
+  "etape": "etape-2b-verdict-mac-3",
+  "titre": "Verdict réel sur MAC-3",
+  "horodatage": "2026-11-12T15:50:55.934Z",
+  "requete": {
+    "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
+    "methode": "POST",
+    "entetes": {
+      "content-type": "application/json",
+      "x-mac-version": "v1",
+      "x-mac-timestamp": "1794498654654",
+      "x-mac-nonce": "e2cfe27e-5606-408c-a8e3-e2ccd0d19d33",
+      "x-mac-signature": "ef31d9f332c2193b4b21fd58c6f0cbabfe5fedcabf79f595acb88adc60adfd01"
+    },
+    "corps": {
+      "route": "evaluate",
+      "payload": {
+        "workspaceUuid": "ws-demo",
+        "repositoryUuid": "checkout-api",
+        "repositorySlug": "checkout-api",
+        "pullRequestId": 9002,
+        "trigger": "on-code-pushed",
+        "issueKeys": [
+          "MAC-3"
+        ],
+        "sourceBranch": "feature/MAC-3-correctif-incident",
+        "targetBranch": "main"
+      }
+    },
+    "corpsTexte": "{\"route\":\"evaluate\",\"payload\":{\"workspaceUuid\":\"ws-demo\",\"repositoryUuid\":\"checkout-api\",\"repositorySlug\":\"checkout-api\",\"pullRequestId\":9002,\"trigger\":\"on-code-pushed\",\"issueKeys\":[\"MAC-3\"],\"sourceBranch\":\"feature/MAC-3-correctif-incident\",\"targetBranch\":\"main\"}}"
+  },
+  "reponse": {
+    "statut": 200,
+    "corps": {
+      "verdict": "blocked",
+      "message": "Bloqué, 2 raisons.\n1) MAC-3 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison.\n2) MAC-3 est bloqué par MAC-2 (In Progress).\nDétail et dérogation : carte « Merge avec contexte » à droite.",
+      "reasons": [
+        {
+          "rule": "R-02",
+          "level": "blocking",
+          "text": "MAC-3 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison.",
+          "action": "Amenez le ticket à un statut autorisé avant la fusion.",
+          "issueKey": "MAC-3"
+        },
+        {
+          "rule": "R-06",
+          "level": "blocking",
+          "text": "MAC-3 est bloqué par MAC-2 (In Progress).",
+          "action": "Livrez d’abord MAC-2, ou demandez une dérogation.",
+          "issueKey": "MAC-3"
+        },
+        {
+          "rule": "R-07",
+          "level": "warning",
+          "text": "La version 2.3 de MAC-3 est déjà publiée.",
+          "action": "Déplacez le ticket sur la prochaine version.",
+          "issueKey": "MAC-3"
+        }
+      ],
+      "issueKeys": [
+        "MAC-3"
+      ],
+      "durationMs": 0,
+      "evaluatedAt": "2026-11-12T15:50:55.134Z"
+    },
+    "dureeMs": 1279
+  },
+  "preuve": {
+    "type": "evaluation-signee",
+    "signature": "ef31d9f332c2193b4b21fd58c6f0cbabfe5fedcabf79f595acb88adc60adfd01",
+    "horodatageSignature": "1794498654654",
+    "nonce": "e2cfe27e-5606-408c-a8e3-e2ccd0d19d33",
+    "ticket": "MAC-3",
+    "urlJira": "https://one-atlas-cndz.atlassian.net/browse/MAC-3",
+    "verdict": "blocked",
+    "correlationId": null
+  },
+  "empreinte": "sha256:62a30f4d0c4426dce878f39d9585e3ee58ae228687a0589814885afe8c58f830"
+}
