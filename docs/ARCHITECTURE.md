@@ -213,7 +213,9 @@ Si le Cerveau est injoignable (timeout réseau, panne d'infrastructure, web trig
 
 ## 6. Modèle de données (Forge SQL - Cerveau)
 
-Le stockage persistant repose sur Forge SQL côté Jira et s'articule autour de 8 tables :
+Le stockage persistant repose sur Forge SQL côté Jira : les huit tables du §14,
+plus deux tables techniques ajoutées à l'usage (`bridge_nonce` pour l'anti-rejeu
+du pont, `waiver_audit` pour la traçabilité des décisions de dérogation) :
 
 1. `pairing` : état du jumelage entre l'espace de travail Bitbucket et le site Jira.
    - Colonnes : `id` (PK, string), `workspace_uuid` (string), `secret_ref` (string), `paired_at` (timestamp), `paired_by` (string).
@@ -287,7 +289,7 @@ merge-avec-contexte/
 │   │   ├── rules/              # engine.ts + r01-*.ts … r13-*.ts, defaults.ts,
 │   │   │                       # registry.ts, input.ts
 │   │   ├── seed/               # Jeu de démonstration : dataset.ts, loader.ts (§8.3)
-│   │   ├── storage/            # 8 tables §14 : schema.ts, migrate.ts, sql-store.ts,
+│   │   ├── storage/            # 8 tables §14 + 2 techniques : schema.ts, migrate.ts,
 │   │   │                       # memory-store.ts, ports.ts
 │   │   ├── ui/                 # view-model-{reglages,encart,console,journal}.ts
 │   │   └── shared/             # Copie générée de shared/src

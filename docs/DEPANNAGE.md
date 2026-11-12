@@ -35,7 +35,7 @@ toujours du JSON — 400 `bad-payload`, 401 `unauthorized`, 500 `internal`).
 
 1. Lisez les logs : `forge logs` — cherchez la ligne `erreur` du handler ou une
    `ForgeSQLError`.
-2. **Vérifiez les migrations** : sur une installation neuve, les huit tables du
+2. **Vérifiez les migrations** : sur une installation neuve, les dix tables du
    §14 doivent exister. Le chemin nominal est le déclencheur horaire
    `migrations-schema` (`migrerSchema`), doublé d'un rattrapage au premier
    appel (`cerveau/src/app/compose.ts`, `assurerMigrations`) — sans lui, une
