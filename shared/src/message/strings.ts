@@ -100,6 +100,13 @@ const MESSAGES = {
     fr: '{issueKey} est au statut « {status} », attendu : {allowed}.',
     en: '{issueKey} is in status "{status}", expected: {allowed}.',
   },
+  'r02.fail.category': {
+    fr: '{issueKey} est au statut « {status} » (catégorie « {category} »), attendu : {allowed}.',
+    en: '{issueKey} is in status "{status}" (category "{category}"), expected: {allowed}.',
+  },
+  'categorie.toDo': { fr: 'à faire', en: 'to do' },
+  'categorie.inProgress': { fr: 'en cours', en: 'in progress' },
+  'categorie.done': { fr: 'terminé', en: 'done' },
   'r02.action': {
     fr: 'Amenez le ticket à un statut autorisé avant la fusion.',
     en: 'Move the issue to an allowed status before merging.',

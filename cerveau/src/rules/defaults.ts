@@ -5,11 +5,12 @@
  */
 import { RULE_CODES, defaultLevelFor } from '../shared';
 import type { RuleCode, RuleConfig } from '../shared';
+import { STATUTS_AUTORISES_PAR_DEFAUT } from '../shared';
 
 /** Paramètres par défaut, règle par règle. */
 const PARAMS: Record<RuleCode, Record<string, unknown>> = {
   'R-01': { keyPattern: '', branchExceptions: [] },
-  'R-02': { allowedStatuses: ['In Progress', 'In Review', 'Done'] },
+  'R-02': { allowedStatuses: STATUTS_AUTORISES_PAR_DEFAUT },
   'R-03': { source: 'description-checkboxes', fieldId: '' },
   'R-04': {},
   'R-05': { jsmProjects: [], mappingSource: 'settings' },

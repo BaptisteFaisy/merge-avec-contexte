@@ -141,10 +141,12 @@ describe('R-02 — le ticket est dans un statut autorisé', () => {
   });
 
   it('échoue en nommant le statut fautif et les statuts attendus', () => {
-    const outcome = outcomeOf('R-02', { issues: [issue({ status: 'To Do' })] });
+    // « Done » est terminé : la liste par défaut n'autorise que l'ouvert et
+    // l'en cours, quelle que soit la langue du site.
+    const outcome = outcomeOf('R-02', { issues: [issue({ status: 'Done', statusCategory: 'done' })] });
     expect(outcome.status).toBe('fail');
     expect(outcome.reasons[0]?.text).toBe(
-      'PAY-123 est au statut « To Do », attendu : In Progress, In Review, Done.',
+      'PAY-123 est au statut « Done » (catégorie « terminé »), attendu : à faire, en cours.',
     );
     expect(outcome.reasons[0]?.issueKey).toBe('PAY-123');
   });
