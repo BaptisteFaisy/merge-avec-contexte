@@ -91,6 +91,12 @@ export interface WaiverRepository {
   listByPullRequest(repositoryUuid: string, prId: number): Promise<StoredWaiver[]>;
   /** Dérogations rattachées à un ticket, toutes PR confondues. */
   listByIssue(issueKey: string): Promise<StoredWaiver[]>;
+  /**
+   * Dérogations demandées dans une période, les plus récentes d'abord : c'est
+   * ce que le journal affiche (item 12) et ce qui nourrit les comptages
+   * demandées / accordées / refusées du §10 MC-16 (item 13).
+   */
+  listSince(since: string, until?: string): Promise<StoredWaiver[]>;
   /** Passe en `expired` les dérogations accordées dont la date est passée. */
   expire(now: string): Promise<number>;
 }
@@ -131,10 +137,39 @@ export interface StoredEvaluation extends Evaluation {
   workspaceUuid: string;
   repositoryUuid: string;
   pullRequestId: number;
+  /**
+   * Identifiant de corrélation (item 60) : porté par chaque ligne de
+   * `forge logs` de ce contrôle, il relie la trace applicative à la PR et à
+   * cette ligne du journal. Fourni par l'appelant, comme `id`.
+   */
+  correlationId?: string;
   /** Service alimenté par le dépôt, quand la correspondance est connue. */
   service?: string;
   /** Projet Jira dont les réglages ont servi. */
   projectId?: string;
+}
+
+/**
+ * Percentile « rang le plus proche » : la plus petite durée de la liste dont au
+ * moins `pourcentage` % des valeurs lui sont inférieures ou égales. C'est la
+ * définition qui donne un sens mesurable au §16 — « 95 % des évaluations en
+ * moins de 5 s » (item 8).
+ *
+ * Fonction pure du contrat : les deux implémentations de `stats` et le modèle de
+ * vue du journal l'appellent, pour qu'un même chiffre sorte partout. Liste vide
+ * → `0`.
+ */
+export function percentileDurees(durees: readonly number[], pourcentage: number): number {
+  if (durees.length === 0) return 0;
+  const triees = [...durees].sort((a, b) => a - b);
+  const rang = Math.ceil((pourcentage / 100) * triees.length);
+  const indice = Math.min(triees.length, Math.max(1, rang)) - 1;
+  return Math.round(triees[indice] as number);
+}
+
+/** Durée la plus longue de la liste, arrondie ; `0` si la liste est vide. */
+export function dureeMaximale(durees: readonly number[]): number {
+  return Math.round(durees.reduce((max, duree) => (duree > max ? duree : max), 0));
 }
 
 /** Chiffres d'une période, pour la console et le rapport d'observation. */
@@ -149,6 +184,13 @@ export interface EvaluationStats {
   fallbacks: number;
   /** Durée moyenne de bout en bout, en millisecondes. */
   averageDurationMs: number;
+  /**
+   * 95e percentile des durées, en millisecondes : le chiffre que le §16 exige
+   * de mesurer et d'afficher (« 95 % des évaluations en moins de 5 s »).
+   */
+  p95DurationMs: number;
+  /** Durée la plus longue de la période, en millisecondes : le pire cas vu. */
+  maxDurationMs: number;
 }
 
 /**

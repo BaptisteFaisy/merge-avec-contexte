@@ -24,7 +24,8 @@
  * Les colonnes marquées d'un commentaire `-- §14` sont celles du cahier des
  * charges ; les autres sont les compléments que le domaine réclame (fuseau
  * d'un gel récurrent, `issue_keys` d'une dérogation, `fallback` d'une
- * évaluation).
+ * évaluation, `correlation_id` qui relie une ligne du journal aux lignes de
+ * `forge logs` du même contrôle).
  */
 
 /** Une instruction DDL par table, dans l'ordre des dépendances de lecture. */
@@ -98,6 +99,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     observed_only TINYINT NOT NULL DEFAULT 0,
     service VARCHAR(128) NULL,
     project_id VARCHAR(64) NULL,
+    correlation_id VARCHAR(64) NULL,
     PRIMARY KEY (id),
     KEY idx_evaluation_issue_keys (issue_keys, evaluated_at),
     KEY idx_evaluation_pr (repo_uuid, pr_id, evaluated_at)

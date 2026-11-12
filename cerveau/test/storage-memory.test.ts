@@ -147,6 +147,16 @@ describe('waiver', () => {
     expect((await store.waivers.listByIssue('ABC-2')).map((w) => w.id)).toEqual(['w1']);
     expect(await store.waivers.listByIssue('ABC-9')).toEqual([]);
   });
+
+  it('liste les dérogations d’une période, les plus récentes d’abord', async () => {
+    const store = createMemoryStore();
+    await store.waivers.create(derogation('vieille', { requestedAt: '2026-10-01T10:00:00.000Z' }));
+    await store.waivers.create(derogation('ancienne', { requestedAt: '2026-11-05T10:00:00.000Z' }));
+    await store.waivers.create(derogation('recente', { requestedAt: '2026-11-11T09:00:00.000Z' }));
+    expect((await store.waivers.listSince('2026-11-01T00:00:00.000Z')).map((w) => w.id)).toEqual(['recente', 'ancienne']);
+    const bornees = await store.waivers.listSince('2026-11-01T00:00:00.000Z', '2026-11-06T00:00:00.000Z');
+    expect(bornees.map((w) => w.id)).toEqual(['ancienne']);
+  });
 });
 
 describe('evaluation', () => {
@@ -179,6 +189,24 @@ describe('evaluation', () => {
     expect(stats.inconclusive).toBe(1);
     expect(stats.fallbacks).toBe(1);
     expect(stats.averageDurationMs).toBe(200);
+  });
+
+  it('mesure le P95 et la durée maximale de la période (item 8)', async () => {
+    const store = createMemoryStore();
+    for (const [id, duree] of Object.entries({ a: 100, b: 200, c: 300, d: 4000 })) {
+      await store.evaluations.record(evaluation(id, { durationMs: duree }));
+    }
+    const stats = await store.evaluations.stats('2026-11-01T00:00:00.000Z');
+    expect(stats.p95DurationMs).toBe(4000);
+    expect(stats.maxDurationMs).toBe(4000);
+    expect(stats.averageDurationMs).toBe(1150);
+  });
+
+  it('conserve l’identifiant de corrélation fourni par l’appelant (item 60)', async () => {
+    const store = createMemoryStore();
+    await store.evaluations.record(evaluation('e1', { correlationId: 'corr-42-1' }));
+    expect((await store.evaluations.find('e1'))?.correlationId).toBe('corr-42-1');
+    expect((await store.evaluations.listSince('2026-11-01T00:00:00.000Z'))[0]?.correlationId).toBe('corr-42-1');
   });
 
   it('borne la période par la date de fin', async () => {
