@@ -37,6 +37,24 @@ aucun push direct sur `main`.
   l'offre Premium Bitbucket (sur une offre gratuite, le contrôle s'exécute et
   informe) ; liste de topics GitHub proposés pour le dépôt public.
 
+### Corrigé
+
+- **Le journal ne s'écrivait plus en production** (`journal : écriture
+  impossible — ForgeSQLError: Unknown SQL execution error` à chaque
+  évaluation). Cause : la colonne `correlation_id` d'`evaluation` a été
+  déclarée après la création de la table, et `CREATE TABLE IF NOT EXISTS` ne
+  complète jamais une table déjà créée — `migrationRunner` ne rejoue que les
+  opérations dont le nom est absent de `__migrations`. Les installations en
+  place n'avaient donc pas la colonne, que l'insertion citait. Correctif : une
+  instruction d'alignement (`ALTER TABLE … ADD COLUMN IF NOT EXISTS`) sous un
+  nom de migration neuf, qui rejoue le DDL là où la table existe déjà
+  (`cerveau/src/storage/schema.ts`, `cerveau/src/storage/migrate.ts`).
+- Le rapport de migration ne ment plus : `appliquees` compte les instructions
+  réellement exécutées, `declarees` celles qui sont déclarées (avant, un
+  passage sans rien jouer annonçait quand même « dix migrations appliquées »).
+- `docs/DEPANNAGE.md` : section « Le journal ne s'écrit plus » (symptôme,
+  cause, remède).
+
 ## [0.1.0] — 2026-11-11
 
 Première version fonctionnelle complète, développée et mergée le 11 novembre

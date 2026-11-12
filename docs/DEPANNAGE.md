@@ -41,8 +41,12 @@ toujours du JSON — 400 `bad-payload`, 401 `unauthorized`, 500 `internal`).
    appel (`cerveau/src/app/compose.ts`, `assurerMigrations`) — sans lui, une
    installation neuve répond `ForgeSQLError` sur toutes les routes jusqu'au
    premier tick. Dans les logs, cherchez `migrations` :
-   `{"mode":"runner","appliquees":8}` est l'état sain ; `mode:"direct"` est le
-   repli (plateforme ancienne) ; un `echec` non vide nomme la table en cause.
+   `{"mode":"runner","appliquees":1,"declarees":11}` est l'état sain après un
+   déploiement (une instruction jouée — l'alignement du schéma, §8) ; `mode:
+   "direct"` est le repli (plateforme ancienne) ; un `echec` non vide nomme la
+   table en cause. `appliquees` compte les instructions **réellement
+   exécutées** lors du passage, `declarees` toutes celles qui sont déclarées :
+   `appliquees: 0` signifie « rien à jouer, tout est déjà en place ».
 3. Vérifiez que le module `sql` est bien au manifeste déployé
    (`cerveau/manifest.yml`, `sql: - key: main, engine: mysql`) et que l'ajout
    du module a été **accepté par l'administrateur du site** (une montée de
@@ -176,3 +180,37 @@ et son verdict, mais **informe sans empêcher** la fusion
 contrôle est déclaré obligatoire sur le dépôt (réglages de branches), et que la
 règle visée n'est pas en mode observation ni couverte par une dérogation active
 (page Journal).
+
+## 8. Le journal ne s'écrit plus
+
+Symptôme : les logs de l'app se terminent par
+`ERROR [cerveau] journal : écriture impossible {"correlationId":"corr-…",
+"erreur":"ForgeSQLError: Unknown SQL execution error"}` — à chaque évaluation.
+La console et la page Journal restent vides, alors que le démarrage annonce des
+migrations passées.
+
+**Cause habituelle : une dérive de schéma.** `CREATE TABLE IF NOT EXISTS` ne
+complète jamais une table déjà créée, et `migrationRunner` ne rejoue que les
+opérations dont le nom est absent de `__migrations`. Une colonne ajoutée au
+schéma **après** la création de la table n'existe donc pas sur les
+installations déjà en place : l'insertion la cite, MySQL refuse
+(« Unknown column »), et Forge SQL ne dit que « Unknown SQL execution error ».
+C'est ce qui est arrivé en production avec `evaluation.correlation_id`
+(identifiant de corrélation, item 60).
+
+1. Comparez le schéma écrit (`cerveau/src/storage/schema.ts`) et le schéma
+   réellement en place — dans la console Atlassian, onglet **Storage → SQL →
+   Schema**, la table `evaluation` et ses colonnes y sont listées.
+2. Si une colonne du code manque à la table, corrigez le **schéma** et non
+   l'insertion : déclarez la colonne dans `schema.ts` **et** ajoutez une
+   instruction d'alignement (`ALTER TABLE … ADD COLUMN IF NOT EXISTS …`,
+   `ALIGNEMENT_STATEMENTS`) sous un **nom de migration neuf**. C'est le seul
+   moyen de faire rejouer un DDL sur une installation déjà migrée — changer le
+   `CREATE TABLE` ne suffit pas.
+3. Redéployez : le rattrapage au démarrage (`assurerMigrations`) joue
+   l'instruction d'alignement, et le journal repart. Vérifiez dans les logs :
+   `migrations au démarrage {"mode":"runner","appliquees":1,…}`.
+4. Si l'alignement ne peut pas être joué (limite de 25 DDL/min, DDL refusé),
+   l'écriture du journal échoue encore : attendez le prochain tick du
+   déclencheur horaire — l'instruction est rejouable, elle ne s'exécute qu'une
+   fois par installation.

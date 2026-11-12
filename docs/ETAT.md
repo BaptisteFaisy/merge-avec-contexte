@@ -141,11 +141,14 @@ médiane 0,57 s, **p95 0,83 s**, maximum 1,10 s. Premier appel après déploieme
 (à froid, migrations comprises) : 6,4 s. L'objectif de 5 s (MC-11) est tenu avec
 de la marge pour l'évaluation elle-même.
 
-**Migrations Forge SQL** : `{"mode":"runner","appliquees":8}` — les huit tables
-du §14 sont créées, en production comme en development. Un rattrapage au premier
-appel a été ajouté après constat : sans lui, une installation neuve répond
-`ForgeSQLError` sur toutes les routes jusqu'au premier tick du déclencheur
-horaire.
+**Migrations Forge SQL** : `{"mode":"runner","appliquees":0,"declarees":11}` — les
+huit tables du §14 et les deux tables de sécurité du pont sont créées, en
+production comme en development, et une instruction d'alignement garde le
+schéma des installations en place au niveau du code (`appliquees` compte les
+instructions réellement exécutées lors du dernier passage, `declarees` celles
+qui sont déclarées). Un rattrapage au premier appel a été ajouté après
+constat : sans lui, une installation neuve répond `ForgeSQLError` sur toutes
+les routes jusqu'au premier tick du déclencheur horaire.
 
 L'adresse du pont n'est **pas versionnée** (elle vaut secret) : elle se régénère
 avec `forge webtrigger create -f pont-bitbucket -e production -s <site> -p jira`,
