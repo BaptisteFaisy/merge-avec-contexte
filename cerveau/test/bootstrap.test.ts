@@ -71,3 +71,24 @@ describe('amorçage d’une installation', () => {
     expect((await amorcerInstallation(d)).demo).toBe('deja-present');
   });
 });
+
+describe('amorçage — rafraîchissement du jeu de démonstration', () => {
+  it('recharge le jeu quand MAC_DEMO_REFRESH est posé, même s’il est déjà là', async () => {
+    const env = { workspaceUuid: 'ws-demo', secret: SECRET, jeuDeDemo: true, rafraichirDemo: true };
+    const { deps: d, store } = deps(env);
+    await amorcerInstallation(d);
+    const premier = await store.freezes.list();
+    // Un second amorçage avec rafraîchissement recrée les gels (upsert) et
+    // rend « charge » et non « deja-present » : les dates suivent l'instant.
+    const second = await amorcerInstallation(d);
+    expect(second.demo).toBe('charge');
+    expect((await store.freezes.list()).map((gel) => gel.id).sort()).toEqual(premier.map((gel) => gel.id).sort());
+  });
+
+  it('ne recharge pas sans le drapeau de rafraîchissement', async () => {
+    const env = { workspaceUuid: 'ws-demo', secret: SECRET, jeuDeDemo: true };
+    const { deps: d } = deps(env);
+    await amorcerInstallation(d);
+    expect((await amorcerInstallation(d)).demo).toBe('deja-present');
+  });
+});
