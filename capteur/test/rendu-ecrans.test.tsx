@@ -157,12 +157,15 @@ describe('Capteur — réglages de l’espace (workspace-settings)', () => {
     expect(container.textContent ?? '').not.toBe('');
   });
 
-  it('« Enregistrer » re-déclenche invoke (action save)', async () => {
+  it('« Enregistrer » re-déclenche invoke (action save) après confirmation', async () => {
     bouchonInvoke(() => Promise.resolve(vmReglagesEspace(ENTREE_REGLAGES)));
     const { container } = render(<ReglagesEspace />);
     await screen.findByText('Enregistrer');
     const avant = appelsInvoke().length;
     fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    // Item 99 : une confirmation rappelle la conséquence avant d'enregistrer.
+    await screen.findByText('Confirmer l’enregistrement');
+    fireEvent.click(screen.getByText('Confirmer'));
     await screen.findByText('Réglages enregistrés.');
     const appels = appelsInvoke();
     expect(appels.length).toBe(avant + 1);
@@ -170,5 +173,62 @@ describe('Capteur — réglages de l’espace (workspace-settings)', () => {
       resolver: 'resolverWorkspaceSettings',
       payload: { action: 'save', codeJumelage: '', politique: 'open', envoyerChemins: true },
     });
+  });
+});
+
+describe('Capteur — expérience utilisateur et accessibilité (items 98-100)', () => {
+  it('item 98 — la page de réglages non jumelée explique quoi faire (état vide)', async () => {
+    bouchonInvoke(() => Promise.resolve(vmReglagesEspace(ENTREE_REGLAGES)));
+    render(<ReglagesEspace />);
+    await screen.findByText('Aucun jumelage pour cet espace');
+    expect(screen.getByText(/Générez un code dans les réglages du projet Jira/)).toBeTruthy();
+  });
+
+  it('item 98 — aucun état vide une fois l’espace jumelé', async () => {
+    bouchonInvoke(() =>
+      Promise.resolve(vmReglagesEspace({ ...ENTREE_REGLAGES, jumelage: { jumele: true, site: 'acme.atlassian.net' } })),
+    );
+    render(<ReglagesEspace />);
+    await screen.findByText('Code de jumelage');
+    expect(screen.queryByText('Aucun jumelage pour cet espace')).toBeNull();
+  });
+
+  it('item 99 — la confirmation rappelle la politique de repli choisie et sa conséquence', async () => {
+    bouchonInvoke(() => Promise.resolve(vmReglagesEspace(ENTREE_REGLAGES)));
+    const { container } = render(<ReglagesEspace />);
+    await screen.findByText('Enregistrer');
+    fireEvent.submit(container.querySelector('form') as HTMLFormElement);
+    await screen.findByText('Confirmer l’enregistrement');
+    expect(screen.getByText(/Politique de repli choisie : Ouvert/)).toBeTruthy();
+    expect(screen.getByText(/Conséquence :/)).toBeTruthy();
+    // Annuler revient au formulaire sans rien envoyer.
+    const avant = appelsInvoke().length;
+    fireEvent.click(screen.getByText('Annuler'));
+    await screen.findByText('Enregistrer');
+    expect(appelsInvoke().length).toBe(avant);
+  });
+
+  it('item 100 — les champs de réglages ont un libellé associé (labelFor ↔ id)', async () => {
+    bouchonInvoke(() => Promise.resolve(vmReglagesEspace(ENTREE_REGLAGES)));
+    const { container } = render(<ReglagesEspace />);
+    await screen.findByText('Code de jumelage');
+    for (const id of ['code-jumelage', 'politique-repli']) {
+      expect(container.querySelector(`label[for="${id}"]`)).toBeTruthy();
+      expect(container.querySelector(`#${id}`)).toBeTruthy();
+    }
+  });
+
+  it('item 100 — les boutons portent un texte visible (nom accessible)', async () => {
+    bouchonInvoke(() => Promise.resolve(vmReglagesEspace(ENTREE_REGLAGES)));
+    render(<ReglagesEspace />);
+    await screen.findByText('Enregistrer');
+    expect(screen.getByRole('button', { name: 'Enregistrer' })).toBeTruthy();
+  });
+
+  it('item 98 — le panneau sans règle configurée explique quoi faire', async () => {
+    bouchonInvoke(() => Promise.resolve(vmPanneau({ ...ENTREE_CARTE, regles: [], historique: [] })));
+    render(<PanneauDePr />);
+    await screen.findByText('Aucune règle configurée pour ce dépôt');
+    expect(screen.getByText(/Reliez ce dépôt à un service dans les réglages du projet Jira/)).toBeTruthy();
   });
 });

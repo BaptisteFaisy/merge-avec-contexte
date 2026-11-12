@@ -8,7 +8,17 @@ import { t } from '../shared/message/strings';
 import { RULE_CODES, descriptorFor } from '../shared/rules/catalog';
 import type { ParamType } from '../shared/rules/catalog';
 import { formatDayAndHour } from '../shared/time/moment';
-import type { FallbackPolicy, Level, Locale, RuleCode, RuleConfig, RuleMode, RuleScope } from '../shared/types';
+import type {
+  Evaluation,
+  FallbackPolicy,
+  Level,
+  Locale,
+  RuleCode,
+  RuleConfig,
+  RuleMode,
+  RuleScope,
+  Waiver,
+} from '../shared/types';
 import { optionsMode, optionsNiveau, texte } from './view-model-commun';
 import type { Option } from './view-model-commun';
 
@@ -33,6 +43,13 @@ export interface EntreeReglages {
   approbateurs?: string[];
   /** Instant injecté : décide si le code de jumelage est encore valable. */
   maintenant?: string;
+  /**
+   * Item 103 — évaluations de la fenêtre courante : seule la matière du bloc
+   * « ce qui bloque le plus » est nécessaire (verdict et raisons).
+   */
+  evaluations?: Array<Pick<Evaluation, 'verdict' | 'reasons'>>;
+  /** Item 103 — dérogations de la fenêtre : règle et statut suffisent. */
+  waivers?: Array<Pick<Waiver, 'rule' | 'status'>>;
 }
 
 export interface LigneParam {
@@ -82,11 +99,28 @@ export interface LigneCorrespondance {
   composant: string | null;
 }
 
+/**
+ * Item 103 — une des règles qui bloquent le plus sur la fenêtre courante, avec
+ * son taux de dérogation (part des blocages contournés par une dérogation accordée).
+ */
+export interface VueBlocage {
+  code: RuleCode;
+  titre: string;
+  /** Nombre de fusions bloquées par cette règle sur la fenêtre. */
+  blocages: number;
+  /** Nombre de dérogations accordées pour cette règle sur la fenêtre. */
+  derogations: number;
+  /** Pourcentage de dérogations accordées rapporté aux blocages. */
+  tauxDerogation: number;
+}
+
 export interface VueReglages {
   regles: LigneRegle[];
   jumelage: VueJumelage;
   correspondance: LigneCorrespondance[];
   approbateurs: string[];
+  /** Item 103 — les trois règles qui ont le plus bloqué, taux de dérogation inclus. */
+  blocages: VueBlocage[];
 }
 
 /** Valeur de paramètre mise en texte : listes jointes, booléens traduits. */
@@ -160,6 +194,55 @@ function vueJumelage(entree: EntreeJumelage | undefined, locale: Locale, mainten
   };
 }
 
+/**
+ * Item 103 — compte les blocages par règle : une évaluation `blocked` compte une
+ * fois par règle bloquante effectivement appliquée (ni observée, ni dérogée).
+ */
+function compterBlocages(evaluations: EntreeReglages['evaluations']): Map<RuleCode, number> {
+  const compte = new Map<RuleCode, number>();
+  for (const evaluation of evaluations ?? []) {
+    if (evaluation.verdict !== 'blocked') continue;
+    const touchees = new Set<RuleCode>();
+    for (const raison of evaluation.reasons ?? []) {
+      if (raison.level === 'blocking' && !raison.waived && !raison.observed) touchees.add(raison.rule);
+    }
+    for (const code of touchees) compte.set(code, (compte.get(code) ?? 0) + 1);
+  }
+  return compte;
+}
+
+/** Item 103 — compte les dérogations accordées par règle sur la fenêtre. */
+function compterDerogations(waivers: EntreeReglages['waivers']): Map<RuleCode, number> {
+  const compte = new Map<RuleCode, number>();
+  for (const derogation of waivers ?? []) {
+    if (derogation.status !== 'granted') continue;
+    compte.set(derogation.rule, (compte.get(derogation.rule) ?? 0) + 1);
+  }
+  return compte;
+}
+
+/**
+ * Item 103 — « ce qui bloque le plus » : les trois règles les plus bloquantes de
+ * la fenêtre, avec leur taux de dérogation (dérogations accordées ÷ blocages).
+ */
+function blocagesFrequents(entree: EntreeReglages): VueBlocage[] {
+  const blocages = compterBlocages(entree.evaluations);
+  const derogations = compterDerogations(entree.waivers);
+  return [...blocages.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 3)
+    .map(([code, nombre]) => {
+      const accordees = derogations.get(code) ?? 0;
+      return {
+        code,
+        titre: t(entree.locale, descriptorFor(code).titleKey),
+        blocages: nombre,
+        derogations: accordees,
+        tauxDerogation: Math.round((accordees / nombre) * 100),
+      };
+    });
+}
+
 /** Écran 4 — réglages du projet : treize règles, jumelage, dépôt → service. */
 export function vmReglages(entree: EntreeReglages): VueReglages {
   const { locale } = entree;
@@ -173,5 +256,6 @@ export function vmReglages(entree: EntreeReglages): VueReglages {
       composant: ligne.composant ?? null,
     })),
     approbateurs: [...(entree.approbateurs ?? [])],
+    blocages: blocagesFrequents(entree),
   };
 }

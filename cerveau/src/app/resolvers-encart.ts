@@ -8,12 +8,42 @@
  * Logique pure : aucun import Forge. Les dépendances (`UiDeps`) et les aides
  * communes aux trois écrans viennent de `resolvers-ui`.
  */
-import { isRuleCode, type Evaluation } from '../shared';
+import { isRuleCode, type Evaluation, type Locale } from '../shared';
 import type { StoredWaiver } from '../storage/ports';
 import { vmEncart } from '../ui/view-model-encart';
 import { reglesEffectives } from './context-repo';
 import { borneHeures, echeance, identifiant } from './waivers';
 import { approbateurs, projetEffectif, texte, type UiDeps } from './resolvers-ui';
+
+/** Borne basse pour « depuis toujours » : le journal ne remonte pas plus loin. */
+const EPOCH = '1970-01-01T00:00:00.000Z';
+
+/**
+ * Item 102 — messages d'erreur lisibles du Cerveau, avec la marche à suivre.
+ * Côté Cerveau, l'échec réaliste d'un écran est le stockage (base SQL) qui ne
+ * répond pas ; « Cerveau injoignable » est une notion du Capteur (pont coupé),
+ * déjà traitée côté `capteur/src/ui/view-models.ts`.
+ */
+const MESSAGES_ERREUR = {
+  'base-indisponible': {
+    fr: 'Base indisponible : le stockage du Cerveau ne répond pas. Réessayez dans un instant ; si l’échec persiste, l’administrateur doit vérifier la base Forge SQL.',
+    en: 'Storage unavailable: the Cerebro storage is not responding. Retry shortly; if it keeps failing, the administrator must check the Forge SQL database.',
+  },
+} satisfies Record<string, { fr: string; en: string }>;
+
+/** Message d'erreur lisible du Cerveau (item 102). */
+export function messageErreurEncart(cle: keyof typeof MESSAGES_ERREUR, locale: Locale): string {
+  return MESSAGES_ERREUR[cle][locale];
+}
+
+/** Une lecture/écriture du stockage qui échoue vaut « base indisponible » (item 102). */
+async function avecStockage<T>(operation: () => Promise<T>, locale: Locale): Promise<T> {
+  try {
+    return await operation();
+  } catch {
+    throw new Error(messageErreurEncart('base-indisponible', locale));
+  }
+}
 
 /** Enregistre une demande de dérogation faite depuis l'encart du ticket. */
 async function demanderDerogationEncart(payload: Record<string, unknown> | undefined, cle: string, deps: UiDeps, now: string): Promise<void> {
@@ -89,28 +119,36 @@ async function deciderDerogation(
 /** `resolverEncart` : état du ticket vis-à-vis des règles (§12, écran 5). */
 export async function handleResolverEncart(payload: Record<string, unknown> | undefined, issueKey: string | undefined, deps: UiDeps, projetCtx?: string) {
   const now = deps.clock();
+  const locale = deps.config.locale;
   const cle = (texte(payload, 'issueKey') ?? issueKey ?? '').toUpperCase();
   const method = texte(payload, 'method') ?? 'charger';
   let avis: AvisEncart | undefined;
-  if (method === 'demanderDerogation') await demanderDerogationEncart(payload, cle, deps, now);
-  if (method === 'deciderDerogation') avis = await deciderDerogation(payload, cle, deps, now);
-  const [derniere, waivers, configs, annuaire] = await Promise.all([
-    cle ? deps.store.evaluations.latestByIssue(cle) : Promise.resolve(undefined),
-    cle ? deps.store.waivers.listByIssue(cle) : Promise.resolve([]),
-    reglesEffectives(deps.store, projetEffectif(deps, projetCtx)),
-    approbateurs(deps),
-  ]);
-  const prs = derniere
-    ? [{ prId: derniere.pullRequestId, depot: derniere.repositoryUuid, evaluation: derniere as Evaluation }]
+  if (method === 'demanderDerogation') await avecStockage(() => demanderDerogationEncart(payload, cle, deps, now), locale);
+  if (method === 'deciderDerogation') avis = await avecStockage(() => deciderDerogation(payload, cle, deps, now), locale);
+  // Item 102 : un stockage qui ne répond pas produit une erreur lisible, pas un écran blanc.
+  const lu = await avecStockage(async () => {
+    const [derniere, waivers, configs, annuaire, stats] = await Promise.all([
+      cle ? deps.store.evaluations.latestByIssue(cle) : Promise.resolve(undefined),
+      cle ? deps.store.waivers.listByIssue(cle) : Promise.resolve([]),
+      reglesEffectives(deps.store, projetEffectif(deps, projetCtx)),
+      approbateurs(deps),
+      deps.store.evaluations.stats(EPOCH, now),
+    ]);
+    // Item 101 : aucune évaluation sur l'installation → l'encart affiche l'accueil.
+    return { derniere, waivers, configs, annuaire, premierUsage: stats.total === 0 };
+  }, locale);
+  const prs = lu.derniere
+    ? [{ prId: lu.derniere.pullRequestId, depot: lu.derniere.repositoryUuid, evaluation: lu.derniere as Evaluation }]
     : [];
   const vue = vmEncart({
-    locale: deps.config.locale,
+    locale,
     prs,
-    waivers,
-    configs,
+    waivers: lu.waivers,
+    configs: lu.configs,
     maintenant: now,
-    approbateurs: annuaire,
+    approbateurs: lu.annuaire,
     utilisateur: decideur(payload, deps),
+    premierUsage: lu.premierUsage,
   });
-  return { locale: deps.config.locale, vue, ...(avis ? { avis } : {}) };
+  return { locale, vue, ...(avis ? { avis } : {}) };
 }
