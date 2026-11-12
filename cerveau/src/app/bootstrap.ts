@@ -67,7 +67,10 @@ async function amorcerJumelage(deps: DepsAmorcage): Promise<EtatJumelageAmorcage
 async function amorcerDemo(deps: DepsAmorcage, workspaceUuid: string): Promise<{ etat: EtatDemoAmorcage; resume?: ResumeAmorcage['demoResume'] }> {
   const { env, store, clock, config, logger } = deps;
   if (!env.jeuDeDemo) return { etat: 'non-demande' };
-  const gels = await store.freezes.list();
+  // Le jeu est daté relativement à l'instant du chargement : sans
+  // rafraîchissement, un site chargé hier montre un gel déjà passé. Les
+  // écritures sont des upserts, recharger est donc sans risque.
+  const gels = env.rafraichirDemo ? [] : await store.freezes.list();
   if (gels.length > 0) {
     logger.info('amorçage : jeu de démonstration déjà chargé, rien à faire');
     return { etat: 'deja-present' };

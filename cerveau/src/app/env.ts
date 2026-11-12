@@ -33,6 +33,8 @@ export interface AmorcageEnv {
   siteUrl?: string;
   /** Charger le jeu de démonstration au démarrage. */
   jeuDeDemo: boolean;
+  /** Recharger le jeu même s'il est déjà présent (dates relatives à l'instant). */
+  rafraichirDemo?: boolean;
 }
 
 /** Lit l'amorçage demandé par l'environnement. */
@@ -42,6 +44,7 @@ export function lireAmorcageEnv(): AmorcageEnv {
     secret: variable('MAC_SHARED_SECRET'),
     siteUrl: variable('MAC_SITE_URL'),
     jeuDeDemo: drapeau('MAC_DEMO_DATA'),
+    rafraichirDemo: drapeau('MAC_DEMO_REFRESH'),
   };
 }
 

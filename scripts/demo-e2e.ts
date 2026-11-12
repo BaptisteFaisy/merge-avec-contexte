@@ -261,12 +261,17 @@ async function jouerR02(config: Configuration, verifier: Verifier): Promise<void
 
 /** R-13 : PAY-133 a une dépendance amont PAY-134 qui n'est pas livrée. */
 async function jouerR13(config: Configuration, verifier: Verifier): Promise<void> {
-  const rep = await appeler(config, 'evaluate', payloadDe(config, prParId(50)));
-  const message = messageDe(rep.corps);
+  const pr = prParId(50);
+  const rep = await appeler(config, 'evaluate', payloadDe(config, pr));
+  // D'autres règles peuvent bloquer en même temps (heures calmes la nuit, par
+  // exemple) : on cherche la raison R-13 parmi toutes, pas en première ligne.
+  const carte = await appeler(config, 'card', payloadDe(config, pr));
+  const raisons = ((carte.corps as { reasons?: Array<{ rule?: string; text?: string }> })?.reasons ?? []);
+  const dependance = raisons.find((raison) => raison.rule === 'R-13');
   verifier(
     'R-13 bloque PAY-133 (dépendance PAY-134 non livrée)',
-    verdictDe(rep.corps) === 'blocked' && contient(message, 'PAY-133', 'PAY-134'),
-    message.split('\n')[1] ?? '',
+    verdictDe(rep.corps) === 'blocked' && dependance !== undefined && contient(dependance.text ?? '', 'PAY-134'),
+    dependance?.text ?? messageDe(rep.corps).split('\n')[1] ?? '',
     rep.ms,
   );
 }
