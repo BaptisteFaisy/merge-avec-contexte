@@ -9,7 +9,7 @@ Relevé du 2026-11-11 (nuit du 10 au 11). Tout ce qui est décrit ici est sur
 |---|---|---|
 | Contrat partagé | types du domaine, catalogue des 13 règles, messages bilingues au format imposé du §9, pont signé (HMAC-SHA256 + horodatage + nonce + anti-rejeu), jumelage par code à usage unique, gels (ponctuels et récurrents, avec fuseau), dérogations, politique de repli, réponse `bitbucket:mergeCheck` | `shared/src/` |
 | Moteur de règles | portée par dépôt et branche, mode observation, dérogations, verdict, « la plus stricte l'emporte » sur plusieurs tickets | `cerveau/src/rules/` |
-| Stockage | les huit tables du §14 en DDL MySQL idempotente, un port par agrégat, implémentation Forge SQL et implémentation mémoire | `cerveau/src/storage/` |
+| Stockage | les huit tables du §14 plus `bridge_nonce` (anti-rejeu) et `waiver_audit` (traçabilité des décisions), en DDL MySQL idempotente, un port par agrégat, implémentation Forge SQL et implémentation mémoire | `cerveau/src/storage/` |
 | Pont | web trigger signé : six routes (`health`, `pair`, `evaluate`, `card`, `waiver.request`, `waiver.decide`), erreurs explicites, aucune exception vers Forge | `cerveau/src/bridge/` |
 | Lectures Jira + cache | critères d'acceptation (cases de la description, champ ou sous-tâches), liens, versions, composants, incidents JSM ; cache à 60 s | `cerveau/src/jira/`, `cerveau/src/cache/` |
 | Agent Rovo et MCP | les cinq actions du §11 (`evaluate-merge`, `explain-block`, `list-freezes`, `list-waivers`, `request-waiver`) et le prompt de l'agent | `cerveau/src/rovo/` |
@@ -19,9 +19,10 @@ Relevé du 2026-11-11 (nuit du 10 au 11). Tout ce qui est décrit ici est sur
 | Démonstration | jeu de données complet (tickets, gels, incident, dérogations, PR), son chargeur depuis la page de réglages, et les neuf scénarios de recette du §18 en tests | `cerveau/src/seed/`, `cerveau/test/recette*.ts`, `cerveau/test/seed-loader.test.ts` |
 | Documentation | cahier des charges, architecture, conventions, référence des modules Forge, instructions aux juges (EN), scénario vidéo (EN), plan des six validations, recette | `docs/` |
 
-Chiffres : **361 tests** en 28 fichiers (vitest, logique pure, aucun réseau),
-**11 434 lignes** de TypeScript/JSX hors copies générées du contrat, 35 commits,
-**27 PR mergées par la file Mergify** — aucune intervention humaine sur un merge.
+Chiffres au 2026-11-12 : **620 tests** en 49 fichiers (vitest, logique pure et
+rendu jsdom des six écrans, aucun réseau), **15 347 lignes** de
+TypeScript/JSX hors copies générées du contrat, 58 commits, **48 PR mergées
+par la file Mergify** — aucune intervention humaine sur un merge.
 
 Gardes en CI : `ci` (typecheck strict, tests, sanity docs), `ci-budget` (aucun
 job au-delà de 5 min), `couche0` (périmètre déclaré, motifs interdits), plus
@@ -93,7 +94,7 @@ Le dépôt tourne sur cinq runners auto-hébergés du r630
 `merge-avec-contexte-worker`. Le r630 étant saturé par d'autres travaux au
 moment de la construction, les deux runners locaux ont évité que la CI n'attende.
 
-La file Mergify a mergé les 27 PR sans intervention humaine. La résolution
+La file Mergify a mergé les 48 PR sans intervention humaine. La résolution
 automatique de conflit a été exercée pour de vrai : deux PR modifiaient la même
 section du `README.md` (PR #21 et #22). La première mergée, la seconde est passée
 `DIRTY` ; l'agent de conflit l'a reconciliée en gardant les deux intentions, a

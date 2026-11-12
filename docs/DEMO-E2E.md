@@ -12,7 +12,7 @@ Bitbucket et sans rien payer**. Une commande, dix-sept vérifications.
 | Site de démonstration Atlassian (`forge site provision`) | gratuit, actif jusqu'au 2027-02-09 | `one-atlas-cndz.atlassian.net` |
 | App Jira « Merge avec contexte Cerveau » | gratuit (Forge) | déployée en `development` et `production`, installée |
 | App Bitbucket « Capteur » | gratuit (Forge) | déployée ; installation impossible sans espace de travail Bitbucket |
-| Base Forge SQL | gratuite dans les quotas | huit tables créées automatiquement |
+| Base Forge SQL | gratuite dans les quotas | dix tables créées automatiquement (les huit du §14, plus `bridge_nonce` et `waiver_audit`) |
 | Navigateur, compte Premium, runner | — | **inutiles** |
 
 ## Mise en route (une fois)
@@ -47,7 +47,9 @@ MAC_SHARED_SECRET=<secret> npm run demo
 ```
 
 **Sortie attendue** (non rejouée ici : le rédacteur n'a pas eu accès au pont
-déployé ; le script reste rejouable à l'identique et sort `0` si conforme) :
+déployé ; le script reste rejouable à l'identique et sort `0` si conforme).
+Sortie réellement obtenue le 2026-11-12 à 00:18 UTC, dix-huit vérifications
+vertes, latences de 0,2 à 2,9 s (la première inclut le démarrage à froid) :
 
 ```
 Démonstration « Merge avec contexte » — <horodatage>
@@ -67,11 +69,11 @@ OK   PR #43 bloquée par l’incident — 1) Incident INC-52 ouvert sur checkout
 OK   Correctif lié à l’incident autorisé — Correctif d’incident INC-52…
 OK   PR #45 sur release/1.4 bloquée par le gel actif — 1) Gel « Fenêtre release » sur release/1.4 jusqu’au <fin>.
 OK   Règle bloquante en observation ne bloque plus (PAY-131) — verdict allowed
-OK   L’observation est journalisée, pas affichée — R-09 observée, 1 raison(s) exposée(s)
+OK   L’observation est journalisée, pas affichée — R-09 observée, 2 raison(s) exposée(s)
 OK   R-06 bloque PAY-125 (PAY-126 non livré) — 1) PAY-125 est bloqué par PAY-126 (En cours).
-OK   R-07 avertit PAY-130 (version 2.3.0 déjà publiée) — Autorisé, 1 avertissement.
+OK   R-07 avertit PAY-130 (version 2.3.0 déjà publiée) — Autorisé, 2 avertissements.
 OK   R-02 bloque PAY-132 (statut interdit) — 1) PAY-132 est au statut « Suspendu », attendu : …
-OK   R-13 bloque PAY-133 (dépendance PAY-134 non livrée) — 1) Dépendance amont non livrée : PAY-134.
+OK   R-13 bloque PAY-133 (dépendance PAY-134 non livrée) — Dépendance amont non livrée : PAY-134 (En cours).
 OK   Requête non signée refusée — HTTP 401
 Démonstration réussie
 ```
