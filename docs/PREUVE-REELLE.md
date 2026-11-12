@@ -1,9 +1,10 @@
-# Preuve réelle — ce qui est demonstrated sur des systèmes réels
+# Preuve réelle — ce qui est démontré sur des systèmes réels
 
-La démo (`npm run demo`) joue un jeu de données **fictif** : les tickets `PAY-123`
-n'existent nulle part, l'espace de travail est `ws-demo`, et le pont répond à un
-cerveau nourri par `MAC_DEMO_DATA=1`. Ce document décrit ce qui a été fait pour
-remplacer ce jeu par des **données et des systèmes réels**, et ce qui reste bloqué.
+`npm run demo` joue désormais la **démonstration réelle** : de vrais tickets du
+projet `MAC` sur le site de l'organisation, lus par l'app déployée, signés au nom
+du vrai espace Bitbucket `one-atlas-cndz`. Le scénario **fictif** d'origine
+(`PAY-123`, espace `ws-demo`) reste disponible sous `npm run demo:fictif`. Ce
+document décrit la bascule, les données réelles, et ce qui reste bloqué.
 
 ## 1. Le jeu de données réel (site Jira `one-atlas-cndz.atlassian.net`)
 
@@ -120,8 +121,14 @@ site, recalcule les signatures, rejoue chaque cas et sort un tableau
 ## 6. Reproduire
 
 ```bash
-bash scripts/preuve-reelle.sh      # bascule réel → cas réels → restauration
+MAC_BRIDGE_URL=<pont> MAC_SHARED_SECRET=<secret> npm run demo     # la démo réelle
+bash scripts/preuve-reelle.sh                                       # bascule réel → cas → restauration
 ```
+
+`npm run demo` suppose que le Cerveau de production est en mode réel
+(`MAC_DEMO_DATA=0`) et jumelé au vrai espace — c'est l'état courant. Le script
+`preuve-reelle.sh` fait toute la bascule et peut servir à restaurer la
+démonstration fictive.
 
 Le script pose `MAC_DEMO_DATA=0`, redéploie, joue `scripts/preuve-reelle.ts`, puis
 remet la démonstration et redéploie. Variables d'environnement reconnues :
