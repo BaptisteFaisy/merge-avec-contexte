@@ -1,7 +1,7 @@
 {
   "etape": "etape-1-ticket-mac-2",
   "titre": "Ticket réel MAC-2 sur le site Jira",
-  "horodatage": "2026-11-12T15:37:54.523Z",
+  "horodatage": "2026-11-12T15:50:50.901Z",
   "requete": {
     "site": "https://one-atlas-cndz.atlassian.net",
     "cle": "MAC-2",
@@ -37,7 +37,7 @@
         "customfield_10866": null,
         "customfield_10868": null,
         "customfield_10869": null,
-        "lastViewed": "2026-11-12T09:57:03.521-0500",
+        "lastViewed": "2026-11-12T10:38:25.475-0500",
         "customfield_10180": [],
         "customfield_10181": [],
         "customfield_10060": null,
@@ -733,5 +733,5 @@
     "attendu": "branche de PR : feature/MAC-2-limite-tentatives (PR 9001)",
     "lectureDirecte": "réponse JSON de l’API Jira (200)"
   },
-  "empreinte": "sha256:9616edcae8df0128745e693343d9566a6cda9125f317b09849acc592a08e3d24"
+  "empreinte": "sha256:d3cef6a274f6e5bd036736ec23598f5bdfcb88983ccdaf79e392fa56735cb561"
 }

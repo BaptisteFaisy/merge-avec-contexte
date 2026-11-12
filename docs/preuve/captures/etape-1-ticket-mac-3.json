@@ -1,7 +1,7 @@
 {
   "etape": "etape-1-ticket-mac-3",
   "titre": "Ticket réel MAC-3 sur le site Jira",
-  "horodatage": "2026-11-12T15:37:54.803Z",
+  "horodatage": "2026-11-12T15:50:51.220Z",
   "requete": {
     "site": "https://one-atlas-cndz.atlassian.net",
     "cle": "MAC-3",
@@ -37,7 +37,7 @@
         "customfield_10866": null,
         "customfield_10868": null,
         "customfield_10869": null,
-        "lastViewed": null,
+        "lastViewed": "2026-11-12T10:39:21.710-0500",
         "customfield_10180": [],
         "customfield_10181": [],
         "customfield_10060": null,
@@ -381,6 +381,7 @@
         "summary": "Correctif incident checkout-api (preuve réelle)",
         "customfield_10120": null,
         "customfield_10121": null,
+        "customfield_10000": "{}",
         "customfield_10122": null,
         "customfield_10001": null,
         "customfield_10002": [],
@@ -704,5 +705,5 @@
     "attendu": "branche de PR : feature/MAC-3-correctif-incident (PR 9002)",
     "lectureDirecte": "réponse JSON de l’API Jira (200)"
   },
-  "empreinte": "sha256:ab8cbc0ee4470180c96993232a2c10af58f93407066f2f2f8ae069e1bd543d3e"
+  "empreinte": "sha256:d32164b5d5a3501edddf675bfff9521b7c5c8fc2c14eeac181bbb63c180ebc4d"
 }

@@ -1,15 +1,15 @@
 {
   "etape": "etape-3-carte-13-regles",
   "titre": "Carte de PR détaillée (13 règles)",
-  "horodatage": "2026-11-12T15:37:58.372Z",
+  "horodatage": "2026-11-12T15:50:56.721Z",
   "requete": {
     "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
     "entetes": {
       "content-type": "application/json",
       "x-mac-version": "v1",
-      "x-mac-timestamp": "1794497877216",
-      "x-mac-nonce": "2cecb91b-6df9-4417-a3a8-5cb3e4ea6c02",
-      "x-mac-signature": "33f275323113ce809ee7e9f3ecc1cbaf3efb989a06ac79d206398b636a34a8cc"
+      "x-mac-timestamp": "1794498655935",
+      "x-mac-nonce": "cf36e9dd-ab36-4797-b04a-c9aa515ae309",
+      "x-mac-signature": "005af2bf80ce44574588a4feca435bbfaaf22ab96d6386b9ff886323a0bfbd12"
     },
     "corps": {
       "route": "card",
@@ -32,7 +32,7 @@
     "statut": 200,
     "corps": {
       "verdict": "blocked",
-      "message": "Bloqué, 2 raisons.\n1) MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison. Amenez le ticket à un statut autorisé avant la fusion.\n2) MAC-2 : 2 critère(s) d’acceptation non coché(s). Cochez dans le ticket les critères vraiment validés.\nDétail et dérogation : carte « Merge avec contexte » à droite.",
+      "message": "Bloqué, 3 raisons.\n1) MAC-2 est au statut « In Progress », attendu : À faire, En cours, En revue, Prêt pour la livraison. Amenez le ticket à un statut autorisé avant la fusion.\n2) MAC-2 : 2 critère(s) d’acceptation non coché(s). Cochez dans le ticket les critères vraiment validés.\n3) MAC-2 est bloqué par MAC-3 (In Progress). Livrez d’abord MAC-3, ou demandez une dérogation.\nDétail et dérogation : carte « Merge avec contexte » à droite.",
       "reasons": [
         {
           "rule": "R-02",
@@ -47,12 +47,19 @@
           "text": "MAC-2 : 2 critère(s) d’acceptation non coché(s).",
           "action": "Cochez dans le ticket les critères vraiment validés.",
           "issueKey": "MAC-2"
+        },
+        {
+          "rule": "R-06",
+          "level": "blocking",
+          "text": "MAC-2 est bloqué par MAC-3 (In Progress).",
+          "action": "Livrez d’abord MAC-3, ou demandez une dérogation.",
+          "issueKey": "MAC-2"
         }
       ],
       "issueKeys": [
         "MAC-2"
       ],
-      "evaluatedAt": "2026-11-12T15:37:57.767Z",
+      "evaluatedAt": "2026-11-12T15:50:56.245Z",
       "durationMs": 0,
       "service": "checkout-api",
       "siteUrl": "https://one-atlas-cndz.atlassian.net",
@@ -125,12 +132,12 @@
       ],
       "waivers": []
     },
-    "dureeMs": 1156
+    "dureeMs": 786
   },
   "preuve": {
     "type": "carte-pr",
     "nombreRegles": 13,
     "ticket": "MAC-2"
   },
-  "empreinte": "sha256:a93ee667826f9fd467c2e08074144619c7813b0ecc2e9be3ee19257a079a664e"
+  "empreinte": "sha256:096fcde76c670f20b130253072631f1a1ba94ea3e35d44552b21b767f1b4f3fa"
 }

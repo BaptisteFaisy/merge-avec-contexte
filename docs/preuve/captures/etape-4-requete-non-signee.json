@@ -1,7 +1,7 @@
 {
   "etape": "etape-4-requete-non-signee",
   "titre": "Requête non signée refusée (401)",
-  "horodatage": "2026-11-12T15:37:58.833Z",
+  "horodatage": "2026-11-12T15:50:57.193Z",
   "requete": {
     "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
     "entetes": {
@@ -32,5 +32,5 @@
     "type": "refus",
     "statutAttendu": 401
   },
-  "empreinte": "sha256:65abd986241ad471adc577f8800bf9d18332681a69dcf63c0a648a4ce481bb65"
+  "empreinte": "sha256:c0783b441187dc1804d07efefb55ef5d18600f0fe4fda7c3f6368168e829506a"
 }
