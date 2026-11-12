@@ -160,7 +160,10 @@ export function resumeTicket(ticket: Record<string, unknown> | undefined): Recor
   return {
     cle: ticket.key,
     resume: champs.summary,
-    statut: (champs.status as { name?: string } | undefined)?.name,
+    // Le nom du statut est **localisé** (l'API le renvoie dans la langue du
+    // demandeur) : c'est l'identifiant et la catégorie qui sont comparables.
+    statutId: (champs.status as { id?: string } | undefined)?.id,
+    statutCategorie: (champs.status as { statusCategory?: { key?: string } } | undefined)?.statusCategory?.key,
     composants: ((champs.components ?? []) as Array<{ name?: string }>).map((c) => c.name),
     versions: ((champs.fixVersions ?? []) as Array<{ name?: string; released?: boolean }>).map((v) => v.name),
     cases: (((champs.description ?? {}) as { content?: Array<{ content?: Array<{ text?: string }> }> })

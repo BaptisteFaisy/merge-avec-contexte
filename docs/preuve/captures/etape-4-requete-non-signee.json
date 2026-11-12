@@ -1,7 +1,7 @@
 {
   "etape": "etape-4-requete-non-signee",
   "titre": "Requête non signée refusée (401)",
-  "horodatage": "2026-11-12T15:50:57.193Z",
+  "horodatage": "2026-11-12T18:11:29.634Z",
   "requete": {
     "url": "https://4eaf9725-e0ff-4e55-a4d4-d2a69adcddb1.webtrigger.atlassian.app/public/JcnMLsMiLo6g2Rq3-VvtETaQZR8",
     "entetes": {
@@ -10,7 +10,7 @@
     "corps": {
       "route": "evaluate",
       "payload": {
-        "workspaceUuid": "ws-demo",
+        "workspaceUuid": "{b44dcce8-0f72-4e36-bf40-65aead14ce35}",
         "repositoryUuid": "checkout-api",
         "repositorySlug": "checkout-api",
         "pullRequestId": 9001,
@@ -22,7 +22,7 @@
         "targetBranch": "main"
       }
     },
-    "corpsTexte": "{\"route\":\"evaluate\",\"payload\":{\"workspaceUuid\":\"ws-demo\",\"repositoryUuid\":\"checkout-api\",\"repositorySlug\":\"checkout-api\",\"pullRequestId\":9001,\"trigger\":\"on-code-pushed\",\"issueKeys\":[\"MAC-2\"],\"sourceBranch\":\"feature/MAC-2-limite-tentatives\",\"targetBranch\":\"main\"}}"
+    "corpsTexte": "{\"route\":\"evaluate\",\"payload\":{\"workspaceUuid\":\"{b44dcce8-0f72-4e36-bf40-65aead14ce35}\",\"repositoryUuid\":\"checkout-api\",\"repositorySlug\":\"checkout-api\",\"pullRequestId\":9001,\"trigger\":\"on-code-pushed\",\"issueKeys\":[\"MAC-2\"],\"sourceBranch\":\"feature/MAC-2-limite-tentatives\",\"targetBranch\":\"main\"}}"
   },
   "reponse": {
     "statut": 401,
@@ -32,5 +32,5 @@
     "type": "refus",
     "statutAttendu": 401
   },
-  "empreinte": "sha256:c0783b441187dc1804d07efefb55ef5d18600f0fe4fda7c3f6368168e829506a"
+  "empreinte": "sha256:38ee7b340897112419550d4917639d3bcbb473f1b846e3dec5112b49d78a51d0"
 }
