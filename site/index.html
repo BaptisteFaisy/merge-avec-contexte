@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr" data-lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merge avec contexte — Merge with context</title>
+<meta name="description" content="Merge check Bitbucket qui évalue le contexte avant fusion : ticket Jira, critères d'acceptation, gels, incidents. Codegeist 2026.">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="entete">
+  <div class="conteneur entete-ligne">
+    <a class="marque" href="#haut"><span class="logo">◧</span> Merge avec contexte</a>
+    <nav class="nav">
+      <a href="#probleme"><span data-fr="Le problème" data-en="The problem">Le problème</span></a>
+      <a href="#fonctionnement"><span data-fr="Fonctionnement" data-en="How it works">Fonctionnement</span></a>
+      <a href="#regles"><span data-fr="Les 13 règles" data-en="The 13 rules">Les 13 règles</span></a>
+      <a href="#preuve"><span data-fr="Preuve en direct" data-en="Live proof">Preuve en direct</span></a>
+      <a href="#essayer"><span data-fr="Essayer" data-en="Try it">Essayer</span></a>
+      <a class="lien-externe" href="https://github.com/BaptisteFaisy/merge-avec-contexte">GitHub</a>
+      <button id="bascule-langue" type="button" aria-label="English">EN</button>
+    </nav>
+  </div>
+</header>
+
+<main id="haut">
+<section class="hero">
+  <div class="conteneur">
+    <p class="surtitre">Codegeist 2026 · Apps for Software Teams</p>
+    <h1>
+      <span data-fr="Un merge check qui regarde le travail, pas seulement le code."
+            data-en="A merge check that looks at the work, not just the code.">Un merge check qui regarde le travail, pas seulement le code.</span>
+    </h1>
+    <p class="accroche">
+      <span data-fr="Avant la fusion, il vérifie le ticket Jira lié, les critères d'acceptation, le calendrier des gels, l'état des services et les dépendances — puis il bloque ou avertit <strong>en expliquant pourquoi et comment débloquer</strong>."
+            data-en="Before the merge, it checks the linked Jira issue, the acceptance criteria, the freeze calendar, the service health and the dependencies — then it blocks or warns, <strong>explaining why and how to unblock</strong>.">
+        Avant la fusion, il vérifie le ticket Jira lié, les critères d'acceptation, le calendrier des gels, l'état des services et les dépendances — puis il bloque ou avertit <strong>en expliquant pourquoi et comment débloquer</strong>.
+      </span>
+    </p>
+    <p class="actions">
+      <a class="bouton bouton-primaire" href="#preuve"><span data-fr="Voir la preuve en direct" data-en="See the live proof">Voir la preuve en direct</span></a>
+      <a class="bouton" href="#essayer"><span data-fr="L'essayer en une commande" data-en="Try it with one command">L'essayer en une commande</span></a>
+    </p>
+
+    <figure class="fenetre" aria-label="Exemple de message de blocage dans Bitbucket">
+      <figcaption><span class="points"><i></i><i></i><i></i></span> pull request #42 · <code>feature/PAY-123-limite-tentatives</code> → <code>main</code></figcaption>
+      <pre class="message-blocage">Bloqué, 2 raisons.
+1) PAY-123 : 2 critère(s) d’acceptation non cochés.
+2) Incident INC-52 ouvert sur checkout-api.
+Détail et dérogation : carte « Merge avec contexte » à droite.</pre>
+      <p class="legende"><span data-fr="Sortie réelle de l'app déployée, pas une maquette." data-en="Real output from the deployed app, not a mock-up.">Sortie réelle de l'app déployée, pas une maquette.</span></p>
+    </figure>
+  </div>
+</section>
+
+<section id="probleme" class="section">
+  <div class="conteneur">
+    <h2><span data-fr="Le problème" data-en="The problem">Le problème</span></h2>
+    <div class="grille-3">
+      <article class="carte">
+        <h3><span data-fr="Les contrôles ne voient que le code" data-en="Checks only see the code">Les contrôles ne voient que le code</span></h3>
+        <p><span data-fr="Build vert, approbations, tâches résolues. Rien ne dit qu'il reste deux critères d'acceptation non cochés, qu'un gel commence dans une heure, ou qu'un incident est ouvert sur le service visé." data-en="Green build, approvals, resolved tasks. Nothing says two acceptance criteria are still unchecked, a freeze starts in an hour, or an incident is open on the target service.">Build vert, approbations, tâches résolues. Rien ne dit qu'il reste deux critères d'acceptation non cochés, qu'un gel commence dans une heure, ou qu'un incident est ouvert sur le service visé.</span></p>
+      </article>
+      <article class="carte">
+        <h3><span data-fr="Le contexte vit ailleurs" data-en="The context lives elsewhere">Le contexte vit ailleurs</span></h3>
+        <p><span data-fr="Ces informations sont dans Jira et JSM. Celui qui clique sur « Merge » ne les a pas sous les yeux — alors la fusion part." data-en="That information lives in Jira and JSM. Whoever clicks “Merge” does not see it — so the merge goes through.">Ces informations sont dans Jira et JSM. Celui qui clique sur « Merge » ne les a pas sous les yeux — alors la fusion part.</span></p>
+      </article>
+      <article class="carte">
+        <h3><span data-fr="Les règles orales ne se tracent pas" data-en="Oral rules cannot be traced">Les règles orales ne se tracent pas</span></h3>
+        <p><span data-fr="« On ne merge pas le vendredi », « pas pendant l'incident » : personne ne peut les vérifier, ni dire qui a dérogé, pourquoi, et jusqu'à quand." data-en="“No merges on Friday”, “not during the incident”: nobody can enforce them, nor tell who waived what, why, and until when.">« On ne merge pas le vendredi », « pas pendant l'incident » : personne ne peut les vérifier, ni dire qui a dérogé, pourquoi, et jusqu'à quand.</span></p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="fonctionnement" class="section section-alt">
+  <div class="conteneur">
+    <h2><span data-fr="Deux apps Forge, un pont signé" data-en="Two Forge apps, one signed bridge">Deux apps Forge, un pont signé</span></h2>
+    <p class="chapo"><span data-fr="Une app Forge ne peut pas appeler à la fois Bitbucket et Jira : les familles de scopes sont séparées. Le produit est donc coupé en deux, et les deux moitiés se parlent par un web trigger signé HMAC-SHA256 (corps + horodatage + nonce, fenêtre de 5 minutes, anti-rejeu)." data-en="A Forge app cannot call both Bitbucket and Jira: the scope families are separate. So the product is split in two, and the two halves talk over an HMAC-SHA256-signed web trigger (body + timestamp + nonce, 5-minute window, replay protection).">Une app Forge ne peut pas appeler à la fois Bitbucket et Jira : les familles de scopes sont séparées. Le produit est donc coupé en deux, et les deux moitiés se parlent par un web trigger signé HMAC-SHA256 (corps + horodatage + nonce, fenêtre de 5 minutes, anti-rejeu).</span></p>
+    <div class="grille-2">
+      <article class="carte carte-app">
+        <p class="etiquette">Bitbucket</p>
+        <h3>Capteur <span class="anglais">/ Sensor</span></h3>
+        <ul>
+          <li><span data-fr="Merge check sur les trois déclencheurs : push, avis d'un relecteur, tentative de fusion" data-en="Merge check on all three triggers: push, reviewer status, merge attempt">Merge check sur les trois déclencheurs : push, avis d'un relecteur, tentative de fusion</span></li>
+          <li><span data-fr="Carte de PR et panneau Overview : raisons, marche à suivre, demande de dérogation" data-en="PR card and Overview panel: reasons, next step, waiver request">Carte de PR et panneau Overview : raisons, marche à suivre, demande de dérogation</span></li>
+          <li><span data-fr="Réglages de l'espace : jumelage, politique de repli, envoi des chemins" data-en="Workspace settings: pairing, fallback policy, sending file paths">Réglages de l'espace : jumelage, politique de repli, envoi des chemins</span></li>
+          <li><strong><span data-fr="Aucune donnée durable, aucune ligne de code source envoyée" data-en="No persistent data, no source code line ever sent">Aucune donnée durable, aucune ligne de code source envoyée</span></strong></li>
+        </ul>
+      </article>
+      <article class="carte carte-app">
+        <p class="etiquette">Jira</p>
+        <h3>Cerveau <span class="anglais">/ Brain</span></h3>
+        <ul>
+          <li><span data-fr="Moteur de règles : portée par dépôt et branche, niveaux, mode observation, dérogations" data-en="Rule engine: scope by repository and branch, levels, observe mode, waivers">Moteur de règles : portée par dépôt et branche, niveaux, mode observation, dérogations</span></li>
+          <li><span data-fr="Forge SQL : règles, gels, dérogations, journal, caches — dix tables" data-en="Forge SQL: rules, freezes, waivers, journal, caches — ten tables">Forge SQL : règles, gels, dérogations, journal, caches — dix tables</span></li>
+          <li><span data-fr="Écrans : réglages du projet, encart sur le ticket, console de test, journal" data-en="Screens: project settings, issue panel, test console, journal">Écrans : réglages du projet, encart sur le ticket, console de test, journal</span></li>
+          <li><span data-fr="Agent Rovo et six actions exposées en MCP" data-en="Rovo agent and six actions exposed over MCP">Agent Rovo et six actions exposées en MCP</span></li>
+        </ul>
+      </article>
+    </div>
+
+    <h3 class="sous-titre"><span data-fr="Le déroulé d'un contrôle" data-en="How a check runs">Le déroulé d'un contrôle</span></h3>
+    <ol class="etapes">
+      <li><span data-fr="Bitbucket appelle le Capteur (espace, dépôt, PR, déclencheur)." data-en="Bitbucket calls the Sensor (workspace, repository, PR, trigger).">Bitbucket appelle le Capteur (espace, dépôt, PR, déclencheur).</span></li>
+      <li><span data-fr="Le Capteur lit la PR : titre, branches, commits, relecteurs, fichiers modifiés." data-en="The Sensor reads the PR: title, branches, commits, reviewers, changed files.">Le Capteur lit la PR : titre, branches, commits, relecteurs, fichiers modifiés.</span></li>
+      <li><span data-fr="Il extrait les clés de tickets : branche, puis titre, puis messages de commit." data-en="It extracts issue keys: branch, then title, then commit messages.">Il extrait les clés de tickets : branche, puis titre, puis messages de commit.</span></li>
+      <li><span data-fr="Requête signée au Cerveau : clés, dépôt, branche cible, chemins, relecteurs." data-en="Signed request to the Brain: keys, repository, target branch, paths, reviewers.">Requête signée au Cerveau : clés, dépôt, branche cible, chemins, relecteurs.</span></li>
+      <li><span data-fr="Le Cerveau évalue les règles (cache 60 s + base), applique les dérogations, journalise." data-en="The Brain evaluates the rules (60 s cache + database), applies waivers, logs it.">Le Cerveau évalue les règles (cache 60 s + base), applique les dérogations, journalise.</span></li>
+      <li><span data-fr="Le Capteur rend le verdict et le message ; la carte affiche le détail." data-en="The Sensor returns the verdict and message; the card shows the detail.">Le Capteur rend le verdict et le message ; la carte affiche le détail.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section id="regles" class="section">
+  <div class="conteneur">
+    <h2><span data-fr="Les treize règles du catalogue" data-en="The thirteen rules">Les treize règles du catalogue</span></h2>
+    <p class="chapo"><span data-fr="Pour chacune, l'administrateur choisit le niveau (bloquant, avertissement, information), la portée (dépôts, branches) et le mode (actif ou observation). Toutes sont implémentées ; les sept premières forment le produit minimum." data-en="For each one, the admin picks the level (blocking, warning, information), the scope (repositories, branches) and the mode (active or observe). All are implemented; the first seven are the minimum viable product.">Pour chacune, l'administrateur choisit le niveau (bloquant, avertissement, information), la portée (dépôts, branches) et le mode (actif ou observation). Toutes sont implémentées ; les sept premières forment le produit minimum.</span></p>
+    <table class="regles">
+      <thead><tr><th>Code</th><th><span data-fr="Règle" data-en="Rule">Règle</span></th><th><span data-fr="Niveau par défaut" data-en="Default level">Niveau par défaut</span></th><th>Lot</th></tr></thead>
+      <tbody>
+        <tr><td>R-01</td><td><span data-fr="La PR est reliée à un ticket Jira existant" data-en="The PR is linked to an existing Jira issue">La PR est reliée à un ticket Jira existant</span></td><td><span data-fr="Avertissement" data-en="Warning">Avertissement</span></td><td>M</td></tr>
+        <tr><td>R-02</td><td><span data-fr="Le ticket est dans un statut autorisé" data-en="The issue is in an allowed status">Le ticket est dans un statut autorisé</span></td><td><span data-fr="Bloquant" data-en="Blocking">Bloquant</span></td><td>M</td></tr>
+        <tr><td>R-03</td><td><span data-fr="Les critères d'acceptation sont validés" data-en="Acceptance criteria are met">Les critères d'acceptation sont validés</span></td><td><span data-fr="Bloquant" data-en="Blocking">Bloquant</span></td><td>M</td></tr>
+        <tr><td>R-04</td><td><span data-fr="Aucun gel en cours sur la branche cible" data-en="No active freeze on the target branch">Aucun gel en cours sur la branche cible</span></td><td><span data-fr="Bloquant" data-en="Blocking">Bloquant</span></td><td>M</td></tr>
+        <tr><td>R-05</td><td><span data-fr="Aucun incident ouvert sur le service touché" data-en="No open incident on the affected service">Aucun incident ouvert sur le service touché</span></td><td><span data-fr="Bloquant" data-en="Blocking">Bloquant</span></td><td>M</td></tr>
+        <tr><td>R-06</td><td><span data-fr="Le ticket n'est pas bloqué par un ticket ouvert" data-en="The issue is not blocked by an open issue">Le ticket n'est pas bloqué par un ticket ouvert</span></td><td><span data-fr="Bloquant" data-en="Blocking">Bloquant</span></td><td>M</td></tr>
+        <tr><td>R-07</td><td><span data-fr="La version cible du ticket n'est pas déjà publiée" data-en="The target version is not already released">La version cible du ticket n'est pas déjà publiée</span></td><td><span data-fr="Avertissement" data-en="Warning">Avertissement</span></td><td>M</td></tr>
+        <tr><td>R-08</td><td><span data-fr="Heures calmes : pas de fusion hors plage sur la branche principale" data-en="Quiet hours: no merge outside the window on the main branch">Heures calmes : pas de fusion hors plage sur la branche principale</span></td><td><span data-fr="Avertissement" data-en="Warning">Avertissement</span></td><td>S</td></tr>
+        <tr><td>R-09</td><td><span data-fr="Revue de sécurité approuvée si le ticket la réclame" data-en="Security review approved when the issue requires it">Revue de sécurité approuvée si le ticket la réclame</span></td><td><span data-fr="Bloquant" data-en="Blocking">Bloquant</span></td><td>S</td></tr>
+        <tr><td>R-10</td><td><span data-fr="Un membre de l'équipe propriétaire du service a approuvé" data-en="A member of the service owner team approved">Un membre de l'équipe propriétaire du service a approuvé</span></td><td><span data-fr="Avertissement" data-en="Warning">Avertissement</span></td><td>S</td></tr>
+        <tr><td>R-11</td><td><span data-fr="La PR ne référence pas d'autres tickets que le sien" data-en="The PR references no issue other than its own">La PR ne référence pas d'autres tickets que le sien</span></td><td>Information</td><td>S</td></tr>
+        <tr><td>R-12</td><td><span data-fr="Fichiers sensibles : un plan de retour arrière est joint" data-en="Sensitive files: a rollback plan is attached">Fichiers sensibles : un plan de retour arrière est joint</span></td><td><span data-fr="Avertissement" data-en="Warning">Avertissement</span></td><td>C</td></tr>
+        <tr><td>R-13</td><td><span data-fr="Les dépendances amont sont livrées" data-en="Upstream dependencies are delivered">Les dépendances amont sont livrées</span></td><td><span data-fr="Avertissement" data-en="Warning">Avertissement</span></td><td>C</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="preuve" class="section section-alt">
+  <div class="conteneur">
+    <h2><span data-fr="Preuve en direct" data-en="Live proof">Preuve en direct</span></h2>
+    <p class="chapo"><span data-fr="Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, dix-huit vérifications." data-en="This output is not a simulation: it comes from the deployed Forge app, called with real signed requests. One command, eighteen checks.">Cette sortie n'est pas une simulation : elle est produite par l'app Forge déployée, appelée avec de vraies requêtes signées. Une commande, dix-huit vérifications.</span></p>
+    <pre class="console"><code>OK   Dérogations précédentes neutralisées — 12 dérogation(s)
+OK   Le pont répond (172 ms)
+OK   PR #42 bloquée (640 ms) — verdict blocked
+        │ Bloqué, 2 raisons.
+        │ 1) PAY-123 : 2 critère(s) d’acceptation non coché(s).
+        │ 2) Incident INC-52 ouvert sur checkout-api.
+        │ Détail et dérogation : carte « Merge avec contexte » à droite.
+OK   Carte de PR détaillée (640 ms) — 13 règle(s) exposée(s)
+OK   Dérogation demandée (460 ms) — w-42-R-03-…
+OK   Dérogation accordée (381 ms) — par tech-lead, 2 h
+OK   La dérogation lève la règle visée (582 ms) — 1 blocage(s) restant(s)
+OK   Dérogation retirée, la règle rebloque (3042 ms) — verdict blocked
+OK   PR #43 bloquée par l’incident (606 ms)
+OK   Correctif lié à l’incident autorisé (565 ms) — Correctif d’incident INC-52
+OK   PR #45 sur release/1.4 bloquée par le gel actif (623 ms)
+OK   Règle bloquante en observation ne bloque plus (841 ms) — verdict allowed
+OK   L’observation est journalisée, pas affichée (788 ms)
+OK   R-06 bloque PAY-125 (PAY-126 non livré) (875 ms)
+OK   R-07 avertit PAY-130 (version 2.3.0 déjà publiée) (1129 ms)
+OK   R-02 bloque PAY-132 (statut interdit) (631 ms)
+OK   R-13 bloque PAY-133 (dépendance PAY-134 non livrée) (648 ms)
+OK   Requête non signée refusée (279 ms) — HTTP 401
+
+Démonstration réussie</code></pre>
+    <div class="grille-4">
+      <p class="chiffre"><strong>671</strong><span data-fr="tests automatisés" data-en="automated tests">tests automatisés</span></p>
+      <p class="chiffre"><strong>0,6 s</strong><span data-fr="médiane d'une évaluation" data-en="median evaluation time">médiane d'une évaluation</span></p>
+      <p class="chiffre"><strong>51</strong><span data-fr="PR mergées par la file, sans clic" data-en="PRs merged by the queue, no clicks">PR mergées par la file, sans clic</span></p>
+      <p class="chiffre"><strong>0 €</strong><span data-fr="Forge, site de démo, base SQL" data-en="Forge, demo site, SQL storage">Forge, site de démo, base SQL</span></p>
+    </div>
+  </div>
+</section>
+
+<section id="essayer" class="section">
+  <div class="conteneur">
+    <h2><span data-fr="Essayer" data-en="Try it">Essayer</span></h2>
+    <div class="grille-2">
+      <article class="carte">
+        <h3><span data-fr="Sans rien installer côté Atlassian" data-en="Without any Atlassian setup">Sans rien installer côté Atlassian</span></h3>
+        <pre><code>git clone https://github.com/BaptisteFaisy/merge-avec-contexte.git
+cd merge-avec-contexte
+npm install
+npm test          # 671 tests
+npm run demo      # contre l'app déployée</code></pre>
+      </article>
+      <article class="carte">
+        <h3><span data-fr="Sur votre propre site" data-en="On your own site">Sur votre propre site</span></h3>
+        <pre><code>forge site provision                 # site de démo gratuit
+cd cerveau && forge deploy -e production
+cd capteur && forge deploy -e production
+forge install -e production -p jira  # puis jumelage</code></pre>
+        <p class="note"><span data-fr="Le jumelage se fait par code à usage unique (10 min) dans les réglages, ou par variables d'environnement pour une installation sans navigateur." data-en="Pairing uses a single-use code (10 min) in the settings page, or environment variables for a browser-less install.">Le jumelage se fait par code à usage unique (10 min) dans les réglages, ou par variables d'environnement pour une installation sans navigateur.</span></p>
+      </article>
+    </div>
+
+    <h3 class="sous-titre"><span data-fr="Limites, dites franchement" data-en="Limits, stated plainly">Limites, dites franchement</span></h3>
+    <ul class="limites">
+      <li><span data-fr="Rendre un contrôle <strong>obligatoire</strong> dans Bitbucket exige l'offre Premium. Sur une offre gratuite, le contrôle s'exécute, affiche exactement le même message et le même verdict, mais <strong>informe sans empêcher</strong> la fusion." data-en="Making a check <strong>required</strong> in Bitbucket needs a Premium plan. On a free plan the check runs and shows the very same message and verdict, but <strong>informs without preventing</strong> the merge.">Rendre un contrôle <strong>obligatoire</strong> dans Bitbucket exige l'offre Premium. Sur une offre gratuite, le contrôle s'exécute, affiche exactement le même message et le même verdict, mais <strong>informe sans empêcher</strong> la fusion.</span></li>
+      <li><span data-fr="Les merge checks personnalisés ne sont pas proposés aux espaces de travail <strong>personnels</strong> : il faut un espace d'équipe (gratuit jusqu'à cinq utilisateurs)." data-en="Custom merge checks are not available on <strong>personal</strong> workspaces: a team workspace is required (free up to five users).">Les merge checks personnalisés ne sont pas proposés aux espaces de travail <strong>personnels</strong> : il faut un espace d'équipe (gratuit jusqu'à cinq utilisateurs).</span></li>
+      <li><span data-fr="<code>forge site provision</code> fournit Jira, Confluence, JSM, Rovo et Studio — <strong>pas Bitbucket</strong>. Le niveau 2 de la démonstration exige donc un espace de travail partagé." data-en="<code>forge site provision</code> provides Jira, Confluence, JSM, Rovo and Studio — <strong>not Bitbucket</strong>. Level 2 of the demo therefore needs a shared workspace."><code>forge site provision</code> fournit Jira, Confluence, JSM, Rovo et Studio — <strong>pas Bitbucket</strong>. Le niveau 2 de la démonstration exige donc un espace de travail partagé.</span></li>
+    </ul>
+  </div>
+</section>
+
+<section class="section section-docs">
+  <div class="conteneur">
+    <h2><span data-fr="Aller plus loin" data-en="Go further">Aller plus loin</span></h2>
+    <ul class="liens-docs">
+      <li><a href="https://github.com/BaptisteFaisy/merge-avec-contexte"><span data-fr="Dépôt GitHub" data-en="GitHub repository">Dépôt GitHub</span></a></li>
+      <li><a href="https://github.com/BaptisteFaisy/merge-avec-contexte/blob/main/docs/ARCHITECTURE.md"><span data-fr="Architecture" data-en="Architecture">Architecture</span></a></li>
+      <li><a href="https://github.com/BaptisteFaisy/merge-avec-contexte/blob/main/docs/DEMO-E2E.md"><span data-fr="Démonstration de bout en bout" data-en="End-to-end demo">Démonstration de bout en bout</span></a></li>
+      <li><a href="https://github.com/BaptisteFaisy/merge-avec-contexte/blob/main/docs/JUDGES.md"><span data-fr="Instructions pour les juges (EN)" data-en="Instructions for judges (EN)">Instructions pour les juges (EN)</span></a></li>
+      <li><a href="https://github.com/BaptisteFaisy/merge-avec-contexte/blob/main/docs/FORGE-API-NOTES.md"><span data-fr="Référence des modules Forge" data-en="Forge modules reference">Référence des modules Forge</span></a></li>
+      <li><a href="https://github.com/BaptisteFaisy/merge-avec-contexte/blob/main/docs/AUDIT.md"><span data-fr="Backlog d'audit (103 items)" data-en="Audit backlog (103 items)">Backlog d'audit (103 items)</span></a></li>
+    </ul>
+  </div>
+</section>
+</main>
+
+<footer class="pied">
+  <div class="conteneur">
+    <p><span data-fr="Merge avec contexte — projet soumis au Codegeist 2026, catégorie Apps for Software Teams." data-en="Merge with context — submitted to Codegeist 2026, Apps for Software Teams.">Merge avec contexte — projet soumis au Codegeist 2026, catégorie Apps for Software Teams.</span></p>
+    <p><span data-fr="Deux apps Atlassian Forge · Apache-2.0 · aucune donnée de code source ne quitte Bitbucket." data-en="Two Atlassian Forge apps · Apache-2.0 · no source code ever leaves Bitbucket.">Deux apps Atlassian Forge · Apache-2.0 · aucune donnée de code source ne quitte Bitbucket.</span></p>
+  </div>
+</footer>
+<script src="app.js"></script>
+</body>
+</html>

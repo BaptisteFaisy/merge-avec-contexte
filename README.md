@@ -5,6 +5,9 @@ ticket Jira lié, les critères d'acceptation, le calendrier des gels, l'état d
 les dépendances, puis **bloque ou avertit en expliquant pourquoi et comment débloquer**.
 
 Projet soumis au hackathon **Codegeist 2026** (catégorie *Apps for Software Teams*).
+
+**Site du projet** : https://baptistefaisy.github.io/merge-avec-contexte/ — publié
+depuis `site/` par GitHub Pages à chaque merge sur `main` (bilingue FR/EN).
 Cahier des charges : [`docs/CAHIER-DES-CHARGES.md`](docs/CAHIER-DES-CHARGES.md).
 
 ## Pourquoi
