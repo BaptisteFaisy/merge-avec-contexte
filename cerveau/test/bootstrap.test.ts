@@ -49,6 +49,33 @@ describe('amorçage d’une installation', () => {
     expect((await amorcerInstallation(d)).jumelage).toBe('existant');
   });
 
+  it('remplace le jumelage de démonstration par celui demandé par l’environnement', async () => {
+    const { deps: d, store, vault } = deps({ workspaceUuid: 'ws-demo', secret: SECRET, jeuDeDemo: false });
+    await amorcerInstallation(d);
+    const reel = '{b44dcce8-0f72-4e36-bf40-65aead14ce35}';
+    const resume = await amorcerInstallation({ ...d, env: { workspaceUuid: reel, secret: SECRET, jeuDeDemo: false } });
+    expect(resume.jumelage).toBe('remplace');
+    expect((await store.pairing.current())?.workspaceUuid).toBe(reel);
+    expect(await vault.read((await store.pairing.current())?.secretRef ?? '')).toBe(SECRET);
+  });
+
+  it('laisse un jumelage réel en place : l’interface reste prioritaire', async () => {
+    const { deps: d, store, vault } = deps({ workspaceUuid: 'ws-demo', secret: SECRET, jeuDeDemo: false });
+    const secretRef = await vault.write(SECRET);
+    await store.pairing.recordPairing({
+      workspaceUuid: '{autre-espace}',
+      secretRef,
+      pairedAt: NOW,
+      pairedBy: 'interface',
+    });
+    const resume = await amorcerInstallation({
+      ...d,
+      env: { workspaceUuid: '{b44dcce8-0f72-4e36-bf40-65aead14ce35}', secret: SECRET, jeuDeDemo: false },
+    });
+    expect(resume.jumelage).toBe('existant');
+    expect((await store.pairing.current())?.workspaceUuid).toBe('{autre-espace}');
+  });
+
   it('charge le jeu de démonstration et le rend exploitable', async () => {
     const { deps: d, store } = deps({ workspaceUuid: 'ws-demo', secret: SECRET, jeuDeDemo: true });
     const resume = await amorcerInstallation(d);

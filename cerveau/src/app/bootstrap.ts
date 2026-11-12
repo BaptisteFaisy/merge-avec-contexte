@@ -24,7 +24,21 @@ import type { SecretVault } from './secrets';
 import type { AmorcageEnv } from './env';
 import { jumelageDemande } from './env';
 
-export type EtatJumelageAmorcage = 'cree' | 'existant' | 'non-demande';
+export type EtatJumelageAmorcage = 'cree' | 'existant' | 'remplace' | 'non-demande';
+
+/**
+ * Espace de travail du jeu de démonstration (§20).
+ *
+ * C'est le seul cas où l'environnement prime sur le jumelage mémorisé : une
+ * installation qui a servi à la démonstration garde, en base, un jumelage
+ * « ws-demo » et des réglages de démonstration (règles, gels, dérogations,
+ * correspondances) keyed sur cet espace. Passer en données réelles, c'est donc
+ * passer en données réelles partout : le jumelage demandé par l'environnement
+ * remplace celui de la démonstration — et avec lui toutes les données de
+ * démonstration, qui ne sont plus Visiblees (elles sont rangées par espace).
+ * Un jumelage réel, lui, reste prioritaire : c'est lui que l'interface a posé.
+ */
+export const ESPACE_DEMO = 'ws-demo';
 export type EtatDemoAmorcage = 'charge' | 'deja-present' | 'non-demande';
 
 export interface ResumeAmorcage {
@@ -48,9 +62,16 @@ async function amorcerJumelage(deps: DepsAmorcage): Promise<EtatJumelageAmorcage
   const { env, store, vault, clock, logger } = deps;
   if (!jumelageDemande(env) || !env.workspaceUuid || !env.secret) return 'non-demande';
   const existant = await store.pairing.current();
-  if (existant) {
+  if (existant && !lEnvironnementPrime(existant, env)) {
     logger.info('amorçage : jumelage déjà en place, conservé', { workspace: existant.workspaceUuid });
     return 'existant';
+  }
+  if (existant) {
+    await store.pairing.unpair();
+    logger.info('amorçage : jumelage de démonstration remplacé', {
+      ancien: existant.workspaceUuid,
+      nouveau: env.workspaceUuid,
+    });
   }
   const secretRef = await vault.write(env.secret);
   await store.pairing.recordPairing({
@@ -60,7 +81,17 @@ async function amorcerJumelage(deps: DepsAmorcage): Promise<EtatJumelageAmorcage
     pairedBy: 'amorçage-par-environnement',
   });
   logger.info('amorçage : jumelage enregistré', { workspace: env.workspaceUuid });
-  return 'cree';
+  return existant ? 'remplace' : 'cree';
+}
+
+/**
+ * L'environnement prime-t-il sur le jumelage mémorisé ?
+ *
+ * Oui seulement pour le jumelage de démonstration : un jumelage réel a été posé
+ * par l'interface (ou par un opérateur) et ne se remplace pas à la volée.
+ */
+function lEnvironnementPrime(existant: { workspaceUuid: string }, env: AmorcageEnv): boolean {
+  return existant.workspaceUuid === ESPACE_DEMO && existant.workspaceUuid !== env.workspaceUuid;
 }
 
 /** Écrit le jeu de démonstration si le stockage est vide. */
@@ -86,7 +117,7 @@ async function amorcerDemo(deps: DepsAmorcage, workspaceUuid: string): Promise<{
 /** Espace de travail à utiliser pour la correspondance dépôt → service. */
 async function workspaceDeReference(deps: DepsAmorcage): Promise<string> {
   const existant = await deps.store.pairing.current();
-  return existant?.workspaceUuid ?? deps.env.workspaceUuid ?? 'ws-demo';
+  return existant?.workspaceUuid ?? deps.env.workspaceUuid ?? ESPACE_DEMO;
 }
 
 /** Amorce l'installation : jumelage d'abord, jeu de démonstration ensuite. */
