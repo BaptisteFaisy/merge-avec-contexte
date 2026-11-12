@@ -80,6 +80,9 @@ Ces quatre points n'étaient pas visibles avec le jeu de démonstration :
 3. **R-01 se tait quand la branche ne porte aucune clé.** L'issue est explicitement
    absente des faits : la branche `feature/migration-sans-ticket` ne produit aucune
    raison, alors que la chaîne `r01.missing` existe.
+   *Corrigé depuis* : la clé vide annoncée par le Capteur n'est plus lue par Jira
+   (la lecture échouait et l'évaluation tombait en repli, muette) ; R-01 émet
+   désormais `r01.missing`, une fois et une seule.
 4. **Le journal ne s'écrit plus en production** : `journal : écriture impossible —
    ForgeSQLError: Unknown SQL execution error` (les dix migrations passent
    pourtant). Cause trouvée et corrigée : la colonne `correlation_id` de la

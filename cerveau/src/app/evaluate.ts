@@ -16,6 +16,7 @@ import { incidentsDuService } from '../cache/service-cache';
 import { lireTicket } from '../cache/issue-cache';
 import type { IssueReader } from '../jira/reader';
 import { evaluateAll } from '../rules/engine';
+import { clesExploitables } from '../rules/input';
 import type { EvaluationInput as EntreeMoteur } from '../rules/input';
 import type { EvaluateService, EvaluationInput as EntreePont } from '../bridge/deps';
 import type { StoredEvaluation, Store } from '../storage/ports';
@@ -40,10 +41,16 @@ const CONCURRENCE_TICKETS = 4;
 /** Ligne journalisée augmentée de la décomposition des durées (§58). */
 type StoredEvaluationMesure = StoredEvaluation & { decomposition?: DecompositionDurees };
 
-/** Tickets de la PR, lus par le cache ; une clé illisible est rendue « absente ». */
+/**
+ * Tickets de la PR, lus par le cache ; une clé illisible est rendue « absente ».
+ *
+ * Les clés inexploitables (vides) sont écartées : elles ne désignent aucun
+ * ticket, et leur lecture ferait échouer l'évaluation.
+ */
 export async function chargerTickets(cles: string[], deps: DepsEvaluate): Promise<IssueContext[]> {
   const cache = depsCacheTickets(deps.store, deps.jira, deps.clock, deps.logger);
-  const lus = await chargeEnLimite(cles, CONCURRENCE_TICKETS, (cle) => lireTicket(cle, cache));
+  const exploitables = clesExploitables(cles);
+  const lus = await chargeEnLimite(exploitables, CONCURRENCE_TICKETS, (cle) => lireTicket(cle, cache));
   return lus.filter((ticket): ticket is IssueContext => ticket !== undefined);
 }
 
@@ -106,9 +113,10 @@ function appliquerRegles(moteur: EntreeMoteur, deps: DepsEvaluate) {
 
 /** Charge tickets, sonde éventuelle et incidents, en deux étapes chronométrées. */
 async function chargerContexte(entree: EntreePont, deps: DepsEvaluate) {
+  const cles = clesExploitables(entree.issueKeys);
   const { valeur: issues, ms: jiraMs } = await mesurerAsync(horlogeMs(deps), async () => {
-    const lues = await chargerTickets(entree.issueKeys, deps);
-    await sonderJiraSiVide(entree.issueKeys, lues, deps);
+    const lues = await chargerTickets(cles, deps);
+    await sonderJiraSiVide(cles, lues, deps);
     return lues;
   });
   const { valeur: incidents, ms: baseMs } = await mesurerAsync(
