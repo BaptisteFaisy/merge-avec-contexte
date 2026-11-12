@@ -9,7 +9,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { migrationName, runMigrations } from '../src/storage/migrate';
-import { SCHEMA_STATEMENTS, TABLE_NAMES, tableOfStatement } from '../src/storage/schema';
+import { ALIGNEMENT_STATEMENTS, SCHEMA_STATEMENTS, TABLE_NAMES, tableOfStatement } from '../src/storage/schema';
 
 interface Table { colonnes: string[]; index: string[] }
 
@@ -168,6 +168,19 @@ describe('schéma §14', () => {
     expect(tableOfStatement(SCHEMA_STATEMENTS[0] ?? '')).toBe('pairing');
     expect(tableOfStatement('CREATE TABLE IF NOT EXISTS autre (id INT)')).toBeUndefined();
     expect(tableOfStatement('SELECT 1')).toBeUndefined();
+  });
+});
+
+describe('alignement du schéma', () => {
+  it('ajoute les colonnes tardives par une instruction idempotente', () => {
+    expect(ALIGNEMENT_STATEMENTS).toHaveLength(1);
+    expect(ALIGNEMENT_STATEMENTS[0]).toMatch(/^ALTER TABLE evaluation ADD COLUMN IF NOT EXISTS correlation_id/);
+  });
+
+  it('reprend la définition de colonne de la création, sans la recopier ailleurs', () => {
+    const creation = SCHEMA_STATEMENTS.find((instruction) => instruction.includes('CREATE TABLE IF NOT EXISTS evaluation'));
+    expect(creation).toContain('correlation_id VARCHAR(64) NULL');
+    expect(ALIGNEMENT_STATEMENTS[0]).toContain('correlation_id VARCHAR(64) NULL');
   });
 });
 

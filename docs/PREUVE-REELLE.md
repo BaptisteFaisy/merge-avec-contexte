@@ -67,7 +67,14 @@ Ces quatre points n'étaient pas visibles avec le jeu de démonstration :
    absente des faits : la branche `feature/migration-sans-ticket` ne produit aucune
    raison, alors que la chaîne `r01.missing` existe.
 4. **Le journal ne s'écrit plus en production** : `journal : écriture impossible —
-   ForgeSQLError: Unknown SQL execution error` (les dix migrations passent pourtant).
+   ForgeSQLError: Unknown SQL execution error` (les dix migrations passent
+   pourtant). Cause trouvée et corrigée : la colonne `correlation_id` de la
+   table `evaluation` a été déclarée après la création de la table, et
+   `CREATE TABLE IF NOT EXISTS` ne complète jamais une table déjà créée — les
+   installations en place n'ont donc pas la colonne, que l'insertion citait.
+   Le correctif ajoute une instruction d'alignement (`ALTER TABLE … ADD
+   COLUMN IF NOT EXISTS`) sous un nom de migration neuf, rejouée là où la
+   table existe déjà ; il attend un redéploiement pour se voir en production.
 
 ## 5. Côté Bitbucket : ce qui est fait, ce qui bloque
 

@@ -26,7 +26,23 @@
  * d'un gel récurrent, `issue_keys` d'une dérogation, `fallback` d'une
  * évaluation, `correlation_id` qui relie une ligne du journal aux lignes de
  * `forge logs` du même contrôle).
+ *
+ * Une colonne déclarée **après** la création d'une table ne touche que les
+ * installations neuves : `CREATE TABLE IF NOT EXISTS` ne complète jamais une
+ * table déjà créée. Les installations en place sont alignées par
+ * `ALIGNEMENT_STATEMENTS`, qui rejoue l'ajout des colonnes tardives.
  */
+
+/**
+ * Colonnes d'`evaluation` déclarées après la création de la table.
+ *
+ * `correlation_id` relie une ligne du journal aux lignes de `forge logs` du
+ * même contrôle (item 60) : elle a été ajoutée après le premier déploiement,
+ * donc après la création de la table dans les installations déjà en place.
+ * Elle est déclarée ici une seule fois, et reprise telle quelle par
+ * l'instruction d'alignement — jamais recopiée.
+ */
+const COLONNES_EVALUATION_TARDIVES: readonly string[] = ['correlation_id VARCHAR(64) NULL'];
 
 /** Une instruction DDL par table, dans l'ordre des dépendances de lecture. */
 export const SCHEMA_STATEMENTS: string[] = [
@@ -99,7 +115,7 @@ export const SCHEMA_STATEMENTS: string[] = [
     observed_only TINYINT NOT NULL DEFAULT 0,
     service VARCHAR(128) NULL,
     project_id VARCHAR(64) NULL,
-    correlation_id VARCHAR(64) NULL,
+    ${COLONNES_EVALUATION_TARDIVES.join(',\n    ')},
     PRIMARY KEY (id),
     KEY idx_evaluation_issue_keys (issue_keys, evaluated_at),
     KEY idx_evaluation_pr (repo_uuid, pr_id, evaluated_at)
@@ -188,9 +204,24 @@ export const TABLE_NAMES = [
 
 export type TableName = (typeof TABLE_NAMES)[number];
 
+/**
+ * Instructions d'alignement : ajouter aux tables déjà créées les colonnes
+ * déclarées après leur création.
+ *
+ * `migrationRunner` ne rejoue que les opérations dont le nom est absent de
+ * `__migrations` : modifier le `CREATE TABLE` d'une table existante ne
+ * change rien (même nom de migration, DDL jamais rejoué, `IF NOT EXISTS` sans
+ * effet). Il faut donc une opération **nouvelle**, au nom **nouveau**, qui
+ * corrige le schéma des installations en place. `IF NOT EXISTS` la rend sans
+ * effet sur une installation déjà à jour — l'opération est donc rejouable.
+ */
+export const ALIGNEMENT_STATEMENTS: readonly string[] = [
+  `ALTER TABLE evaluation ADD COLUMN IF NOT EXISTS ${COLONNES_EVALUATION_TARDIVES.join(', ADD COLUMN IF NOT EXISTS ')}`,
+];
+
 /** Nom de la table visée par une instruction DDL de ce schéma. */
 export function tableOfStatement(statement: string): TableName | undefined {
-  const trouve = /CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS\s+`?([a-z_]+)`?/i.exec(statement);
+  const trouve = /(?:CREATE\s+TABLE\s+IF\s+NOT\s+EXISTS|ALTER\s+TABLE)\s+`?([a-z_]+)`?/i.exec(statement);
   if (!trouve) return undefined;
   const nom = trouve[1] as TableName;
   return TABLE_NAMES.includes(nom) ? nom : undefined;
