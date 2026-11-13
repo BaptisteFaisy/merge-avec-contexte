@@ -6,8 +6,8 @@ les dépendances, puis **bloque ou avertit en expliquant pourquoi et comment dé
 
 Projet soumis au hackathon **Codegeist 2026** (catégorie *Apps for Software Teams*).
 
-**Site du projet** : https://baptistefaisy.github.io/merge-avec-contexte/ — publié
-depuis `site/` par GitHub Pages à chaque merge sur `main` (bilingue FR/EN).
+**Site du projet** : https://tradoooo.github.io/merge-avec-contexte/ — publié
+depuis `site/` par GitHub Actions à chaque merge sur `main` (bilingue FR/EN).
 Cahier des charges : [`docs/CAHIER-DES-CHARGES.md`](docs/CAHIER-DES-CHARGES.md).
 
 ## Pourquoi
