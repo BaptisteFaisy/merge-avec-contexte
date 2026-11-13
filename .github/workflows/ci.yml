@@ -30,7 +30,7 @@ permissions:
 jobs:
   ci:
     name: ci
-    runs-on: [self-hosted, linux, x64, merge-avec-contexte-worker]
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
@@ -41,21 +41,16 @@ jobs:
 
       # Runners self-hosted persistants : un sous-dossier parasite d'un run
       # précédent peut survivre et fausser les contrôles. Nettoyage complet.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
       - name: Nettoyage du workspace
         shell: bash
         run: git clean -ffdx
 
       # Node n'est pas dans le PATH d'un shell non connecté sur le worker :
       # `~/bin` porte `node`, `npm` et `gh` (posés avec le runner).
-      - name: Outillage Node
-        shell: bash
-        run: |
-          set -euo pipefail
-          export PATH="$HOME/bin:/usr/local/bin:/usr/bin:$PATH"
-          echo "$HOME/bin" >> "$GITHUB_PATH"
-          node --version
-          npm --version
-
       - name: Dépendances
         shell: bash
         run: npm ci --prefer-offline --no-audit --no-fund
