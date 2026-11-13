@@ -351,6 +351,36 @@ function resteAProuver(cote: ResultatBitbucket): string {
     + ` reste hors de portée : ${raison.endsWith('.') ? raison : `${raison}.`}`;
 }
 
+/** Bilan de la démonstration : ce qui est prouvé, ce qui reste à prouver. */
+function afficherBilan(cote: ResultatBitbucket): void {
+  console.log('\n— Ce que prouvent ces étapes —');
+  console.log('  · des tickets qui existent vraiment, lus par l’app déployée ;');
+  console.log('  · des verdicts signés, rejouables et revérifiables (npm run preuve:verifier) ;');
+  console.log('  · un refus sans signature, et une carte à treize règles.');
+  if (cote.prLue) console.log('  · la pull request réelle et le verdict du contrôle de fusion publiés par Bitbucket.');
+  console.log('— Ce qui reste à prouver —');
+  console.log(`  ${resteAProuver(cote)}\n`);
+}
+
+/** Écrit le rapport JSON (mode `MAC_DEMO_JSON`) si demandé. */
+function exporterRapport(config: Configuration): void {
+  if (process.env.MAC_DEMO_JSON !== '1') return;
+  const triees = [...durees].sort((a, b) => a - b);
+  const rapport = {
+    horodatage: new Date().toISOString(),
+    site: SITE,
+    espace: config.workspace,
+    echecs,
+    medianeMs: triees.length ? triees[Math.floor(triees.length / 2)] : null,
+    etapes,
+  };
+  if (process.env.MAC_DEMO_JSON_PATH) {
+    writeFileSync(process.env.MAC_DEMO_JSON_PATH, JSON.stringify(rapport, null, 2) + '\n');
+  } else {
+    console.log(`__DEMO_JSON__${JSON.stringify(rapport)}`);
+  }
+}
+
 async function main(): Promise<void> {
   // L'espace annoncé par défaut est le vrai : la démonstration signe au nom
   // de l'espace où le Capteur est installé.
@@ -375,32 +405,10 @@ async function main(): Promise<void> {
   await casNonSigne(config);
   const cote = await casBitbucket();
   resumer();
-
-  console.log('\n— Ce que prouvent ces étapes —');
-  console.log('  · des tickets qui existent vraiment, lus par l’app déployée ;');
-  console.log('  · des verdicts signés, rejouables et revérifiables (npm run preuve:verifier) ;');
-  console.log('  · un refus sans signature, et une carte à treize règles.');
-  if (cote.prLue) console.log('  · la pull request réelle et le verdict du contrôle de fusion publiés par Bitbucket.');
-  console.log('— Ce qui reste à prouver —');
-  console.log(`  ${resteAProuver(cote)}\n`);
+  afficherBilan(cote);
 
   console.log(`${echecs === 0 ? 'Démonstration réelle concluante' : `${echecs} cas en échec`}\n`);
-  if (process.env.MAC_DEMO_JSON === '1') {
-    const triees = [...durees].sort((a, b) => a - b);
-    const rapport = {
-      horodatage: new Date().toISOString(),
-      site: SITE,
-      espace: config.workspace,
-      echecs,
-      medianeMs: triees.length ? triees[Math.floor(triees.length / 2)] : null,
-      etapes,
-    };
-    if (process.env.MAC_DEMO_JSON_PATH) {
-      writeFileSync(process.env.MAC_DEMO_JSON_PATH, JSON.stringify(rapport, null, 2) + '\n');
-    } else {
-      console.log(`__DEMO_JSON__${JSON.stringify(rapport)}`);
-    }
-  }
+  exporterRapport(config);
   process.exit(echecs === 0 ? 0 : 1);
 }
 
