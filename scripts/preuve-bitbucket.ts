@@ -46,6 +46,13 @@ import {
   type ResultatsControles,
 } from './bitbucket-api';
 import { afficherMessage, annonce, etape } from './demo-e2e';
+import {
+  contenuDeclenche,
+  contenuFonctionnalite,
+  contenuInitial,
+  descriptionPullRequest,
+  titrePullRequest,
+} from './bitbucket-contenus';
 
 /** Valeurs par défaut du scénario, surchargeables par l'environnement. */
 const DEFAUTS = {
@@ -72,51 +79,6 @@ export interface ConfigPreuve {
 /** Clé de dépôt lisible (espace/slug) pour les lignes OK. */
 export function cleDepot(config: ConfigPreuve): string {
   return `${config.client.workspace}/${config.repo}`;
-}
-
-/** Contenu posé sur `main` : le squelette du dépôt. */
-export function contenuInitial(ticket: string): string {
-  return [
-    `# ${ticket} — checkout-api`,
-    '',
-    "Service de paiement du panier. Ce dépôt est la cible de la preuve de",
-    '« Merge avec contexte » : une branche, une pull request et le *custom merge',
-    'check* du Capteur.',
-    '',
-  ].join('\n');
-}
-
-/** Contenu posé sur la branche : la limite de tentatives (ticket porté). */
-export function contenuFonctionnalite(ticket: string): string {
-  return [
-    `# ${ticket} — Limite de tentatives d'authentification`,
-    '',
-    'Le endpoint `POST /checkout/auth` limite désormais les tentatives à **5 essais**',
-    'par tranche de **15 minutes** et par adresse IP. Au-delà, la réponse `429` renvoie',
-    'un délai de réessai (`Retry-After`).',
-    '',
-    '- 5 essais max, fenêtre glissante de 15 minutes ;',
-    '- compteur par couple `(adresse IP, identifiant)` ;',
-    '- verrou de 15 minutes puis remise à zéro automatique ;',
-    '- journalisation anonymisée des verrous.',
-    '',
-  ].join('\n');
-}
-
-/** Titre de la pull request, qui porte la clé lue par la règle R-01. */
-export function titrePullRequest(ticket: string): string {
-  return `${ticket} — Limite de tentatives d'authentification`;
-}
-
-/** Description de la pull request : rappelle le ticket, la branche et la cible. */
-export function descriptionPullRequest(ticket: string, branche: string, cible: string): string {
-  return [
-    `Implémente la limitation des tentatives d'authentification décrite dans ${ticket}.`,
-    '',
-    `- branche source : \`${branche}\``,
-    `- branche cible : \`${cible}\``,
-    '',
-  ].join('\n');
 }
 
 /** URL web d'une pull request, quand l'API la fournit. */
@@ -379,6 +341,32 @@ async function etapePullRequest(p: Pilote): Promise<PullRequest | undefined> {
   }
 }
 
+/**
+ * 5 bis. Déclenche le contrôle : un nouveau commit sur la branche source,
+ * maintenant que la pull request existe.
+ *
+ * Sans ce commit, le *custom merge check* n'a aucune raison de tourner : le
+ * module `bitbucket:mergeCheck` n'écoute `on-code-pushed` que pour les
+ * commits faits alors que la PR est ouverte.
+ */
+async function etapeDeclenche(p: Pilote): Promise<boolean> {
+  const { repo, branche, ticket } = p.config;
+  try {
+    await p.client.deposerFichier(
+      repo,
+      'PREUVE.md',
+      contenuDeclenche(ticket),
+      `${ticket} : déclenche le contrôle de fusion`,
+      branche,
+    );
+    p.verifier('Commit de déclenchement sur la branche', true, 'la PR est ouverte, le contrôle peut tourner');
+    return true;
+  } catch (erreur) {
+    p.verifier('Commit de déclenchement sur la branche', false, String(erreur));
+    return false;
+  }
+}
+
 /** 6. État : relire la PR et afficher source → cible et état. */
 async function etapeEtat(p: Pilote, pr: PullRequest | undefined): Promise<void> {
   const { repo } = p.config;
@@ -448,6 +436,8 @@ export async function executerPreuve(config: ConfigPreuve, options: OptionsPreuv
 
   const pr = await etapePullRequest(p);
   if (!pr) return p.echecs;
+
+  if (!(await etapeDeclenche(p))) return p.echecs;
 
   await etapeEtat(p, pr);
   await etapeMergeCheck(p, pr);
