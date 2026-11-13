@@ -24,7 +24,8 @@
     "preuve:captures": "vite-node scripts/preuve-captures.ts",
     "preuve:verifier": "vite-node scripts/preuve-verifier.ts",
     "preuve:bitbucket": "vite-node scripts/preuve-bitbucket.ts",
-    "demo:fictif": "vite-node scripts/demo-entree.ts"
+    "demo:fictif": "vite-node scripts/demo-entree.ts",
+    "installer:espace": "node scripts/installer-espace-bitbucket.mjs"
   },
   "devDependencies": {
     "@forge/api": "^8.5.0",
