@@ -7,8 +7,24 @@
  * empreinte SHA-256 : `scripts/preuve-verifier.ts` recalcule le tout et
  * dit, étape par étape, si la preuve tient encore.
  *
+ * L'étape « PR Bitbucket réelle » a son propre fichier de preuve
+ * (`docs/preuve/08-pr-bitbucket.json`), hors du dossier `captures/` : elle
+ * n'est écrite que si l'environnement donne un accès réel à l'espace
+ * (`MAC_BB_TOKEN`, `MAC_BB_WORKSPACE`, `MAC_BB_REPO`, `MAC_BB_PR_ID`). Sans
+ * ces variables, rien n'est écrit — le dossier de preuve reste intact.
+ *
  * Usage : MAC_BRIDGE_URL=… MAC_SHARED_SECRET=… npx vite-node scripts/preuve-captures.ts
  */
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+
+import {
+  ClientBitbucket,
+  lireConfiguration as lireConfigurationBitbucket,
+  type ConfigurationBitbucket,
+  type PullRequest,
+  type ResultatsControles,
+} from './bitbucket-api';
 import {
   appelerCapture,
   lireSortieForge,
@@ -17,11 +33,28 @@ import {
   lireConfiguration,
   lireTicket,
   resumeTicket,
+  type Capture,
   type Configuration,
 } from './preuve-outils';
 
+/* Le format du fichier de preuve de PR (chemin, libellé, type) est défini par
+ * le vérificateur : on l'importe sans le laisser vérifier — son point d'entrée
+ * ne doit pas se jouer au milieu d'une capture. */
+process.env.MAC_PREUVE_SANS_VERIFICATION = '1';
+const { CHEMIN_PREUVE_PR, ETAPE_PREUVE_PR, TYPE_PREUVE_PR } = await import('./preuve-verifier');
+
 const SITE = process.env.MAC_SITE_URL?.trim() || 'https://one-atlas-cndz.atlassian.net';
 const ESPACE_BITBUCKET = 'one-atlas-cndz';
+
+/** Variables d'environnement nécessaires à la capture de PR Bitbucket. */
+const VARIABLES_PR = ['MAC_BB_TOKEN', 'MAC_BB_WORKSPACE', 'MAC_BB_REPO', 'MAC_BB_PR_ID'] as const;
+
+/** Configuration de la capture « PR Bitbucket réelle ». */
+interface ConfigPr {
+  client: ConfigurationBitbucket;
+  repo: string;
+  prId: number;
+}
 
 /** Charge utile d'évaluation pour un ticket réel. */
 function payload(config: Configuration, cle: string, branche: string, pr: number) {
@@ -150,7 +183,69 @@ async function capturerBitbucket(): Promise<void> {
   );
 }
 
+/** Lit la configuration de la capture de PR ; `undefined` si une variable manque. */
+function lireConfigPr(env: Record<string, string | undefined>): ConfigPr | undefined {
+  const manquantes = VARIABLES_PR.filter((nom) => !env[nom]?.trim());
+  if (manquantes.length > 0) {
+    console.log(`· PR Bitbucket : ${manquantes.join(', ')} manquante(s) — preuve non écrite (accès à l’espace non encore octroyé).`);
+    return undefined;
+  }
+  const client = lireConfigurationBitbucket(env);
+  const prId = Number(env.MAC_BB_PR_ID?.trim());
+  if (!client || !Number.isInteger(prId) || prId <= 0) {
+    console.log('· PR Bitbucket : MAC_BB_PR_ID doit être un identifiant de pull request — preuve non écrite.');
+    return undefined;
+  }
+  return { client, repo: env.MAC_BB_REPO?.trim() ?? '', prId };
+}
+
+/** Compose la preuve de PR : PR brute, contrôles de fusion bruts, horodatage. */
+function construirePreuvePr(config: ConfigPr, pr: PullRequest, controles: ResultatsControles): Omit<Capture, 'empreinte'> {
+  const base = `${config.client.baseUrl}/repositories/${config.client.workspace}/${config.repo}/pullrequests/${config.prId}`;
+  return {
+    etape: ETAPE_PREUVE_PR,
+    titre: `Pull request Bitbucket #${config.prId} et contrôle de fusion du Capteur`,
+    horodatage: new Date().toISOString(),
+    requete: { methode: 'GET', url: base, urlControles: `${base}/mergeability/checks` },
+    reponse: { pullRequest: pr, controles },
+    preuve: {
+      type: TYPE_PREUVE_PR,
+      workspace: config.client.workspace,
+      repo: config.repo,
+      prId: config.prId,
+      url: pr.links?.html?.href ?? '',
+      etat: pr.state ?? null,
+      source: pr.source?.branch?.name ?? null,
+      cible: pr.destination?.branch?.name ?? null,
+    },
+  };
+}
+
+/** Écrit la preuve de PR (son propre fichier, hors du dossier `captures/`). */
+function ecrirePreuvePr(capture: Capture): string {
+  mkdirSync(dirname(CHEMIN_PREUVE_PR), { recursive: true });
+  writeFileSync(CHEMIN_PREUVE_PR, `${JSON.stringify(capture, null, 2)}\n`, 'utf8');
+  return CHEMIN_PREUVE_PR;
+}
+
+/** Étape 8 — la pull request Bitbucket réelle et son contrôle de fusion. */
+async function capturerPrBitbucket(env: Record<string, string | undefined>): Promise<void> {
+  const config = lireConfigPr(env);
+  if (!config) return;
+  const client = new ClientBitbucket(config.client);
+  try {
+    const pr = await client.lirePullRequest(config.repo, config.prId);
+    const controles = await client.lireControlesFusion(config.repo, config.prId);
+    const capture = construirePreuvePr(config, pr, controles);
+    const chemin = ecrirePreuvePr({ ...capture, empreinte: empreinte(capture) });
+    console.log(`✓ ${ETAPE_PREUVE_PR} · Pull request Bitbucket #${config.prId} → ${chemin}`);
+  } catch (erreur) {
+    console.log(`· PR Bitbucket : capture impossible — ${erreur}`);
+  }
+}
+
 async function main(): Promise<void> {
+  await capturerPrBitbucket(process.env);
   const config = lireConfiguration(process.env);
   if (!config) {
     console.error('MAC_BRIDGE_URL et MAC_SHARED_SECRET sont requis.');
