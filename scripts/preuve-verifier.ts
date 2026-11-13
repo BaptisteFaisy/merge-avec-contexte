@@ -84,7 +84,8 @@ async function verifierTicket(capture: Capture, config: Configuration): Promise<
   }
   const actuel = resumeTicket(ticket);
   const identique = comparable(attendu) === comparable(actuel);
-  const cases = (actuel?.cases ?? []).filter((ligne) => /\[[ x]\]/.test(String(ligne))).length;
+  const cases = ((actuel?.cases as Array<unknown> | undefined) ?? [])
+    .filter((ligne) => /\[[ x]\]/.test(String(ligne))).length;
   return {
     etape,
     preuve: `GET ${SITE}/rest/api/3/issue/${cle} → 200`,

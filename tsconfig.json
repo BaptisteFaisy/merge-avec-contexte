@@ -2,7 +2,9 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["node"]
+    "types": [
+      "node"
+    ]
   },
   "include": [
     "shared/src/**/*.ts",
@@ -11,6 +13,7 @@
     "capteur/test/**/*.ts",
     "cerveau/src/**/*.ts",
     "cerveau/test/**/*.ts",
-    "vitest.config.ts"
+    "vitest.config.ts",
+    "scripts/**/*.ts"
   ]
 }

@@ -96,7 +96,10 @@ function codes(corps: unknown): string[] {
     .sort();
 }
 
-async function evaluer(config: Configuration, cas: typeof REEL.bloque, trigger = 'on-code-pushed') {
+/** Cas de pull request : une clé de ticket, une branche, un identifiant. */
+type CasPR = { cle: string; branche: string; pr: number };
+
+async function evaluer(config: Configuration, cas: CasPR, trigger = 'on-code-pushed') {
   const payload = payloadPr(config, cas.pr, cas.cle, cas.branche, trigger, REEL.depot);
   const reponse = await appeler(config, 'evaluate', payload);
   return { reponse, corps: reponse.corps as Verdict };
