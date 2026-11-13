@@ -189,6 +189,26 @@ describe('scénario de bout en bout', () => {
     expect(appels.map((a) => a.args.join(' '))).toEqual(['install list']);
   });
 
+  it('pousse le commit de déclenchement après l’ouverture de la PR', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const { recuperer, appels } = doublureHttp(routesScenario(CONTROLES_ARRIVES));
+    const { exec } = doublureCli();
+    const config = lireConfigPreuve(ENV);
+    const options: OptionsPreuve = {
+      recuperer,
+      exec,
+      cli: 'forge-atlassian',
+      attente: { attenteMs: 5000, intervalleMs: 100, maintenant: () => 0, pause: async () => undefined },
+    };
+    await executerPreuve(config!, options);
+    const indexPR = appels.findIndex((a) => a.chemin.endsWith('/pullrequests'));
+    const indexDeclenche = appels.findIndex(
+      (a, i) => i > indexPR && a.chemin.endsWith('/src'),
+    );
+    expect(indexPR).toBeGreaterThanOrEqual(0);
+    expect(indexDeclenche).toBeGreaterThan(indexPR);
+  });
+
   it('échoue proprement et liste les opérations manuelles si le merge check ne vient pas', async () => {
     const logs = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     const { recuperer } = doublureHttp(routesScenario([reponse(200, json({ values: [] }))]));
