@@ -1,0 +1,60 @@
+name: demo-live
+
+# Rejoue la démonstration réelle à intervalles réguliers et publie son état
+# (preuve.json) sur la branche data-live, que la page publique lit en temps
+# réel. Le secret partagé vit en secret GitHub, jamais dans le site ni dans
+# le navigateur : la page ne voit que le résultat, pas la signature.
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: demo-live
+  cancel-in-progress: true
+
+jobs:
+  rafraichir:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Installer les dépendances
+        run: npm ci
+
+      - name: Rejouer la démonstration réelle
+        env:
+          MAC_BRIDGE_URL: ${{ secrets.MAC_BRIDGE_URL }}
+          MAC_SHARED_SECRET: ${{ secrets.MAC_SHARED_SECRET }}
+          MAC_WORKSPACE: '{b44dcce8-0f72-4e36-bf40-65aead14ce35}'
+          MAC_SITE_URL: 'https://one-atlas-cndz.atlassian.net'
+          MAC_DEMO_JSON: '1'
+          MAC_DEMO_JSON_PATH: 'preuve.json'
+        run: npx vite-node scripts/preuve-reelle.ts || true
+
+      - name: Publier l'état sur la branche data-live
+        run: |
+          set -e
+          if [ ! -f preuve.json ]; then
+            echo '{"horodatage":null,"echecs":-1,"etapes":[],"note":"exécution en échec"}' > preuve.json
+          fi
+          git checkout --orphan data-live 2>/dev/null || git checkout data-live
+          git rm -rf --cached . 2>/dev/null || true
+          cp preuve.json /tmp/p.json
+          rm -rf ./* .github 2>/dev/null || true
+          mkdir -p . && cp /tmp/p.json preuve.json
+          git add preuve.json
+          git -c user.name='b' -c user.email='b@local' commit -m "démo réelle $(date -u +%FT%TZ)" || true
+          git push --force-with-lease origin data-live
