@@ -11,7 +11,9 @@
  * de fusion, et lister les « repository access tokens » si l'API les expose.
  *
  * Aucun réseau dans les tests : la fonction de récupération est injectée
- * (`RecuperateurHttp`), les tests fournissent une doublure.
+ * (`RecuperateurHttp`), les tests fournissent une doublure. L'attente des
+ * contrôles de fusion est bornée dans le temps et son horloge est injectable
+ * (`OptionsAttenteControles`) : les tests ne dorment jamais.
  */
 
 /** Base de l'API Bitbucket Cloud 2.0. Modifiable pour les tests. */
@@ -156,6 +158,28 @@ export interface ResultatsControles {
   values?: ControleFusion[];
 }
 
+/** Durée totale d'attente des contrôles de fusion, par défaut (3 minutes). */
+export const ATTENTE_CONTROLES_MS = 180_000;
+
+/** Intervalle entre deux essais de lecture des contrôles, par défaut (15 s). */
+export const INTERVALLE_CONTROLES_MS = 15_000;
+
+/** Options de l'attente des contrôles de fusion (bornée dans le temps). */
+export interface OptionsAttenteControles {
+  /** Durée totale d'attente, en millisecondes (défaut `ATTENTE_CONTROLES_MS`). */
+  attenteMs?: number;
+  /** Intervalle entre deux essais, en millisecondes (défaut `INTERVALLE_CONTROLES_MS`). */
+  intervalleMs?: number;
+  /** Horloge injectable (défaut `Date.now`) : les tests fixent le temps. */
+  maintenant?: () => number;
+  /** Pause injectable (défaut : `setTimeout`) : les tests ne dorment jamais. */
+  pause?: (ms: number) => Promise<void>;
+}
+
+/** Pause par défaut : `setTimeout` promisifié. */
+export const pauseParDefaut = (ms: number): Promise<void> =>
+  new Promise((resolve) => { setTimeout(resolve, ms); });
+
 /** Jeton d'accès de dépôt, si l'API l'expose (aujourd'hui indisponible). */
 export interface JetonAcces {
   id?: string;
@@ -278,6 +302,51 @@ export class ClientBitbucket {
   /** Lit les résultats de contrôle de fusion d'une pull request. */
   async lireControlesFusion(slug: string, identifiant: number): Promise<ResultatsControles> {
     return this.json<ResultatsControles>('GET', `/repositories/${this.config.workspace}/${slug}/pullrequests/${identifiant}/mergeability/checks`);
+  }
+
+  /**
+   * Lit les contrôles de fusion ; un `404` passager vaut « pas encore prêts ».
+   *
+   * L'endpoint `mergeability/checks` répond `404` tant que la pull request
+   * n'est pas prête à être évaluée : ce n'est pas une erreur de fond, juste
+   * « pas encore de contrôles ».
+   */
+  private async lireControlesOuVides(slug: string, identifiant: number): Promise<ResultatsControles> {
+    try {
+      return await this.lireControlesFusion(slug, identifiant);
+    } catch (erreur) {
+      if (erreur instanceof ErreurBitbucket && erreur.statut === 404) return {};
+      throw erreur;
+    }
+  }
+
+  /**
+   * Attend l'apparition des contrôles de fusion (le *custom merge check*).
+   *
+   * Interroge `lireControlesFusion` en boucle bornée — au plus `attenteMs` au
+   * total, un essai toutes les `intervalleMs` — et rend le **premier jeu de
+   * contrôles non vide**. Rend `undefined` si le délai est dépassé sans qu'aucun
+   * contrôle n'ait été exposé ; l'appelant affiche alors les opérations
+   * manuelles qui restent.
+   */
+  async attendreControles(
+    slug: string,
+    identifiant: number,
+    options: OptionsAttenteControles = {},
+  ): Promise<ResultatsControles | undefined> {
+    const attenteMs = Math.max(0, options.attenteMs ?? ATTENTE_CONTROLES_MS);
+    const intervalleMs = Math.max(1, options.intervalleMs ?? INTERVALLE_CONTROLES_MS);
+    const maintenant = options.maintenant ?? Date.now;
+    const pause = options.pause ?? pauseParDefaut;
+    const debut = maintenant();
+    const essaisMax = Math.ceil(attenteMs / intervalleMs) + 1;
+    for (let essai = 1; essai <= essaisMax; essai += 1) {
+      const controles = await this.lireControlesOuVides(slug, identifiant);
+      if ((controles.values ?? []).length > 0) return controles;
+      if (maintenant() - debut >= attenteMs) return undefined;
+      await pause(intervalleMs);
+    }
+    return undefined;
   }
 
   /**
