@@ -146,6 +146,58 @@ describe('client — endpoints et en-têtes', () => {
   });
 });
 
+describe('attendreControles', () => {
+  it('rend le premier jeu de contrôles non vide (arrivé au 2e essai)', async () => {
+    const { appels, recuperer } = doublure([
+      reponse(true, 200, corpsJson({ values: [] })),
+      reponse(true, 200, corpsJson({ values: [{ type: 'custom', status: 'SUCCESSFUL' }] })),
+    ]);
+    const client = new ClientBitbucket(CONFIG, recuperer);
+    let temps = 0;
+    const controles = await client.attendreControles('checkout-api', 7, {
+      attenteMs: 60_000,
+      intervalleMs: 1000,
+      maintenant: () => temps,
+      pause: async (ms) => { temps += ms; },
+    });
+    expect(controles?.values?.[0]?.status).toBe('SUCCESSFUL');
+    expect(appels).toHaveLength(2);
+    expect(appels[1].url).toBe(`${API_BASE}/repositories/one-atlas-cndz/checkout-api/pullrequests/7/mergeability/checks`);
+  });
+
+  it('rend undefined quand le délai est dépassé sans contrôle', async () => {
+    const { appels, recuperer } = doublure([reponse(true, 200, corpsJson({ values: [] }))]);
+    const client = new ClientBitbucket(CONFIG, recuperer);
+    let temps = 0;
+    const controles = await client.attendreControles('checkout-api', 7, {
+      attenteMs: 2000,
+      intervalleMs: 1000,
+      maintenant: () => temps,
+      pause: async (ms) => { temps += ms; },
+    });
+    expect(controles).toBeUndefined();
+    expect(appels).toHaveLength(3);
+  });
+
+  it('ne dort jamais : la pause est injectée', async () => {
+    const { recuperer } = doublure([reponse(true, 200, corpsJson({ values: [] }))]);
+    const client = new ClientBitbucket(CONFIG, recuperer);
+    const pauses: number[] = [];
+    await client.attendreControles('checkout-api', 7, {
+      attenteMs: 0,
+      intervalleMs: 1000,
+      pause: async (ms) => { pauses.push(ms); },
+    });
+    expect(pauses).toEqual([]);
+  });
+
+  it('tolère un 404 passager (contrôles pas encore prêts)', async () => {
+    const { recuperer } = doublure([reponse(false, 404, corpsJson({ error: { message: 'not found' } }))]);
+    const client = new ClientBitbucket(CONFIG, recuperer);
+    await expect(client.attendreControles('checkout-api', 7, { attenteMs: 0 })).resolves.toBeUndefined();
+  });
+});
+
 describe('gestion du 403 « whitelist your IP »', () => {
   it('détecte le message de liste blanche', () => {
     expect(estBlocageIp('To access this workspace, an admin must whitelist your IP.')).toBe(true);
